@@ -84,7 +84,11 @@
       (يحتاج تحويل صورة، غير حرج لتوزيع Windows/الأولي).
 - [ ] تهيئة بيئة البناء: `npm install` ثم `npm run compile-client` و `compile-copilot`
       (`node_modules` الحالي غير مكتمل — تثبيت جزئي فقط).
-- [ ] إطلاق IDE لأول مرة: `scripts\idexal.bat` على ويندوز (أو `./scripts/idexal.sh` على macOS/Linux).
+- [x] إطلاق IDE لأول مرة (2026-08-03): `scripts\idexal.bat` — نافذة "Idexal Dev" كاملة
+  تعمل بالهوية الجديدة (أيقونة، شعار، اسم). لوحظ تحذير "Extension host did not start in
+  10 seconds" عند أول إطلاق — المحرر الأساسي يعمل بالكامل، لكن الإضافات (بما فيها
+  Copilot) قد لا تُحمَّل. **بند متابعة**: تشخيص سبب تأخر extension host (رصد لأول مرة،
+  لم يُحلّ بعد) قبل الاعتماد على أي إضافة في الاختبار البصري القادم.
 
 ### المرحلة 1 — CLI خاصة بنا | Own CLI
 الهدف: أمر `idexal` يعمل من أي طرفية مثل `claude`/`codex`.
