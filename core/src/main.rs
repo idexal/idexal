@@ -564,6 +564,37 @@ async fn main() {
                         }
                     }
                 }
+                Some("show") => {
+                    let id = args.get(3).cloned().unwrap_or_default();
+                    if id.is_empty() {
+                        eprintln!("Usage: idexal-core sessions show <id>");
+                        process::exit(2);
+                    }
+                    match store.history(&id) {
+                        Ok(messages) => {
+                            let out: Vec<serde_json::Value> = messages
+                                .iter()
+                                .map(|m| {
+                                    serde_json::json!({
+                                        "role": match m.role {
+                                            providers::types::Role::System => "system",
+                                            providers::types::Role::User => "user",
+                                            providers::types::Role::Assistant => "assistant",
+                                        },
+                                        "content": m.content,
+                                        "toolCalls": m.tool_calls.iter().map(|t| &t.name).collect::<Vec<_>>(),
+                                        "toolCallId": m.tool_call_id,
+                                    })
+                                })
+                                .collect();
+                            println!("{}", serde_json::to_string_pretty(&out).unwrap());
+                        }
+                        Err(e) => {
+                            eprintln!("{e}");
+                            process::exit(1);
+                        }
+                    }
+                }
                 _ => match store.list(50) {
                     Ok(rows) => {
                         let out: Vec<serde_json::Value> = rows

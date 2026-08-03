@@ -66,6 +66,11 @@ declare global {
 				save: (cfg: unknown) => Promise<{ ok: boolean; data?: unknown; error?: string }>;
 				testProvider: (id: string) => Promise<{ ok: boolean; data?: unknown; error?: string }>;
 			};
+			sessions: {
+				list: () => Promise<{ ok: boolean; data?: unknown; error?: string }>;
+				show: (id: string) => Promise<{ ok: boolean; data?: unknown; error?: string }>;
+				remove: (id: string) => Promise<{ ok: boolean; data?: unknown; error?: string }>;
+			};
 		};
 		__monaco: typeof import('monaco-editor');
 		/** Opened by settings.ts, which owns the settings page. */
@@ -167,6 +172,8 @@ interface TaskRecord {
 	log: HTMLElement;
 	plan: HTMLElement;
 	stop?: () => void;
+	/** Whether a restored session's transcript has been rendered yet. */
+	loaded?: boolean;
 }
 
 const tasks = new Map<string, TaskRecord>();
@@ -306,8 +313,76 @@ function taskRow(rec: TaskRecord): HTMLElement {
 	nm.className = 'nm';
 	nm.textContent = rec.title;
 	row.append(dot, nm);
-	row.addEventListener('click', () => activateTask(rec.id));
+	row.addEventListener('click', () => void activateTask(rec.id));
 	return row;
+}
+
+/**
+ * Restore conversations from the core's session store so the sidebar
+ * survives a restart. Their transcripts are loaded lazily on open —
+ * replaying every message of every past task at startup would be a lot of
+ * work for panes the user may never look at.
+ */
+async function restoreSessions(): Promise<void> {
+	const res = await window.idexal.sessions.list();
+	if (!res.ok || !Array.isArray(res.data)) return;
+	const rows = res.data as Array<{ id?: string; title?: string }>;
+	for (const row of rows) {
+		if (!row.id || tasks.has(row.id)) continue;
+		const log = document.createElement('div');
+		log.style.display = 'contents';
+		const plan = document.createElement('div');
+		plan.style.display = 'contents';
+		tasks.set(row.id, {
+			id: row.id,
+			title: row.title || row.id,
+			state: 'done',
+			log,
+			plan,
+			loaded: false,
+		});
+	}
+	renderTaskList();
+}
+
+/** Render a stored transcript into a task's log the first time it's opened. */
+async function loadTranscript(rec: TaskRecord): Promise<void> {
+	if (rec.loaded) return;
+	rec.loaded = true;
+	const res = await window.idexal.sessions.show(rec.id);
+	if (!res.ok || !Array.isArray(res.data)) return;
+
+	for (const raw of res.data as Array<{ role?: string; content?: string; toolCalls?: string[]; toolCallId?: string }>) {
+		if (raw.toolCallId) {
+			// Tool results are replay noise in the UI — the tool-call line
+			// above already says what ran.
+			continue;
+		}
+		if (raw.role === 'user') {
+			const el = document.createElement('div');
+			el.className = 'msg-user';
+			el.textContent = raw.content ?? '';
+			rec.log.appendChild(el);
+		} else if (raw.role === 'assistant') {
+			if (raw.content?.trim()) {
+				const wrap = document.createElement('div');
+				wrap.className = 'msg-agent';
+				const who = document.createElement('span');
+				who.className = 'who';
+				who.textContent = 'IDEXAL';
+				const body = document.createElement('span');
+				body.textContent = raw.content;
+				wrap.append(who, body);
+				rec.log.appendChild(wrap);
+			}
+			for (const name of raw.toolCalls ?? []) {
+				const el = document.createElement('div');
+				el.className = 'meta tool';
+				el.textContent = `⚙ ${name}`;
+				rec.log.appendChild(el);
+			}
+		}
+	}
 }
 
 function renderTaskList(): void {
@@ -323,10 +398,11 @@ function renderTaskList(): void {
 	for (const rec of [...tasks.values()].reverse()) list.appendChild(taskRow(rec));
 }
 
-function activateTask(id: string): void {
+async function activateTask(id: string): Promise<void> {
 	const rec = tasks.get(id);
 	if (!rec) return;
 	activeTaskId = id;
+	await loadTranscript(rec);
 	$('task-title').textContent = rec.title;
 	const logHost = $('task-log');
 	logHost.innerHTML = '';
@@ -401,7 +477,7 @@ function startTask(prompt: string, multi: boolean, existing?: TaskRecord): void 
 	const log = rec.log;
 	rec.state = 'running';
 	renderTaskList();
-	activateTask(id);
+	void activateTask(id);
 	setTaskState('running');
 
 	const user = document.createElement('div');
@@ -615,7 +691,7 @@ $('nav-search').addEventListener('click', (e) => {
 	const entries: MenuEntry[] = [...tasks.values()].reverse().map((t) => ({
 		label: t.title,
 		detail: t.state === 'running' ? 'يعمل' : t.state === 'done' ? 'تم' : 'فشل',
-		onPick: () => activateTask(t.id),
+		onPick: () => void activateTask(t.id),
 	}));
 	openMenu(
 		e.currentTarget as HTMLElement,
@@ -1069,3 +1145,4 @@ $<HTMLInputElement>('preview-url').addEventListener('keydown', (e) => {
 
 hydrateIcons();
 void refreshWorkspaceChrome();
+void restoreSessions();

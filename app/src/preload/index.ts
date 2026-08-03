@@ -52,6 +52,12 @@ contextBridge.exposeInMainWorld('idexal', {
 		write: (id: string, data: string) => ipcRenderer.invoke('terminal:write', id, data),
 	},
 
+	sessions: {
+		list: () => ipcRenderer.invoke('sessions:list'),
+		show: (id: string) => ipcRenderer.invoke('sessions:show', id),
+		remove: (id: string) => ipcRenderer.invoke('sessions:delete', id),
+	},
+
 	git: {
 		status: () => ipcRenderer.invoke('git:status'),
 		diff: (file: string) => ipcRenderer.invoke('git:diff', file),

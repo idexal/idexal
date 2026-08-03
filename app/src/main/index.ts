@@ -5,6 +5,7 @@ import * as readline from 'node:readline';
 import { registerWorkspaceHandlers, getWorkspaceRoot } from './workspace';
 import { registerTerminalHandlers, disposeTerminals } from './terminal';
 import { registerSettingsHandlers } from './settings';
+import { registerSessionHandlers } from './sessions';
 import { resolveCoreBinary } from './core';
 
 function createWindow(): void {
@@ -94,6 +95,7 @@ app.whenReady().then(() => {
 	registerWorkspaceHandlers();
 	registerTerminalHandlers();
 	registerSettingsHandlers();
+	registerSessionHandlers();
 	createWindow();
 });
 
