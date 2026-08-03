@@ -14,6 +14,7 @@
 // the design already validated in the previous Node implementation.
 
 mod providers;
+mod tools;
 
 use serde::Serialize;
 use std::io::{self, Write};
