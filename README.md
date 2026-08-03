@@ -1,5 +1,5 @@
 # Idexal — Agentic IDE
-
+ 
 > **Idexal** = **Ide** + **Xal** — بيئة تطوير وكيلية (Agentic IDE) كاملة ومتكاملة،
 > مبنية على كود VS Code (Code OSS) مفتوح المصدر من مايكروسوفت، ببنية متعددة الوكلاء
 > بمستوى Claude Code و Codex، مع CLI و طرفية خاصة بنا.
