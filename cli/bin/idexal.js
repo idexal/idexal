@@ -56,10 +56,12 @@ function printHelp() {
 ${c.bold('idexal')} — agentic IDE, from your terminal
 
 ${c.bold('USAGE')}
-  idexal "<task>"              run an agent on a task
+  idexal "<task>"              run a single agent on a task
   idexal run "<task>"          same, explicit
+  idexal agent "<task>"        multi-agent: plan → parallel executors → review
   idexal review "<target>"     read-only analysis (never writes or runs commands)
   idexal providers             list configured providers and their status
+  idexal memory <sub>          stats | recall "<query>" | add <kind> "<content>"
   idexal --version             print the core version
   idexal --help                this message
 
@@ -125,17 +127,40 @@ function runCore(args, { onEvent } = {}) {
 	});
 }
 
-function renderTask(task, extraArgs = []) {
+function renderTask(task, extraArgs = [], command = 'stream') {
 	let sawText = false;
 	// Tool lines and provider switches interrupt the answer text, so the
 	// next text delta needs a newline to avoid gluing onto a status line.
 	let needsNewline = false;
 
-	runCore(['stream', ...extraArgs, task], {
+	runCore([command, ...extraArgs, task], {
 		onEvent(event) {
 			switch (event.type) {
 				case 'start':
 					console.log(c.dim(`providers: ${(event.providers ?? []).join(' → ')}`));
+					break;
+				case 'phase':
+					if (sawText) process.stdout.write('\n');
+					console.log(c.blue(c.bold(`\n▸ ${event.phase}`)));
+					sawText = false;
+					break;
+				case 'plan':
+					for (const step of event.steps ?? []) {
+						const deps = step.depends_on?.length ? c.dim(` ⟵ ${step.depends_on.join(',')}`) : '';
+						console.log(`  ${c.dim(`${step.id}.`)} ${step.description}${deps}`);
+					}
+					break;
+				case 'step-start':
+					console.log(c.blue(`  ▶ [${event.id}] ${event.description}`));
+					sawText = false;
+					break;
+				case 'step-end':
+					console.log(event.ok ? c.green(`  ✓ [${event.id}]`) : c.red(`  ✗ [${event.id}] ${event.summary}`));
+					sawText = false;
+					break;
+				case 'review':
+					// The reviewer's text already streamed as deltas; the
+					// event only marks that the review phase produced it.
 					break;
 				case 'provider':
 					console.log(c.dim(`⇄ ${event.name}`));
@@ -158,20 +183,27 @@ function renderTask(task, extraArgs = []) {
 					} catch {
 						// keep detail empty rather than printing raw JSON
 					}
-					console.log(c.yellow(`⚙ ${event.name}${detail ? ' ' + detail : ''}`));
+					// In multi-agent runs several executors interleave, so
+					// the step id is what makes the output readable.
+					const tag = event.step !== undefined ? c.dim(`[${event.step}] `) : '';
+					console.log(tag + c.yellow(`⚙ ${event.name}${detail ? ' ' + detail : ''}`));
 					sawText = false;
 					needsNewline = false;
 					break;
 				}
-				case 'tool-result':
-					console.log(event.ok ? c.green(`✓ ${event.name}`) : c.red(`✗ ${event.name}`));
+				case 'tool-result': {
+					const tag = event.step !== undefined ? c.dim(`[${event.step}] `) : '';
+					console.log(tag + (event.ok ? c.green(`✓ ${event.name}`) : c.red(`✗ ${event.name}`)));
 					break;
-				case 'done':
+				}
+				case 'done': {
 					if (sawText) process.stdout.write('\n');
+					const unit = command === 'agent' ? 'steps' : 'tool rounds';
 					console.log(
-						c.dim(`● ${event.provider ?? ''}${event.tool_rounds ? ` · ${event.tool_rounds} tool rounds` : ''}`),
+						c.dim(`● ${event.provider ?? ''}${event.tool_rounds ? ` · ${event.tool_rounds} ${unit}` : ''}`),
 					);
 					break;
+				}
 				case 'error':
 					if (sawText) process.stdout.write('\n');
 					console.error(c.red(`⚠ ${event.error}`));
@@ -207,6 +239,19 @@ switch (argv[0]) {
 		renderTask(task);
 		break;
 	}
+	case 'agent': {
+		const task = argv.slice(1).join(' ').trim();
+		if (!task) {
+			console.error(c.red('idexal agent needs a task: idexal agent "<task>"'));
+			process.exit(2);
+		}
+		renderTask(task, [], 'agent');
+		break;
+	}
+	case 'memory':
+		// Memory subcommands print plain JSON, not NDJSON.
+		runCore(['memory', ...argv.slice(1)]);
+		break;
 	case 'review': {
 		const target = argv.slice(1).join(' ').trim();
 		if (!target) {

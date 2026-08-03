@@ -17,11 +17,13 @@ use crate::providers::Registry;
 use crate::tools;
 use std::path::Path;
 
+/// Callbacks are `+ Send` so an agent future can be spawned onto the tokio
+/// runtime — that is what lets the orchestrator run executors in parallel.
 pub struct AgentEvents<'a> {
-    pub on_provider: &'a mut dyn FnMut(&str),
-    pub on_text: &'a mut dyn FnMut(&str),
-    pub on_tool_call: &'a mut dyn FnMut(&str, &str),
-    pub on_tool_result: &'a mut dyn FnMut(&str, bool, &str),
+    pub on_provider: &'a mut (dyn FnMut(&str) + Send),
+    pub on_text: &'a mut (dyn FnMut(&str) + Send),
+    pub on_tool_call: &'a mut (dyn FnMut(&str, &str) + Send),
+    pub on_tool_result: &'a mut (dyn FnMut(&str, bool, &str) + Send),
 }
 
 pub struct AgentOutcome {
@@ -38,15 +40,19 @@ pub async fn run(
     system_prompt: &str,
     task: &str,
     tool_defs: &[ToolDefinition],
-    memory: Option<&crate::memory::Memory>,
+    memory_context: Option<String>,
     events: &mut AgentEvents<'_>,
 ) -> Result<AgentOutcome, Vec<String>> {
-    // Long-term memory is injected into the system prompt, not the user
-    // turn, so recalled context can't be mistaken for the user's request.
-    let project = cwd.file_name().map(|n| n.to_string_lossy().to_string());
-    let system = match memory.and_then(|m| m.context_block(task, project.as_deref(), 5)) {
-        Some(block) => format!("{system_prompt}\n\n{block}"),
-        None => system_prompt.to_string(),
+    // Recalled memory is injected into the system prompt, not the user
+    // turn, so it can't be mistaken for the user's request.
+    //
+    // The caller passes an already-rendered context block rather than the
+    // store itself: a rusqlite Connection is !Sync, so holding one across
+    // an await would make this future non-Send and rule out running
+    // executors in parallel.
+    let system = match memory_context {
+        Some(block) if !block.trim().is_empty() => format!("{system_prompt}\n\n{block}"),
+        _ => system_prompt.to_string(),
     };
 
     let mut messages = vec![

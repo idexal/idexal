@@ -19,6 +19,7 @@
 mod agent;
 mod config;
 mod memory;
+mod orchestrator;
 mod providers;
 mod tools;
 
@@ -37,13 +38,37 @@ enum Event<'a> {
     #[serde(rename = "delta")]
     Delta { text: &'a str },
     #[serde(rename = "tool-call")]
-    ToolCall { name: &'a str, args: &'a str },
+    ToolCall {
+        name: &'a str,
+        args: &'a str,
+        /// Which plan step issued this call; absent in single-agent runs.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        step: Option<u32>,
+    },
     #[serde(rename = "tool-result")]
-    ToolResult { name: &'a str, ok: bool, output: String },
+    ToolResult {
+        name: &'a str,
+        ok: bool,
+        output: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        step: Option<u32>,
+    },
     #[serde(rename = "done")]
     Done { summary: String, provider: String, tool_rounds: u32 },
     #[serde(rename = "error")]
     Error { error: String },
+
+    // Multi-agent orchestration events.
+    #[serde(rename = "phase")]
+    Phase { phase: &'a str },
+    #[serde(rename = "plan")]
+    Plan { steps: Vec<orchestrator::PlanStep> },
+    #[serde(rename = "step-start")]
+    StepStart { id: u32, description: String },
+    #[serde(rename = "step-end")]
+    StepEnd { id: u32, ok: bool, summary: String },
+    #[serde(rename = "review")]
+    Review { text: String },
 }
 
 fn emit(event: &Event) {
@@ -93,9 +118,9 @@ async fn stream_task(task: &str, read_only: bool) {
 
     let mut on_provider = |name: &str| emit(&Event::Provider { name });
     let mut on_text = |text: &str| emit(&Event::Delta { text });
-    let mut on_tool_call = |name: &str, args: &str| emit(&Event::ToolCall { name, args });
+    let mut on_tool_call = |name: &str, args: &str| emit(&Event::ToolCall { name, args, step: None });
     let mut on_tool_result = |name: &str, ok: bool, output: &str| {
-        emit(&Event::ToolResult { name, ok, output: preview(output) })
+        emit(&Event::ToolResult { name, ok, output: preview(output), step: None })
     };
 
     let mut events = agent::AgentEvents {
@@ -105,8 +130,10 @@ async fn stream_task(task: &str, read_only: bool) {
         on_tool_result: &mut on_tool_result,
     };
 
+    let project = cwd.file_name().map(|n| n.to_string_lossy().to_string());
+    let memory_context = memory.as_ref().and_then(|m| m.context_block(task, project.as_deref(), 5));
     let result =
-        agent::run(&mut registry, &cfg, &cwd, SYSTEM_PROMPT, task, &defs, memory.as_ref(), &mut events).await;
+        agent::run(&mut registry, &cfg, &cwd, SYSTEM_PROMPT, task, &defs, memory_context, &mut events).await;
 
     match result {
         Ok(outcome) => {
@@ -137,6 +164,81 @@ async fn stream_task(task: &str, read_only: bool) {
         Err(errors) => emit(&Event::Error {
             error: format!("كل المزودين فشلوا:\n{}", errors.join("\n")),
         }),
+    }
+}
+
+/// Multi-agent run: planner → parallel executors → reviewer.
+async fn orchestrate_task(task: &str) {
+    let cfg = config::load();
+    let registry = Registry::from_config(&cfg);
+    if registry.is_empty() {
+        emit(&Event::Error {
+            error: "لا يوجد مزود صالح. عرّف ANTHROPIC_API_KEY أو OPENAI_API_KEY، أو شغّل Ollama محلياً.".into(),
+        });
+        process::exit(1);
+    }
+    emit(&Event::Start { providers: registry.provider_ids() });
+
+    let cwd = env::current_dir().unwrap_or_else(|_| ".".into());
+    // Resolve the memory path once and hand it down: each parallel agent
+    // opens its own SQLite handle (a Connection can't be shared).
+    let memory_path = config::home_dir().map(|h| h.join(".idexal").join("memory.db"));
+
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<orchestrator::OrchestratorEvent>();
+
+    // Drain events as they arrive so the UI streams live rather than
+    // receiving everything at the end.
+    let pump = tokio::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            use orchestrator::OrchestratorEvent as E;
+            match event {
+                E::Phase(p) => emit(&Event::Phase { phase: &p }),
+                E::Plan(steps) => emit(&Event::Plan { steps }),
+                E::StepStarted { id, description } => emit(&Event::StepStart { id, description }),
+                E::StepFinished { id, ok, summary } => emit(&Event::StepEnd { id, ok, summary }),
+                E::Provider(name) => emit(&Event::Provider { name: &name }),
+                E::Text(text) => emit(&Event::Delta { text: &text }),
+                E::ToolCall { step, name, args } => {
+                    emit(&Event::ToolCall { name: &name, args: &args, step: Some(step) })
+                }
+                E::ToolResult { step, name, ok, output } => emit(&Event::ToolResult {
+                    name: &name,
+                    ok,
+                    output: preview(&output),
+                    step: Some(step),
+                }),
+                E::Review(text) => emit(&Event::Review { text }),
+            }
+        }
+    });
+
+    let result = orchestrator::run(&cfg, cwd.clone(), task, memory_path.clone(), tx).await;
+    // Dropping the sender inside `run` ends the channel; wait for the pump
+    // so no event is lost between the last send and process exit.
+    let _ = pump.await;
+
+    match result {
+        Ok(outcome) => {
+            if let Some(path) = &memory_path {
+                if let Ok(m) = memory::Memory::open(Some(path.clone())) {
+                    let project = cwd.file_name().map(|n| n.to_string_lossy().to_string());
+                    let summary: String = outcome.summary.chars().take(500).collect();
+                    if !summary.trim().is_empty() {
+                        let _ = m.remember(
+                            memory::MemoryKind::Session,
+                            &format!("مهمة (متعددة الوكلاء): {task}\nالنتيجة: {summary}"),
+                            project.as_deref(),
+                        );
+                    }
+                }
+            }
+            emit(&Event::Done {
+                summary: outcome.summary.chars().take(400).collect(),
+                provider: outcome.provider_id,
+                tool_rounds: outcome.steps_run as u32,
+            });
+        }
+        Err(errors) => emit(&Event::Error { error: errors.join("\n") }),
     }
 }
 
@@ -261,9 +363,23 @@ async fn main() {
             }
             stream_task(&task, read_only).await;
         }
+        Some("agent") => {
+            let task = args
+                .iter()
+                .skip(2)
+                .find(|a| !a.starts_with("--"))
+                .cloned()
+                .unwrap_or_default();
+            if task.is_empty() {
+                emit(&Event::Error { error: "Usage: idexal-core agent \"<task>\"".into() });
+                process::exit(1);
+            }
+            orchestrate_task(&task).await;
+        }
         _ => {
             eprintln!("Usage:");
-            eprintln!("  idexal-core stream [--read-only] \"<task>\"");
+            eprintln!("  idexal-core stream [--read-only] \"<task>\"   single agent");
+            eprintln!("  idexal-core agent \"<task>\"                  multi-agent (plan→execute→review)");
             eprintln!("  idexal-core providers");
             eprintln!("  idexal-core memory stats|recall \"<query>\"|add <kind> \"<content>\"");
             eprintln!("  idexal-core --version");
