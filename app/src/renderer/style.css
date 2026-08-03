@@ -311,6 +311,21 @@ kbd {
 #diff-output .del { color: var(--danger); }
 #diff-output .hunk { color: var(--accent); }
 
+.git-commit-bar { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line-soft); }
+.git-msg {
+  flex: 1; min-width: 0; background: var(--bg-input); border: 1px solid var(--line);
+  color: var(--ink); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-family: var(--sans);
+}
+.git-msg:focus { outline: none; border-color: var(--accent); }
+.git-toggle {
+  width: 20px; height: 20px; flex: none; line-height: 1;
+  background: var(--bg-input); border: 1px solid var(--line); color: var(--ink-soft);
+  border-radius: 5px; cursor: pointer; font-size: 13px; padding: 0;
+}
+.git-toggle:hover { color: var(--ink); border-color: var(--accent); }
+.git-row.staged .path { color: var(--accent-2); }
+.git-note { padding: 6px 14px; font-size: 11.5px; color: var(--accent-2); }
+.git-note.err { color: var(--danger); }
 .git-row { display: flex; align-items: center; gap: 8px; padding: 4px 14px; font-size: 12px; cursor: pointer; font-family: var(--mono); }
 .git-row:hover { background: var(--bg-hover); }
 .git-row .state { width: 18px; font-weight: 700; }

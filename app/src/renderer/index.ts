@@ -45,8 +45,16 @@ declare global {
 				write: (id: string, data: string) => Promise<unknown>;
 			};
 			git: {
-				status: () => Promise<{ ok: boolean; branch?: string; files?: Array<{ state: string; path: string }>; error?: string }>;
+				status: () => Promise<{
+					ok: boolean;
+					branch?: string;
+					files?: Array<{ state: string; path: string; staged: boolean; untracked: boolean }>;
+					error?: string;
+				}>;
 				diff: (file: string) => Promise<{ ok: boolean; diff?: string; error?: string }>;
+				stage: (file: string) => Promise<{ ok: boolean; error?: string }>;
+				unstage: (file: string) => Promise<{ ok: boolean; error?: string }>;
+				commit: (message: string) => Promise<{ ok: boolean; output?: string; error?: string }>;
 			};
 			settings: {
 				load: () => Promise<{ ok: boolean; data?: unknown; error?: string }>;
@@ -825,19 +833,94 @@ async function refreshGit(): Promise<void> {
 		panel.appendChild(empty);
 		return;
 	}
+
+	// Commit bar: message + a commit button that always confirms first.
+	const bar = document.createElement('div');
+	bar.className = 'git-commit-bar';
+	const msg = document.createElement('input');
+	msg.type = 'text';
+	msg.placeholder = 'رسالة الإيداع…';
+	msg.className = 'git-msg';
+	msg.value = commitMessage;
+	msg.addEventListener('input', () => (commitMessage = msg.value));
+	const commitBtn = document.createElement('button');
+	commitBtn.className = 'mini-btn';
+	const stagedCount = files.filter((f) => f.staged).length;
+	commitBtn.textContent = `إيداع (${stagedCount})`;
+	commitBtn.disabled = stagedCount === 0;
+	commitBtn.addEventListener('click', () => void doCommit(stagedCount));
+	msg.addEventListener('keydown', (e) => {
+		if (e.key === 'Enter' && stagedCount > 0) void doCommit(stagedCount);
+	});
+	bar.append(msg, commitBtn);
+	panel.appendChild(bar);
+
 	for (const file of files) {
 		const row = document.createElement('div');
-		row.className = 'git-row';
+		row.className = 'git-row' + (file.staged ? ' staged' : '');
+
+		const toggle = document.createElement('button');
+		toggle.className = 'git-toggle';
+		toggle.title = file.staged ? 'إلغاء الإضافة' : 'إضافة للإيداع';
+		toggle.textContent = file.staged ? '−' : '+';
+		toggle.addEventListener('click', async (e) => {
+			e.stopPropagation();
+			const op = file.staged ? window.idexal.git.unstage : window.idexal.git.stage;
+			const res = await op(file.path);
+			if (!res.ok) setGitNote(res.error ?? 'فشلت العملية', false);
+			await refreshGit();
+		});
+
 		const state = document.createElement('span');
 		state.className = `state ${file.state.replace(/[^A-Za-z]/g, '') || 'U'}`;
 		state.textContent = file.state || '?';
 		const p = document.createElement('span');
 		p.className = 'path';
 		p.textContent = file.path;
-		row.append(state, p);
+		row.append(toggle, state, p);
 		row.addEventListener('click', () => void showDiff(file.path));
 		panel.appendChild(row);
 	}
+
+	if (gitNote) {
+		const note = document.createElement('div');
+		note.className = `git-note${gitNoteOk ? '' : ' err'}`;
+		note.textContent = gitNote;
+		panel.appendChild(note);
+	}
+}
+
+let commitMessage = '';
+let gitNote = '';
+let gitNoteOk = true;
+
+function setGitNote(text: string, ok = true): void {
+	gitNote = text;
+	gitNoteOk = ok;
+}
+
+/** Commit staged files — always behind an explicit confirmation, because
+ *  writing to someone's repository must never be a single misclick. */
+async function doCommit(stagedCount: number): Promise<void> {
+	const message = commitMessage.trim();
+	if (!message) {
+		setGitNote('اكتب رسالة إيداع أولاً', false);
+		await refreshGit();
+		return;
+	}
+	const confirmed = window.confirm(
+		`سيتم إيداع ${stagedCount} ملف بالرسالة:\n\n${message}\n\nمتابعة؟`,
+	);
+	if (!confirmed) return;
+
+	const res = await window.idexal.git.commit(message);
+	if (res.ok) {
+		commitMessage = '';
+		setGitNote('✓ تم الإيداع');
+	} else {
+		setGitNote(res.error ?? 'فشل الإيداع', false);
+	}
+	await refreshGit();
 }
 
 async function showDiff(file: string): Promise<void> {

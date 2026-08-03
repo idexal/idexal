@@ -54,6 +54,9 @@ contextBridge.exposeInMainWorld('idexal', {
 	git: {
 		status: () => ipcRenderer.invoke('git:status'),
 		diff: (file: string) => ipcRenderer.invoke('git:diff', file),
+		stage: (file: string) => ipcRenderer.invoke('git:stage', file),
+		unstage: (file: string) => ipcRenderer.invoke('git:unstage', file),
+		commit: (message: string) => ipcRenderer.invoke('git:commit', message),
 	},
 
 	settings: {

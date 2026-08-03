@@ -64,9 +64,14 @@ export function registerTerminalHandlers(): void {
 	});
 
 	// --- Git ---------------------------------------------------------------
-	// Read-only for now: status and diff. Mutating operations (commit,
-	// push, checkout) are intentionally absent until there's UI to confirm
-	// them — silently rewriting a user's repository is not acceptable.
+	// Read plus a deliberately narrow set of mutations: stage, unstage and
+	// commit. No push, checkout or reset — those destroy or publish work,
+	// and a confirm dialog is not enough of a guard for them. Every mutation
+	// here is reversible with ordinary git commands.
+	//
+	// All paths come from our own `git status --porcelain` parse and are
+	// passed through execFile's argument array (never a shell string), so a
+	// filename can't inject flags or commands.
 
 	ipcMain.handle('git:status', async () => {
 		const cwd = getWorkspaceRoot();
@@ -77,7 +82,24 @@ export function registerTerminalHandlers(): void {
 			const files = status
 				.split('\n')
 				.filter((l) => l.trim())
-				.map((line) => ({ state: line.slice(0, 2).trim(), path: line.slice(3) }));
+				.map((line) => {
+					// Porcelain v1: column 0 is the index (staged) state,
+					// column 1 the worktree state. Collapsing them with
+					// trim() loses exactly the distinction the UI needs to
+					// know whether a file is already staged.
+					const index = line[0] ?? ' ';
+					const worktree = line[1] ?? ' ';
+					// Renames read as "R  old -> new"; the new path is what
+					// later commands must operate on.
+					const raw = line.slice(3);
+					const path = raw.includes(' -> ') ? raw.split(' -> ')[1] : raw;
+					return {
+						state: `${index}${worktree}`.trim(),
+						path: path.replace(/^"|"$/g, ''),
+						staged: index !== ' ' && index !== '?',
+						untracked: index === '?',
+					};
+				});
 			return { ok: true, branch: branch.trim(), files };
 		} catch (err) {
 			// Not a repo, or git isn't installed — both are normal states,
@@ -90,10 +112,56 @@ export function registerTerminalHandlers(): void {
 		const cwd = getWorkspaceRoot();
 		if (!cwd) return { ok: false, error: 'no workspace open' };
 		try {
-			const { stdout } = await execFileAsync('git', ['diff', '--', file], { cwd, maxBuffer: 5 * 1024 * 1024 });
+			// `--` separates paths from revisions, so a file named like a
+			// branch can't be reinterpreted as one.
+			const { stdout } = await execFileAsync('git', ['diff', 'HEAD', '--', file], {
+				cwd,
+				maxBuffer: 5 * 1024 * 1024,
+			});
 			return { ok: true, diff: stdout };
 		} catch (err) {
 			return { ok: false, error: err instanceof Error ? err.message : String(err) };
+		}
+	});
+
+	ipcMain.handle('git:stage', async (_e, file: string) => {
+		const cwd = getWorkspaceRoot();
+		if (!cwd) return { ok: false, error: 'no workspace open' };
+		if (!file) return { ok: false, error: 'no file given' };
+		try {
+			await execFileAsync('git', ['add', '--', file], { cwd });
+			return { ok: true };
+		} catch (err) {
+			return { ok: false, error: err instanceof Error ? err.message : String(err) };
+		}
+	});
+
+	ipcMain.handle('git:unstage', async (_e, file: string) => {
+		const cwd = getWorkspaceRoot();
+		if (!cwd) return { ok: false, error: 'no workspace open' };
+		if (!file) return { ok: false, error: 'no file given' };
+		try {
+			// `restore --staged` only touches the index, never the working
+			// tree, so unstaging can't discard the user's edits.
+			await execFileAsync('git', ['restore', '--staged', '--', file], { cwd });
+			return { ok: true };
+		} catch (err) {
+			return { ok: false, error: err instanceof Error ? err.message : String(err) };
+		}
+	});
+
+	ipcMain.handle('git:commit', async (_e, message: string) => {
+		const cwd = getWorkspaceRoot();
+		if (!cwd) return { ok: false, error: 'no workspace open' };
+		if (!message || !message.trim()) return { ok: false, error: 'commit message is empty' };
+		try {
+			const { stdout } = await execFileAsync('git', ['commit', '-m', message.trim()], { cwd });
+			return { ok: true, output: stdout.trim() };
+		} catch (err) {
+			// "nothing to commit" arrives as a non-zero exit; surface git's
+			// own wording rather than inventing one.
+			const e = err as { stdout?: string; stderr?: string; message?: string };
+			return { ok: false, error: (e.stdout || e.stderr || e.message || 'commit failed').trim() };
 		}
 	});
 }
