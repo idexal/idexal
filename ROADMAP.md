@@ -8,24 +8,25 @@
 | المكوّن | الحالة |
 |---|---|
 | هيكل المشروع (`app/`, `core/`, `reference/`) | ✅ |
-| `core/idexal-core` — ثنائي Rust يبث NDJSON (تجريبي) | ✅ |
-| `app/` — Electron + Monaco + لوحة وكيل متصلة بـ `core/` عبر IPC | ✅ |
+| `app/` — Electron + Monaco + لوحة وكيل بأسلوب ZCode/Claude Code (سجل حواري، شريط git-status) | ✅ |
 | أول تشغيل مرئي ناجح للنافذة | ✅ |
 | تثبيت Rust toolchain على بيئة التطوير | ✅ |
+| `core/`: عميل Anthropic حقيقي (SSE) — مُتحقَّق منه عبر مسار الخطأ (401 نظيف) | ✅ |
+| `core/`: مزود OpenAI-compatible (Ollama محلي بلا مفتاح) + محرك Fallback حقيقي | ✅ |
+| `core/`: أدوات الوكيل (read_file/write_file/list_dir/run_command) + حماية تجاوز المسار — 3/3 اختبارات ناجحة | ✅ |
 
 ## المراحل التالية
 
 ### المرحلة 1 — محرك وكلاء Rust حقيقي
-- [ ] طبقة مزودين حقيقية (HTTP + SSE): Anthropic، أي مزود متوافق مع OpenAI، محلي
-      (Ollama/LM Studio) — باستخدام `reqwest` + parsing SSE، مستلهَمة من التصميم في
-      `reference/ai-core-node-reference/src/providers/`.
-- [ ] محرك Fallback بين المزودين (أولوية، cooldown، تراجع أسّي) — نفس منطق
-      `reference/ai-core-node-reference/src/providers/registry.ts` بلغة Rust.
+- [ ] **اختبار نجاح فعلي**: مطلوب مفتاح `ANTHROPIC_API_KEY` حقيقي أو Ollama محلي —
+      البيئة الحالية ليس فيها أي منهما، فمسار "الرد الناجح" لم يُختبَر عملياً بعد
+      (فقط مسار الخطأ).
+- [ ] وصل أدوات `tools.rs` بحلقة استدعاء الأدوات الفعلية للنموذج (tool calling wire
+      format لكل من Anthropic وOpenAI-compatible) — الأدوات جاهزة لكن غير مُستدعاة بعد.
+- [ ] محرك Fallback أكثل نضجاً (cooldown، تراجع أسّي، تتبّع صحة لكل مزود) — النسخة
+      الحالية تجربة كل مزود مرة واحدة فقط بلا ذاكرة فشل.
 - [ ] ذاكرة طويلة المدى (SQLite عبر `rusqlite`) — نفس المخطط في
       `reference/ai-core-node-reference/src/memory/sqliteStore.ts`.
-- [ ] أدوات الوكيل (قراءة/كتابة ملفات، أوامر طرفية، بحث) مع حماية تجاوز المسار — منطق
-      `resolveInsideRoot` في `reference/ai-core-node-reference/src/tools/tools.ts` قابل
-      للنقل شبه الحرفي.
 - [ ] تنسيق وكلاء متعددين حقيقي (مخطط ← منفذون ← مراجع)، مع تنفيذ متوازٍ فعلي هذه
       المرة (كان ميزة غير مُفعّلة في النسخة السابقة).
 
