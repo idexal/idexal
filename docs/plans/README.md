@@ -29,16 +29,18 @@
 
 | # | المخطط | الحالة | المرجع التصميمي |
 |---|--------|--------|------------------|
-| 001 | [صفحة الإعدادات الشاملة](001-settings-page.md) | ⬜ جاهز للتنفيذ | design/03-settings.md |
-| 002 | [Git تعديلي مع تأكيد](002-git-mutations.md) | ⬜ جاهز للتنفيذ | design/04 + 07 |
+| 001 | [صفحة الإعدادات الشاملة](001-settings-page.md) | ✅ مُنفَّذ | design/03-settings.md |
+| 002 | [Git تعديلي مع تأكيد](002-git-mutations.md) | ✅ مُنفَّذ | design/04 + 07 |
 | 003 | [تعدد مهام متزامنة](003-multi-task.md) | ⬜ جاهز للتنفيذ | design/04 + 05 |
-| 004 | [وكلاء فرعيون Subagents](004-subagents.md) | ⬜ جاهز للتنفيذ | design/05-agents.md |
+| 004 | [وكلاء فرعيون Subagents](004-subagents.md) | ✅ مُنفَّذ | design/05-agents.md |
 | 005 | [طرفية PTY حقيقية](005-pty-terminal.md) | ⬜ جاهز للتنفيذ | design/09-cli-terminal.md |
 
 ## حالة المحرك الحالية (سياق المنفّذ)
 
 - `core/` — Rust: حلقة وكيل كاملة، تعدد وكلاء (مخطط←منفّذون متوازون←مراجع)،
-  Fallback مع cooldown، ذاكرة SQLite، 4 أدوات، أوامر `stream|agent|providers|config|test|memory`.
+  وكلاء فرعيون (`delegate`)، Fallback مع cooldown، ذاكرة SQLite، 8 أدوات
+  (قراءة/كتابة/سرد/أوامر/بحث/إيجاد/تعديل جراحي/تفويض)، أوامر
+  `stream|agent|providers|config|test|memory|tool`.
 - `app/` — Electron: شجرة ملفات، تبويبات Monaco، طرفية stdio، Git قراءة فقط،
   معاينة webview، لوحة وكيل حيّة.
 - `cli/` — `idexal` بأوامر: run/agent/review/providers/config/test/memory.
