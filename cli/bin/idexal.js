@@ -62,6 +62,8 @@ ${c.bold('USAGE')}
   idexal review "<target>"     read-only analysis (never writes or runs commands)
   idexal providers             list configured providers and their status
   idexal memory <sub>          stats | recall "<query>" | add <kind> "<content>"
+  idexal grep "<regex>" [glob] search file contents (the agent's own tool)
+  idexal find "<pattern>"      find files by path or extension
   idexal --version             print the core version
   idexal --help                this message
 
@@ -252,6 +254,26 @@ switch (argv[0]) {
 		// Memory subcommands print plain JSON, not NDJSON.
 		runCore(['memory', ...argv.slice(1)]);
 		break;
+	case 'grep': {
+		const pattern = argv[1];
+		if (!pattern) {
+			console.error(c.red('idexal grep needs a pattern: idexal grep "<regex>" [glob]'));
+			process.exit(2);
+		}
+		const payload = { pattern };
+		if (argv[2]) payload.glob = argv[2];
+		runCore(['tool', 'search_files', JSON.stringify(payload)]);
+		break;
+	}
+	case 'find': {
+		const pattern = argv[1];
+		if (!pattern) {
+			console.error(c.red('idexal find needs a pattern: idexal find "<pattern>"'));
+			process.exit(2);
+		}
+		runCore(['tool', 'find_files', JSON.stringify({ pattern })]);
+		break;
+	}
 	case 'review': {
 		const target = argv.slice(1).join(' ').trim();
 		if (!target) {

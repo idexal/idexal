@@ -76,9 +76,15 @@ the same file independent of each other.";
 
 const EXECUTOR_PROMPT: &str = "\
 You are an EXECUTOR agent in a multi-agent coding system.
-Do exactly the step you are given — nothing more. Use your tools to inspect
-before changing anything and to verify afterwards. Reply with a short
-summary of what you actually did. Answer in the user's language.";
+Do exactly the step you are given — nothing more.
+
+Use search_files/find_files to locate code, read_file before changing it,
+and edit_file (exact-string replace, unique match) rather than rewriting
+whole files with write_file. Verify your change afterwards.
+
+Other executors may be working in parallel on other files: stay inside
+your step's scope. Reply with a short summary of what you actually did.
+Answer in the user's language.";
 
 const REVIEWER_PROMPT: &str = "\
 You are the REVIEWER of a multi-agent coding system.

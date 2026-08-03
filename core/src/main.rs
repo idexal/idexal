@@ -89,8 +89,21 @@ fn preview(s: &str) -> String {
 
 const SYSTEM_PROMPT: &str = "\
 You are Idexal, an autonomous coding agent working inside a real workspace.
-You have tools to read, write and list files and to run shell commands.
-Use them to inspect before you change anything, and verify your work after.
+
+Tools: search_files (regex across the workspace), find_files (locate by
+path), read_file, edit_file (exact-string replace), write_file, list_dir,
+run_command.
+
+How to work:
+- Find before you read: search_files/find_files beat guessing at paths.
+- Read before you change. Never edit a file you have not read this turn.
+- Prefer edit_file over write_file for existing files: it replaces one
+  exact occurrence in place. Include enough surrounding context that the
+  'old' string is unique. Reserve write_file for new files.
+- Verify after you change: re-read, or run the project's tests.
+- If a tool fails, read its message and adapt — do not repeat the call
+  unchanged.
+
 Be concise. Answer in the user's language.";
 
 async fn stream_task(task: &str, read_only: bool) {
@@ -435,6 +448,22 @@ async fn main() {
             println!("idexal-core {}", env!("CARGO_PKG_VERSION"));
         }
         Some("providers") => list_providers(),
+        // Run one tool directly — how you verify tool behaviour without
+        // burning a model call, and what the CLI's `idexal grep` uses.
+        Some("tool") => {
+            let name = args.get(2).cloned().unwrap_or_default();
+            let payload = args.get(3).cloned().unwrap_or_else(|| "{}".into());
+            if name.is_empty() {
+                eprintln!("Usage: idexal-core tool <name> '<json args>'");
+                process::exit(2);
+            }
+            let cwd = env::current_dir().unwrap_or_else(|_| ".".into());
+            let result = tools::dispatch(&cwd, &name, &payload);
+            println!("{}", result.output);
+            if !result.ok {
+                process::exit(1);
+            }
+        }
         Some("config") => dump_config(),
         Some("test") => {
             let id = args.get(2).cloned().unwrap_or_default();
