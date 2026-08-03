@@ -17,11 +17,29 @@
         <div id="monaco-container"></div>
       </div>
       <div id="agent-pane">
-        <div id="agent-header">Idexal Agent</div>
+        <div id="agent-topbar">
+          <span class="badge">idexal-core</span>
+          <span class="branch">main</span>
+          <span class="spacer"></span>
+          <span class="model">Idexal · local</span>
+        </div>
         <div id="agent-log"></div>
-        <div id="agent-input-row">
-          <input id="agent-input" type="text" placeholder="صف ما تريد من الوكيل…" dir="rtl" />
-          <button id="agent-send">إرسال</button>
+        <div id="agent-statusbar">
+          <span>⎇ main</span>
+          <span id="agent-diffstat" class="diffstat"></span>
+          <span class="spacer"></span>
+          <span id="agent-state" class="state">idle</span>
+        </div>
+        <div id="agent-input-wrap">
+          <div id="agent-input-row">
+            <input id="agent-input" type="text" placeholder="صف ما تريد من الوكيل، أو اكتب /…" dir="rtl" />
+            <button id="agent-send">إرسال</button>
+          </div>
+          <div id="agent-input-foot">
+            <span class="perm">Local · no account</span>
+            <span class="spacer"></span>
+            <span class="modelname">Idexal Core</span>
+          </div>
         </div>
       </div>
     </div>

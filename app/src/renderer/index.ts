@@ -49,35 +49,52 @@ function appendUser(text: string): void {
 function appendAgentStart(): HTMLDivElement {
 	const div = document.createElement('div');
 	div.className = 'line from-agent';
+	const name = document.createElement('span');
+	name.className = 'agent-name';
+	name.textContent = 'IDEXAL AGENT';
+	const body = document.createElement('span');
+	body.className = 'agent-body';
+	div.appendChild(name);
+	div.appendChild(body);
 	log.appendChild(div);
 	log.scrollTop = log.scrollHeight;
-	return div;
+	return body as unknown as HTMLDivElement;
+}
+
+const stateEl = document.getElementById('agent-state')!;
+const diffstatEl = document.getElementById('agent-diffstat')!;
+
+function setRunning(running: boolean): void {
+	sendBtn.disabled = running;
+	stateEl.textContent = running ? 'running…' : 'idle';
+	stateEl.classList.toggle('running', running);
 }
 
 function send(): void {
 	const task = input.value.trim();
 	if (!task) return;
 	input.value = '';
-	sendBtn.disabled = true;
+	setRunning(true);
 	appendUser(task);
-	const agentDiv = appendAgentStart();
+	const agentBody = appendAgentStart();
 	let buffer = '';
 
 	const stop = window.idexal.runTask(task, (event) => {
 		if (event.type === 'delta' && event.text) {
 			buffer += event.text;
-			agentDiv.textContent = buffer;
+			agentBody.textContent = buffer;
 			log.scrollTop = log.scrollHeight;
 		} else if (event.type === 'done') {
 			const meta = document.createElement('div');
 			meta.className = 'meta';
 			meta.textContent = event.summary ?? '';
 			log.appendChild(meta);
-			sendBtn.disabled = false;
+			diffstatEl.textContent = '+0 −0';
+			setRunning(false);
 			stop();
 		} else if (event.type === 'error') {
-			agentDiv.textContent = `⚠️ ${event.error}`;
-			sendBtn.disabled = false;
+			agentBody.textContent = `⚠️ ${event.error}`;
+			setRunning(false);
 			stop();
 		}
 	});
