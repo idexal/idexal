@@ -1,5 +1,6 @@
 interface CoreEvent {
-	type: 'start' | 'delta' | 'done' | 'error';
+	type: 'start' | 'provider' | 'delta' | 'done' | 'error';
+	name?: string;
 	text?: string;
 	summary?: string;
 	error?: string;
@@ -80,7 +81,13 @@ function send(): void {
 	let buffer = '';
 
 	const stop = window.idexal.runTask(task, (event) => {
-		if (event.type === 'delta' && event.text) {
+		if (event.type === 'provider' && event.name) {
+			const meta = document.createElement('div');
+			meta.className = 'meta';
+			meta.textContent = `⇄ ${event.name}`;
+			log.appendChild(meta);
+			log.scrollTop = log.scrollHeight;
+		} else if (event.type === 'delta' && event.text) {
 			buffer += event.text;
 			agentBody.textContent = buffer;
 			log.scrollTop = log.scrollHeight;

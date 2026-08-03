@@ -24,6 +24,8 @@ use std::{env, process};
 enum Event<'a> {
     #[serde(rename = "start")]
     Start,
+    #[serde(rename = "provider")]
+    Provider { name: &'a str },
     #[serde(rename = "delta")]
     Delta { text: &'a str },
     #[serde(rename = "done")]
@@ -41,29 +43,22 @@ fn emit(event: &Event) {
 async fn stream_task(task: &str) {
     emit(&Event::Start);
 
-    match providers::resolve_anthropic() {
-        Some(cfg) => {
-            let system_prompt = "You are Idexal, a helpful coding agent. Answer concisely.";
-            let mut had_error = false;
-            let result = providers::stream_chat(&cfg, system_prompt, task, |text| {
-                emit(&Event::Delta { text });
-            })
-            .await;
-            if let Err(err) = result {
-                had_error = true;
-                emit(&Event::Error { error: err });
-            }
-            if !had_error {
-                emit(&Event::Done {
-                    summary: format!("تم الرد عبر مزود {}", cfg.model),
-                });
-            }
-        }
-        None => {
-            emit(&Event::Error {
-                error: "لا يوجد مزود مُهيَّأ — عرّف ANTHROPIC_API_KEY لتفعيل ردود حقيقية.".to_string(),
-            });
-        }
+    let system_prompt = "You are Idexal, a helpful coding agent. Answer concisely.";
+    let result = providers::stream_chat_with_fallback(
+        system_prompt,
+        task,
+        |name| emit(&Event::Provider { name }),
+        |text| emit(&Event::Delta { text }),
+    )
+    .await;
+
+    match result {
+        Ok(provider) => emit(&Event::Done {
+            summary: format!("تم الرد عبر {provider}"),
+        }),
+        Err(errors) => emit(&Event::Error {
+            error: format!("كل المزودين فشلوا:\n{}", errors.join("\n")),
+        }),
     }
 }
 
