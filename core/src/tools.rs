@@ -50,6 +50,100 @@ pub struct ToolResult {
     pub output: String,
 }
 
+/// JSON-Schema definitions advertised to the model. Kept next to the
+/// handlers so a tool can never be advertised without an implementation.
+pub fn definitions() -> Vec<crate::providers::types::ToolDefinition> {
+    use crate::providers::types::ToolDefinition;
+    use serde_json::json;
+    vec![
+        ToolDefinition {
+            name: "read_file".into(),
+            description: "Read a UTF-8 text file from the workspace and return its contents.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": { "path": { "type": "string", "description": "Path relative to the workspace root" } },
+                "required": ["path"]
+            }),
+        },
+        ToolDefinition {
+            name: "write_file".into(),
+            description: "Create or overwrite a file in the workspace with the given content.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Path relative to the workspace root" },
+                    "content": { "type": "string", "description": "Full file content" }
+                },
+                "required": ["path", "content"]
+            }),
+        },
+        ToolDefinition {
+            name: "list_dir".into(),
+            description: "List the entries of a directory in the workspace. Directories end with '/'.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": { "path": { "type": "string", "description": "Directory path relative to the workspace root; use '.' for the root" } },
+                "required": ["path"]
+            }),
+        },
+        ToolDefinition {
+            name: "run_command".into(),
+            description: "Run a shell command in the workspace and return its combined stdout/stderr.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": { "command": { "type": "string", "description": "The shell command to execute" } },
+                "required": ["command"]
+            }),
+        },
+    ]
+}
+
+/// Read-only subset, used by review-style runs where the agent must not
+/// modify anything. Mirrors the reference implementation's readOnlyTools().
+pub fn read_only_definitions() -> Vec<crate::providers::types::ToolDefinition> {
+    definitions()
+        .into_iter()
+        .filter(|d| d.name == "read_file" || d.name == "list_dir")
+        .collect()
+}
+
+/// Execute a tool call by name with JSON-encoded arguments.
+pub fn dispatch(cwd: &Path, name: &str, arguments: &str) -> ToolResult {
+    let args: serde_json::Value = serde_json::from_str(arguments).unwrap_or(serde_json::Value::Null);
+    let get = |key: &str| -> String {
+        args.get(key).and_then(|v| v.as_str()).unwrap_or("").to_string()
+    };
+
+    match name {
+        "read_file" => {
+            let p = get("path");
+            if p.is_empty() {
+                return ToolResult { ok: false, output: "read_file requires 'path'".into() };
+            }
+            read_file(cwd, &p)
+        }
+        "write_file" => {
+            let p = get("path");
+            if p.is_empty() {
+                return ToolResult { ok: false, output: "write_file requires 'path'".into() };
+            }
+            write_file(cwd, &p, &get("content"))
+        }
+        "list_dir" => {
+            let p = get("path");
+            list_dir(cwd, if p.is_empty() { "." } else { &p })
+        }
+        "run_command" => {
+            let c = get("command");
+            if c.is_empty() {
+                return ToolResult { ok: false, output: "run_command requires 'command'".into() };
+            }
+            run_command(cwd, &c)
+        }
+        other => ToolResult { ok: false, output: format!("unknown tool: {other}") },
+    }
+}
+
 fn escaped(rel: &str) -> ToolResult {
     ToolResult { ok: false, output: format!("Path escapes workspace: {rel}") }
 }

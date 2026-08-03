@@ -1,8 +1,14 @@
 interface CoreEvent {
-	type: 'start' | 'provider' | 'delta' | 'done' | 'error';
+	type: 'start' | 'provider' | 'delta' | 'tool-call' | 'tool-result' | 'done' | 'error';
 	name?: string;
 	text?: string;
+	args?: string;
+	ok?: boolean;
+	output?: string;
 	summary?: string;
+	provider?: string;
+	tool_rounds?: number;
+	providers?: string[];
 	error?: string;
 }
 
@@ -80,27 +86,55 @@ function send(): void {
 	const agentBody = appendAgentStart();
 	let buffer = '';
 
+	// Streamed text lands in the current agent bubble. Tool activity is
+	// appended as its own log lines, so a later text delta must start a
+	// fresh bubble rather than reopening the one above the tool lines.
+	let activeBody: HTMLElement = agentBody;
+	let textOpen = true;
+
+	const appendMeta = (text: string, cls = 'meta'): void => {
+		const el = document.createElement('div');
+		el.className = cls;
+		el.textContent = text;
+		log.appendChild(el);
+		log.scrollTop = log.scrollHeight;
+	};
+
 	const stop = window.idexal.runTask(task, (event) => {
 		if (event.type === 'provider' && event.name) {
-			const meta = document.createElement('div');
-			meta.className = 'meta';
-			meta.textContent = `⇄ ${event.name}`;
-			log.appendChild(meta);
-			log.scrollTop = log.scrollHeight;
+			appendMeta(`⇄ ${event.name}`);
+			textOpen = false;
 		} else if (event.type === 'delta' && event.text) {
+			if (!textOpen) {
+				activeBody = appendAgentStart();
+				buffer = '';
+				textOpen = true;
+			}
 			buffer += event.text;
-			agentBody.textContent = buffer;
+			activeBody.textContent = buffer;
 			log.scrollTop = log.scrollHeight;
+		} else if (event.type === 'tool-call' && event.name) {
+			let detail = '';
+			try {
+				const parsed = JSON.parse(event.args ?? '{}') as Record<string, unknown>;
+				detail = (parsed.path as string) ?? (parsed.command as string) ?? '';
+			} catch {
+				// malformed args: show the tool name alone rather than raw JSON
+			}
+			appendMeta(`⚙ ${event.name}${detail ? ` ${detail}` : ''}`, 'meta tool');
+			textOpen = false;
+		} else if (event.type === 'tool-result' && event.name) {
+			appendMeta(`${event.ok ? '✓' : '✗'} ${event.name}`, `meta ${event.ok ? 'tool-ok' : 'tool-fail'}`);
+			textOpen = false;
 		} else if (event.type === 'done') {
-			const meta = document.createElement('div');
-			meta.className = 'meta';
-			meta.textContent = event.summary ?? '';
-			log.appendChild(meta);
-			diffstatEl.textContent = '+0 −0';
+			if (typeof event.tool_rounds === 'number' && event.tool_rounds > 0) {
+				appendMeta(`● ${event.provider ?? ''} · ${event.tool_rounds} جولة أدوات`);
+			}
+			diffstatEl.textContent = '';
 			setRunning(false);
 			stop();
 		} else if (event.type === 'error') {
-			agentBody.textContent = `⚠️ ${event.error}`;
+			appendMeta(`⚠️ ${event.error}`, 'meta tool-fail');
 			setRunning(false);
 			stop();
 		}

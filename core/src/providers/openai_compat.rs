@@ -1,95 +1,146 @@
 // Idexal Core — OpenAI-compatible provider
 //
-// Works with any OpenAI-compatible endpoint: OpenAI, OpenRouter, Groq,
-// DeepSeek, Ollama, LM Studio, vLLM. Ported from
-// reference/ai-core-node-reference/src/providers/openaiCompat.ts.
+// One client serving OpenAI, OpenRouter, Groq, DeepSeek, Mistral, Together,
+// Ollama, LM Studio, vLLM and any private gateway — they all speak the same
+// /chat/completions wire format, so the only difference is base URL, key and
+// headers (all user-configurable via config.rs, no vendor allowlist).
 //
-// The default (no env vars at all) points at a local Ollama server, which
-// needs no API key — this is the "works with zero setup, zero account"
-// fallback the free/unrestricted design goal calls for.
+// Streaming detail carried over from the reference implementation: tool-call
+// arguments arrive as fragments keyed by `index` and must be concatenated
+// across chunks before the call is complete.
 
+use super::types::{Delta, Message, Role, ToolCall, ToolDefinition, Turn};
+use crate::config::ProviderConfig;
 use futures_util::StreamExt;
 use serde::Deserialize;
-use std::env;
+use serde_json::json;
 
-pub struct OpenAiCompatConfig {
-    pub base_url: String,
-    pub api_key: Option<String>,
-    pub model: String,
+fn to_openai_messages(messages: &[Message]) -> Vec<serde_json::Value> {
+    messages
+        .iter()
+        .map(|m| {
+            if let Some(id) = &m.tool_call_id {
+                return json!({ "role": "tool", "tool_call_id": id, "content": m.content });
+            }
+            match m.role {
+                Role::System => json!({ "role": "system", "content": m.content }),
+                Role::User => json!({ "role": "user", "content": m.content }),
+                Role::Assistant => {
+                    if m.tool_calls.is_empty() {
+                        json!({ "role": "assistant", "content": m.content })
+                    } else {
+                        let calls: Vec<serde_json::Value> = m
+                            .tool_calls
+                            .iter()
+                            .map(|tc| {
+                                json!({
+                                    "id": tc.id,
+                                    "type": "function",
+                                    "function": { "name": tc.name, "arguments": tc.arguments },
+                                })
+                            })
+                            .collect();
+                        json!({ "role": "assistant", "content": m.content, "tool_calls": calls })
+                    }
+                }
+            }
+        })
+        .collect()
 }
 
-/// Resolution order: `OPENAI_API_KEY` (official OpenAI) → local Ollama
-/// (`http://localhost:11434/v1`, no key, model `llama3.1`) as the
-/// always-available, zero-account fallback.
-pub fn resolve_openai_compat() -> OpenAiCompatConfig {
-    if let Ok(key) = env::var("OPENAI_API_KEY") {
-        return OpenAiCompatConfig {
-            base_url: "https://api.openai.com/v1".to_string(),
-            api_key: Some(key),
-            model: "gpt-4o-mini".to_string(),
-        };
-    }
-    OpenAiCompatConfig {
-        base_url: env::var("IDEXAL_OLLAMA_URL").unwrap_or_else(|_| "http://localhost:11434/v1".to_string()),
-        api_key: None,
-        model: env::var("IDEXAL_OLLAMA_MODEL").unwrap_or_else(|_| "llama3.1".to_string()),
-    }
+fn to_openai_tools(tools: &[ToolDefinition]) -> Vec<serde_json::Value> {
+    tools
+        .iter()
+        .map(|t| {
+            json!({
+                "type": "function",
+                "function": {
+                    "name": t.name,
+                    "description": t.description,
+                    "parameters": t.input_schema,
+                }
+            })
+        })
+        .collect()
 }
 
 #[derive(Deserialize, Debug, Default)]
-struct Delta {
+struct FnDelta {
+    name: Option<String>,
+    arguments: Option<String>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+struct ToolCallDelta {
+    index: usize,
+    id: Option<String>,
+    function: Option<FnDelta>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+struct MsgDelta {
     content: Option<String>,
+    tool_calls: Option<Vec<ToolCallDelta>>,
 }
 
 #[derive(Deserialize, Debug, Default)]
 struct Choice {
-    delta: Option<Delta>,
+    delta: Option<MsgDelta>,
 }
 
 #[derive(Deserialize, Debug, Default)]
-struct ChunkResponse {
+struct Chunk {
     choices: Option<Vec<Choice>>,
 }
 
-pub async fn stream_chat<F: FnMut(&str)>(
-    cfg: &OpenAiCompatConfig,
-    system_prompt: &str,
-    user_message: &str,
-    mut on_text: F,
-) -> Result<(), String> {
-    let client = reqwest::Client::new();
-    let body = serde_json::json!({
+pub async fn stream_turn<F: FnMut(Delta)>(
+    cfg: &ProviderConfig,
+    messages: &[Message],
+    tools: &[ToolDefinition],
+    mut on_delta: F,
+) -> Result<Turn, String> {
+    let mut body = json!({
         "model": cfg.model,
         "stream": true,
-        "messages": [
-            { "role": "system", "content": system_prompt },
-            { "role": "user", "content": user_message }
-        ],
+        "messages": to_openai_messages(messages),
     });
-
-    let mut req = client
-        .post(format!("{}/chat/completions", cfg.base_url.trim_end_matches('/')))
-        .header("content-type", "application/json");
-    if let Some(key) = &cfg.api_key {
-        req = req.header("authorization", format!("Bearer {key}"));
+    if !tools.is_empty() {
+        body["tools"] = json!(to_openai_tools(tools));
+        body["tool_choice"] = json!("auto");
+    }
+    if let Some(obj) = body.as_object_mut() {
+        for (k, v) in &cfg.extra_body {
+            obj.insert(k.clone(), v.clone());
+        }
     }
 
-    let res = req
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("{} request failed: {e}", cfg.base_url))?;
+    let client = reqwest::Client::new();
+    let mut req = client
+        .post(format!("{}/chat/completions", cfg.effective_base_url().trim_end_matches('/')))
+        .header("content-type", "application/json");
+    if let Some(key) = cfg.resolve_key() {
+        req = req.header("authorization", format!("Bearer {key}"));
+    }
+    for (k, v) in &cfg.headers {
+        req = req.header(k.as_str(), v.as_str());
+    }
 
+    let res = req.json(&body).send().await.map_err(|e| format!("request failed: {e}"))?;
     let status = res.status();
     if !status.is_success() {
         let text = res.text().await.unwrap_or_default();
-        return Err(format!("{} HTTP {status}: {}", cfg.base_url, truncate(&text, 500)));
+        return Err(format!("HTTP {status}: {}", super::truncate(&text, 400)));
     }
+
+    let mut turn = Turn::default();
+    // index -> (id, name, accumulated arguments)
+    let mut pending: std::collections::HashMap<usize, (String, String, String)> =
+        std::collections::HashMap::new();
 
     let mut stream = res.bytes_stream();
     let mut buffer = String::new();
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("Stream read error: {e}"))?;
+        let chunk = chunk.map_err(|e| format!("stream read error: {e}"))?;
         buffer.push_str(&String::from_utf8_lossy(&chunk));
         while let Some(pos) = buffer.find('\n') {
             let line = buffer[..pos].trim_end_matches('\r').to_string();
@@ -100,27 +151,88 @@ pub async fn stream_chat<F: FnMut(&str)>(
                 continue;
             }
             if data == "[DONE]" {
-                return Ok(());
+                break;
             }
-            if let Ok(parsed) = serde_json::from_str::<ChunkResponse>(data) {
-                if let Some(text) = parsed
-                    .choices
-                    .and_then(|c| c.into_iter().next())
-                    .and_then(|c| c.delta)
-                    .and_then(|d| d.content)
-                {
-                    on_text(&text);
+            let Ok(parsed) = serde_json::from_str::<Chunk>(data) else { continue };
+            let Some(delta) = parsed.choices.and_then(|c| c.into_iter().next()).and_then(|c| c.delta)
+            else {
+                continue;
+            };
+            if let Some(text) = delta.content {
+                if !text.is_empty() {
+                    turn.text.push_str(&text);
+                    on_delta(Delta::Text(text));
+                }
+            }
+            if let Some(calls) = delta.tool_calls {
+                for tc in calls {
+                    let entry = pending
+                        .entry(tc.index)
+                        .or_insert_with(|| (String::new(), String::new(), String::new()));
+                    if let Some(id) = tc.id {
+                        entry.0 = id;
+                    }
+                    if let Some(f) = tc.function {
+                        if let Some(name) = f.name {
+                            entry.1.push_str(&name);
+                        }
+                        if let Some(args) = f.arguments {
+                            entry.2.push_str(&args);
+                        }
+                    }
                 }
             }
         }
     }
-    Ok(())
+
+    let mut indices: Vec<usize> = pending.keys().copied().collect();
+    indices.sort();
+    for idx in indices {
+        let (id, name, args) = pending.get(&idx).unwrap().clone();
+        turn.tool_calls.push(ToolCall {
+            id: if id.is_empty() { format!("call_{idx}") } else { id },
+            name,
+            arguments: if args.is_empty() { "{}".to_string() } else { args },
+        });
+    }
+
+    Ok(turn)
 }
 
-fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
-        s.to_string()
-    } else {
-        format!("{}…", &s[..max])
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tool_result_uses_the_tool_role() {
+        let msgs = vec![Message::tool_result("call_1", "42")];
+        let arr = to_openai_messages(&msgs);
+        assert_eq!(arr[0]["role"], "tool");
+        assert_eq!(arr[0]["tool_call_id"], "call_1");
+        assert_eq!(arr[0]["content"], "42");
+    }
+
+    #[test]
+    fn assistant_tool_calls_use_the_function_envelope() {
+        let msgs = vec![Message::assistant(
+            "",
+            vec![ToolCall { id: "c1".into(), name: "list_dir".into(), arguments: r#"{"path":"."}"#.into() }],
+        )];
+        let arr = to_openai_messages(&msgs);
+        assert_eq!(arr[0]["tool_calls"][0]["type"], "function");
+        assert_eq!(arr[0]["tool_calls"][0]["function"]["name"], "list_dir");
+    }
+
+    #[test]
+    fn system_message_stays_in_the_array() {
+        let msgs = vec![Message {
+            role: Role::System,
+            content: "be brief".into(),
+            tool_calls: vec![],
+            tool_call_id: None,
+        }];
+        let arr = to_openai_messages(&msgs);
+        assert_eq!(arr.len(), 1);
+        assert_eq!(arr[0]["role"], "system");
     }
 }

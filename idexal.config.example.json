@@ -1,0 +1,93 @@
+{
+  "//": "انسخ هذا الملف إلى ~/.idexal/config.json أو idexal.config.json في مجلد العمل.",
+  "//providers": "تُجرَّب بالترتيب حسب priority (الأصغر أولاً). أي مزود يفشل → ينتقل تلقائياً للتالي.",
+
+  "providers": [
+    {
+      "id": "anthropic",
+      "type": "anthropic",
+      "model": "claude-sonnet-4-5-20250929",
+      "apiKeyEnv": "ANTHROPIC_API_KEY",
+      "priority": 1
+    },
+    {
+      "id": "openai",
+      "type": "openai-compatible",
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "apiKeyEnv": "OPENAI_API_KEY",
+      "priority": 2
+    },
+    {
+      "id": "openrouter",
+      "type": "openai-compatible",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "apiKeyEnv": "OPENROUTER_API_KEY",
+      "priority": 3,
+      "headers": {
+        "HTTP-Referer": "https://idexal.com",
+        "X-Title": "Idexal"
+      }
+    },
+    {
+      "id": "groq",
+      "type": "openai-compatible",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "model": "llama-3.3-70b-versatile",
+      "apiKeyEnv": "GROQ_API_KEY",
+      "priority": 4
+    },
+    {
+      "id": "deepseek",
+      "type": "openai-compatible",
+      "baseUrl": "https://api.deepseek.com/v1",
+      "model": "deepseek-chat",
+      "apiKeyEnv": "DEEPSEEK_API_KEY",
+      "priority": 5
+    },
+
+    {
+      "//": "مزود مخصص بالكامل — أي بوابة خاصة تتحدث بروتوكول OpenAI.",
+      "//headers": "ترويسات إضافية تُدمج في كل طلب (معرّف مؤسسة، توجيه، إلخ).",
+      "//extraBody": "حقول JSON إضافية تُدمج في جسم الطلب (إعدادات خاصة بالمزود).",
+      "id": "my-gateway",
+      "type": "openai-compatible",
+      "baseUrl": "https://gateway.example.internal/v1",
+      "model": "my-model",
+      "apiKeyEnv": "MY_GATEWAY_KEY",
+      "priority": 10,
+      "enabled": false,
+      "headers": {
+        "X-Org-Id": "acme"
+      },
+      "extraBody": {
+        "top_k": 40
+      }
+    },
+
+    {
+      "//local": "محلي بالكامل — لا مفتاح، لا حساب، يعمل بلا إنترنت. آخر خط دفاع.",
+      "id": "ollama",
+      "type": "openai-compatible",
+      "baseUrl": "http://localhost:11434/v1",
+      "model": "llama3.1",
+      "priority": 900
+    },
+    {
+      "id": "lmstudio",
+      "type": "openai-compatible",
+      "baseUrl": "http://localhost:1234/v1",
+      "model": "local-model",
+      "priority": 901,
+      "enabled": false
+    }
+  ],
+
+  "agent": {
+    "//maxToolRounds": "أقصى عدد جولات استدعاء أدوات قبل إجبار إجابة نهائية.",
+    "maxToolRounds": 12,
+    "useReviewer": true,
+    "maxParallelAgents": 3
+  }
+}

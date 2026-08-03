@@ -99,10 +99,13 @@ body {
 #agent-log .meta {
   font-family: var(--mono);
   font-size: 10.5px;
-  color: var(--accent-2);
+  color: var(--ink-soft);
   border-right: 2px solid var(--line);
   padding-right: 9px;
 }
+#agent-log .meta.tool { color: #e0a55e; }
+#agent-log .meta.tool-ok { color: var(--accent-2); }
+#agent-log .meta.tool-fail { color: #ff8fa3; }
 
 #agent-statusbar {
   display: flex;
