@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval';" />
+<title>Idexal</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="titlebar">
+      <span class="brand">◆ Idexal</span>
+      <span class="sub">agentic ide — rust core</span>
+    </div>
+    <div id="main">
+      <div id="editor-pane">
+        <div id="monaco-container"></div>
+      </div>
+      <div id="agent-pane">
+        <div id="agent-header">Idexal Agent</div>
+        <div id="agent-log"></div>
+        <div id="agent-input-row">
+          <input id="agent-input" type="text" placeholder="صف ما تريد من الوكيل…" dir="rtl" />
+          <button id="agent-send">إرسال</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="vs/loader.js"></script>
+  <script>
+    require.config({ paths: { vs: 'vs' } });
+    require(['vs/editor/editor.main'], function () {
+      window.__monaco = monaco;
+      window.dispatchEvent(new Event('monaco-ready'));
+    });
+  </script>
+  <script src="index.js"></script>
+</body>
+</html>
