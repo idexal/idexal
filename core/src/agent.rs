@@ -30,6 +30,10 @@ pub struct AgentOutcome {
     pub text: String,
     pub provider_id: String,
     pub tool_rounds: u32,
+    /// Everything this run added to the conversation (the user turn, the
+    /// assistant's replies, its tool calls and their results) so a caller
+    /// can persist it and a follow-up continues where this left off.
+    pub new_messages: Vec<Message>,
 }
 
 /// How deep delegation may nest. An agent may delegate, and its subagent
@@ -56,7 +60,25 @@ pub async fn run(
     memory_context: Option<String>,
     events: &mut AgentEvents<'_>,
 ) -> Result<AgentOutcome, Vec<String>> {
-    run_at_depth(registry, cfg, cwd, system_prompt, task, tool_defs, memory_context, events, 0).await
+    run_with_history(registry, cfg, cwd, system_prompt, task, tool_defs, memory_context, &[], events).await
+}
+
+/// Run an agent that continues an existing conversation. `history` is
+/// replayed before the new turn, which is what makes a follow-up a
+/// conversation rather than a fresh agent with amnesia.
+#[allow(clippy::too_many_arguments)]
+pub async fn run_with_history(
+    registry: &mut Registry,
+    cfg: &Config,
+    cwd: &Path,
+    system_prompt: &str,
+    task: &str,
+    tool_defs: &[ToolDefinition],
+    memory_context: Option<String>,
+    history: &[Message],
+    events: &mut AgentEvents<'_>,
+) -> Result<AgentOutcome, Vec<String>> {
+    run_at_depth(registry, cfg, cwd, system_prompt, task, tool_defs, memory_context, history, events, 0).await
 }
 
 /// The real loop. `depth` is 0 for a top-level agent and increments with
@@ -70,12 +92,13 @@ pub fn run_at_depth<'a>(
     task: &'a str,
     tool_defs: &'a [ToolDefinition],
     memory_context: Option<String>,
+    history: &'a [Message],
     events: &'a mut AgentEvents<'_>,
     depth: u32,
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<AgentOutcome, Vec<String>>> + Send + 'a>> {
     // Boxed because this future is recursive: a plain `async fn` that awaits
     // itself has infinitely-sized state and will not compile.
-    Box::pin(run_inner(registry, cfg, cwd, system_prompt, task, tool_defs, memory_context, events, depth))
+    Box::pin(run_inner(registry, cfg, cwd, system_prompt, task, tool_defs, memory_context, history, events, depth))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -87,6 +110,7 @@ async fn run_inner(
     task: &str,
     tool_defs: &[ToolDefinition],
     memory_context: Option<String>,
+    history: &[Message],
     events: &mut AgentEvents<'_>,
     depth: u32,
 ) -> Result<AgentOutcome, Vec<String>> {
@@ -102,10 +126,9 @@ async fn run_inner(
         _ => system_prompt.to_string(),
     };
 
-    let mut messages = vec![
-        Message { role: Role::System, content: system, tool_calls: vec![], tool_call_id: None },
-        Message::user(task),
-    ];
+    let mut messages = assemble(&system, history, task);
+    // Everything this run adds, for the caller to persist.
+    let mut new_messages = vec![Message::user(task)];
 
     let mut rounds = 0u32;
 
@@ -126,7 +149,8 @@ async fn run_inner(
         let turn = outcome.turn;
 
         if turn.tool_calls.is_empty() {
-            return Ok(AgentOutcome { text: turn.text, provider_id, tool_rounds: rounds });
+            new_messages.push(Message::assistant(turn.text.clone(), vec![]));
+            return Ok(AgentOutcome { text: turn.text, provider_id, tool_rounds: rounds, new_messages });
         }
 
         rounds += 1;
@@ -139,10 +163,13 @@ async fn run_inner(
             } else {
                 turn.text
             };
-            return Ok(AgentOutcome { text, provider_id, tool_rounds: rounds });
+            new_messages.push(Message::assistant(text.clone(), vec![]));
+            return Ok(AgentOutcome { text, provider_id, tool_rounds: rounds, new_messages });
         }
 
-        messages.push(Message::assistant(turn.text.clone(), turn.tool_calls.clone()));
+        let assistant_turn = Message::assistant(turn.text.clone(), turn.tool_calls.clone());
+        messages.push(assistant_turn.clone());
+        new_messages.push(assistant_turn);
 
         for call in &turn.tool_calls {
             (events.on_tool_call)(&call.name, &call.arguments);
@@ -161,9 +188,27 @@ async fn run_inner(
             } else {
                 format!("ERROR: {}", result.output)
             };
-            messages.push(Message::tool_result(&call.id, payload));
+            let tool_msg = Message::tool_result(&call.id, payload);
+            messages.push(tool_msg.clone());
+            new_messages.push(tool_msg);
         }
     }
+}
+
+/// Build the message list for one turn: current system prompt, then the
+/// replayed conversation, then the new user turn.
+///
+/// Split out so the ordering guarantee is testable without a live
+/// provider — this is what makes a follow-up a continuation rather than a
+/// fresh agent, so it is worth pinning.
+fn assemble(system: &str, history: &[Message], task: &str) -> Vec<Message> {
+    let mut messages =
+        vec![Message { role: Role::System, content: system.to_string(), tool_calls: vec![], tool_call_id: None }];
+    // Stored history never contains a system message (session.rs drops
+    // them on write), so the current prompt always wins.
+    messages.extend(history.iter().cloned());
+    messages.push(Message::user(task));
+    messages
 }
 
 /// Run a subagent for a `delegate` tool call and return its summary as the
@@ -204,6 +249,9 @@ async fn delegate(
     // The subagent inherits the caller's toolset, so a read-only session
     // stays read-only all the way down — delegation can never widen
     // permissions.
+    // A subagent starts with no history: it is given one self-contained
+    // sub-task, and replaying the parent's whole conversation would both
+    // bloat the context and blur the boundary of what it was asked to do.
     match run_at_depth(
         registry,
         cfg,
@@ -212,6 +260,7 @@ async fn delegate(
         &full_task,
         tool_defs,
         None,
+        &[],
         events,
         depth + 1,
     )
@@ -240,6 +289,42 @@ mod tests {
         let msg = Message::tool_result(&call.id, "content");
         assert_eq!(msg.tool_call_id.as_deref(), Some("abc"));
         assert_eq!(msg.role, Role::User);
+    }
+
+    #[test]
+    fn a_follow_up_replays_the_conversation_between_system_and_new_turn() {
+        // The whole point of sessions: the model must see what it already
+        // did. Order matters — system first (so the current prompt wins),
+        // then history, then the new question last.
+        let history = vec![
+            Message::user("read main.rs"),
+            Message::assistant(
+                "reading",
+                vec![ToolCall { id: "c1".into(), name: "read_file".into(), arguments: "{}".into() }],
+            ),
+            Message::tool_result("c1", "fn main() {}"),
+            Message::assistant("it's an empty main", vec![]),
+        ];
+        let messages = assemble("SYSTEM", &history, "now add a log line");
+
+        assert_eq!(messages.len(), 6);
+        assert_eq!(messages[0].role, Role::System);
+        assert_eq!(messages[0].content, "SYSTEM");
+        assert_eq!(messages[1].content, "read main.rs");
+        // The earlier tool call and its result must survive, or the model
+        // cannot reason about work it already performed.
+        assert_eq!(messages[2].tool_calls.len(), 1);
+        assert_eq!(messages[3].tool_call_id.as_deref(), Some("c1"));
+        assert_eq!(messages.last().unwrap().role, Role::User);
+        assert_eq!(messages.last().unwrap().content, "now add a log line");
+    }
+
+    #[test]
+    fn a_first_turn_has_no_history_to_replay() {
+        let messages = assemble("SYSTEM", &[], "hello");
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].role, Role::System);
+        assert_eq!(messages[1].content, "hello");
     }
 
     #[test]

@@ -21,6 +21,7 @@ mod config;
 mod memory;
 mod orchestrator;
 mod providers;
+mod session;
 mod tools;
 
 use config::ProviderKind;
@@ -106,9 +107,21 @@ How to work:
 
 Be concise. Answer in the user's language.";
 
-async fn stream_task(task: &str, read_only: bool) {
+async fn stream_task(task: &str, read_only: bool, session_id: Option<&str>) {
     let cfg = config::load();
     let mut registry = Registry::from_config(&cfg);
+    // Sessions are best-effort like memory: an unwritable store degrades to
+    // a one-shot turn rather than refusing to run.
+    let sessions = match session_id {
+        Some(_) => match session::Sessions::open(None) {
+            Ok(s) => Some(s),
+            Err(e) => {
+                eprintln!("[idexal] session store unavailable: {e}");
+                None
+            }
+        },
+        None => None,
+    };
     // Memory is best-effort: a broken/unwritable store must not stop the
     // agent from running, so failure downgrades to "no memory" with a note
     // on stderr rather than aborting the task.
@@ -148,11 +161,38 @@ async fn stream_task(task: &str, read_only: bool) {
 
     let project = cwd.file_name().map(|n| n.to_string_lossy().to_string());
     let memory_context = memory.as_ref().and_then(|m| m.context_block(task, project.as_deref(), 5));
-    let result =
-        agent::run(&mut registry, &cfg, &cwd, SYSTEM_PROMPT, task, &defs, memory_context, &mut events).await;
+
+    // Replay the conversation so a follow-up continues it instead of
+    // starting a fresh agent with no idea what just happened.
+    let history: Vec<Message> = match (&sessions, session_id) {
+        (Some(s), Some(id)) => {
+            let title: String = task.chars().take(60).collect();
+            let _ = s.ensure(id, &title, project.as_deref());
+            s.history(id).unwrap_or_default()
+        }
+        _ => Vec::new(),
+    };
+
+    let result = agent::run_with_history(
+        &mut registry,
+        &cfg,
+        &cwd,
+        SYSTEM_PROMPT,
+        task,
+        &defs,
+        memory_context,
+        &history,
+        &mut events,
+    )
+    .await;
 
     match result {
         Ok(outcome) => {
+            if let (Some(s), Some(id)) = (&sessions, session_id) {
+                if let Err(e) = s.append(id, &outcome.new_messages) {
+                    eprintln!("[idexal] could not persist session: {e}");
+                }
+            }
             // Persist a session record so the next run has context. Only
             // on success: storing failed attempts would poison recall with
             // noise the agent should not learn from.
@@ -476,17 +516,70 @@ async fn main() {
         Some("memory") => memory_command(&args[2..]),
         Some("stream") => {
             let read_only = args.iter().any(|a| a == "--read-only");
+            // `--session <id>` continues an existing conversation. Its value
+            // must be skipped when looking for the task, or the id would be
+            // mistaken for the prompt.
+            let session_id = args
+                .iter()
+                .position(|a| a == "--session")
+                .and_then(|i| args.get(i + 1))
+                .cloned();
             let task = args
                 .iter()
+                .enumerate()
                 .skip(2)
-                .find(|a| !a.starts_with("--"))
-                .cloned()
+                .find(|(i, a)| {
+                    !a.starts_with("--") && args.get(i.wrapping_sub(1)).map(String::as_str) != Some("--session")
+                })
+                .map(|(_, a)| a.clone())
                 .unwrap_or_default();
             if task.is_empty() {
-                emit(&Event::Error { error: "Usage: idexal-core stream [--read-only] \"<task>\"".into() });
+                emit(&Event::Error {
+                    error: "Usage: idexal-core stream [--read-only] [--session <id>] \"<task>\"".into(),
+                });
                 process::exit(1);
             }
-            stream_task(&task, read_only).await;
+            stream_task(&task, read_only, session_id.as_deref()).await;
+        }
+        Some("sessions") => {
+            let store = match session::Sessions::open(None) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("sessions unavailable: {e}");
+                    process::exit(1);
+                }
+            };
+            match args.get(2).map(String::as_str) {
+                Some("delete") => {
+                    let id = args.get(3).cloned().unwrap_or_default();
+                    if id.is_empty() {
+                        eprintln!("Usage: idexal-core sessions delete <id>");
+                        process::exit(2);
+                    }
+                    match store.delete(&id) {
+                        Ok(()) => println!("{}", serde_json::json!({ "deleted": id })),
+                        Err(e) => {
+                            eprintln!("{e}");
+                            process::exit(1);
+                        }
+                    }
+                }
+                _ => match store.list(50) {
+                    Ok(rows) => {
+                        let out: Vec<serde_json::Value> = rows
+                            .into_iter()
+                            .map(|(id, title, updated)| {
+                                serde_json::json!({ "id": id, "title": title, "updatedAt": updated })
+                            })
+                            .collect();
+                        println!("{}", serde_json::to_string_pretty(&out).unwrap());
+                    }
+                    Err(e) => {
+                        eprintln!("{e}");
+                        process::exit(1);
+                    }
+                },
+            }
         }
         Some("agent") => {
             let task = args

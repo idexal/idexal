@@ -17,11 +17,12 @@ contextBridge.exposeInMainWorld('idexal', {
 		task: string,
 		onEvent: (event: CoreEvent) => void,
 		mode: 'stream' | 'agent' = 'stream',
+		sessionId?: string,
 	): () => void {
 		const channel = `idexal-core-event-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 		const listener = (_: unknown, event: CoreEvent) => onEvent(event);
 		ipcRenderer.on(channel, listener);
-		ipcRenderer.send('idexal-run-task', { task, channel, mode });
+		ipcRenderer.send('idexal-run-task', { task, channel, mode, sessionId });
 		return () => ipcRenderer.removeListener(channel, listener);
 	},
 

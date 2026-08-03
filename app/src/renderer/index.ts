@@ -32,7 +32,12 @@ interface CoreEvent {
 declare global {
 	interface Window {
 		idexal: {
-			runTask: (task: string, onEvent: (e: CoreEvent) => void, mode?: 'stream' | 'agent') => () => void;
+			runTask: (
+				task: string,
+				onEvent: (e: CoreEvent) => void,
+				mode?: 'stream' | 'agent',
+				sessionId?: string,
+			) => () => void;
 			workspace: {
 				open: () => Promise<{ root: string; name: string } | null>;
 				current: () => Promise<{ root: string; name: string } | null>;
@@ -365,28 +370,45 @@ function agentBubble(host: HTMLElement): HTMLElement {
 	return body;
 }
 
-function startTask(prompt: string, multi: boolean): void {
-	const id = `t${Date.now()}`;
-	const log = document.createElement('div');
-	log.style.display = 'contents';
-	const plan = document.createElement('div');
-	plan.style.display = 'contents';
+/**
+ * Start a task, or continue one when `existing` is given.
+ *
+ * Continuing passes the task id to the core as a session, so the model
+ * sees the earlier turns — including its own tool calls and their results.
+ * Without that a "follow-up" is a fresh agent with no idea what just
+ * happened, which is not a conversation.
+ */
+function startTask(prompt: string, multi: boolean, existing?: TaskRecord): void {
+	const rec: TaskRecord =
+		existing ??
+		(() => {
+			const log = document.createElement('div');
+			log.style.display = 'contents';
+			const plan = document.createElement('div');
+			plan.style.display = 'contents';
+			const created: TaskRecord = {
+				id: `t${Date.now()}`,
+				title: prompt.length > 46 ? prompt.slice(0, 46) + '…' : prompt,
+				state: 'running',
+				log,
+				plan,
+			};
+			tasks.set(created.id, created);
+			return created;
+		})();
 
-	const rec: TaskRecord = {
-		id,
-		title: prompt.length > 46 ? prompt.slice(0, 46) + '…' : prompt,
-		state: 'running',
-		log,
-		plan,
-	};
-	tasks.set(id, rec);
+	const id = rec.id;
+	const log = rec.log;
+	rec.state = 'running';
 	renderTaskList();
 	activateTask(id);
+	setTaskState('running');
 
 	const user = document.createElement('div');
 	user.className = 'msg-user';
 	user.textContent = prompt;
 	log.appendChild(user);
+	scrollLog();
 
 	let body = agentBubble(log);
 	let buffer = '';
@@ -484,6 +506,10 @@ function startTask(prompt: string, multi: boolean): void {
 			}
 		},
 		effectiveMulti ? 'agent' : 'stream',
+		// Multi-agent runs are several distinct agents, so a single
+		// conversation history doesn't apply; sessions are for the
+		// single-agent path.
+		effectiveMulti ? undefined : id,
 	);
 }
 
@@ -562,7 +588,11 @@ function submitTaskInput(): void {
 	const text = taskInput.value.trim();
 	if (!text) return;
 	taskInput.value = '';
-	startTask(text, text.length > 60);
+	// Continue the open task rather than starting a new one — this is a
+	// follow-up, and the core replays the session so the model still has
+	// the earlier turns.
+	const current = activeTaskId ? tasks.get(activeTaskId) : undefined;
+	startTask(text, false, current);
 }
 $('task-send').addEventListener('click', submitTaskInput);
 taskInput.addEventListener('keydown', (e) => {

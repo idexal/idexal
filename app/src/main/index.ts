@@ -34,7 +34,15 @@ function createWindow(): void {
 /** Run the core, streaming its NDJSON events to the renderer channel. */
 ipcMain.on(
 	'idexal-run-task',
-	(event, { task, channel, mode }: { task: string; channel: string; mode?: 'stream' | 'agent' }) => {
+	(
+		event,
+		{
+			task,
+			channel,
+			mode,
+			sessionId,
+		}: { task: string; channel: string; mode?: 'stream' | 'agent'; sessionId?: string },
+	) => {
 		const sender = event.sender;
 		let corePath: string;
 		try {
@@ -47,7 +55,16 @@ ipcMain.on(
 		// Agents act on files, so they must run in the folder the user
 		// actually opened — not wherever Electron happened to start.
 		const cwd = getWorkspaceRoot() ?? process.cwd();
-		const child = spawn(corePath, [mode === 'agent' ? 'agent' : 'stream', task], {
+		// Sessions only apply to single-agent turns: the orchestrator's
+		// planner/executors/reviewer are separate agents by design, so
+		// replaying one conversation across them would be meaningless.
+		const coreArgs =
+			mode === 'agent'
+				? ['agent', task]
+				: sessionId
+					? ['stream', '--session', sessionId, task]
+					: ['stream', task];
+		const child = spawn(corePath, coreArgs, {
 			cwd,
 			stdio: ['ignore', 'pipe', 'pipe'],
 		});
