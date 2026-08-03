@@ -1,0 +1,19 @@
+{
+  "name": "@idexal/cloud-provider",
+  "version": "0.1.0",
+  "description": "Idexal Cloud Gateway — free (freemium) OpenAI-compatible provider gateway: /v1/models, /v1/chat/completions (SSE), /v1/embeddings, anonymous identity quotas, and routing to OpenAI/Anthropic/Ollama upstreams with automatic fallback. Zero dependencies.",
+  "type": "module",
+  "bin": {
+    "idexal-gateway": "src/server.ts"
+  },
+  "scripts": {
+    "start": "node src/server.ts",
+    "dev": "node --watch src/server.ts",
+    "test": "node test/gateway.test.ts",
+    "doctor": "node src/doctor.ts"
+  },
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "license": "MIT"
+}

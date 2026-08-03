@@ -1,0 +1,398 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import assert from 'assert';
+import sinon from 'sinon';
+import { unthemedInboxStyles } from '../../../../base/browser/ui/inputbox/inputBox.js';
+import { unthemedButtonStyles } from '../../../../base/browser/ui/button/button.js';
+import { unthemedListStyles } from '../../../../base/browser/ui/list/listWidget.js';
+import { unthemedToggleStyles } from '../../../../base/browser/ui/toggle/toggle.js';
+import { Event } from '../../../../base/common/event.js';
+import { raceTimeout } from '../../../../base/common/async.js';
+import { unthemedCountStyles } from '../../../../base/browser/ui/countBadge/countBadge.js';
+import { unthemedKeybindingLabelOptions } from '../../../../base/browser/ui/keybindingLabel/keybindingLabel.js';
+import { unthemedProgressBarOptions } from '../../../../base/browser/ui/progressbar/progressbar.js';
+import { QuickInputController } from '../../browser/quickInputController.js';
+import { TestThemeService } from '../../../theme/test/common/testThemeService.js';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../base/test/common/utils.js';
+import { toDisposable } from '../../../../base/common/lifecycle.js';
+import { mainWindow } from '../../../../base/browser/window.js';
+import { QuickPick } from '../../browser/quickInput.js';
+import { IQuickPickItem, ItemActivation, isKeyModified, NO_KEY_MODS } from '../../common/quickInput.js';
+import { TestInstantiationService } from '../../../instantiation/test/common/instantiationServiceMock.js';
+import { IThemeService } from '../../../theme/common/themeService.js';
+import { IConfigurationService } from '../../../configuration/common/configuration.js';
+import { TestConfigurationService } from '../../../configuration/test/common/testConfigurationService.js';
+import { ILayoutService } from '../../../layout/browser/layoutService.js';
+import { IContextViewService } from '../../../contextview/browser/contextView.js';
+import { IListService, ListService } from '../../../list/browser/listService.js';
+import { IContextKeyService } from '../../../contextkey/common/contextkey.js';
+import { ContextKeyService } from '../../../contextkey/browser/contextKeyService.js';
+import { NoMatchingKb } from '../../../keybinding/common/keybindingResolver.js';
+import { IKeybindingService } from '../../../keybinding/common/keybinding.js';
+import { ContextViewService } from '../../../contextview/browser/contextViewService.js';
+import { IAccessibilityService } from '../../../accessibility/common/accessibility.js';
+import { TestAccessibilityService } from '../../../accessibility/test/common/testAccessibilityService.js';
+
+// Sets up an `onShow` listener to allow us to wait until the quick pick is shown (useful when triggering an `accept()` right after launching a quick pick)
+// kick this off before you launch the picker and then await the promise returned after you launch the picker.
+async function setupWaitTilShownListener(controller: QuickInputController): Promise<void> {
+	const result = await raceTimeout(new Promise<boolean>(resolve => {
+		const event = controller.onShow(_ => {
+			event.dispose();
+			resolve(true);
+		});
+	}), 2000);
+
+	if (!result) {
+		throw new Error('Cancelled');
+	}
+}
+
+suite('QuickInput', () => { // https://github.com/microsoft/vscode/issues/147543
+	const store = ensureNoDisposablesAreLeakedInTestSuite();
+	let controller: QuickInputController;
+	let fixture: HTMLElement;
+
+	setup(() => {
+		fixture = document.createElement('div');
+		mainWindow.document.body.appendChild(fixture);
+		store.add(toDisposable(() => fixture.remove()));
+
+		const instantiationService = new TestInstantiationService();
+
+		// Stub the services the quick input controller needs to function
+		instantiationService.stub(IThemeService, new TestThemeService());
+		instantiationService.stub(IConfigurationService, new TestConfigurationService());
+		instantiationService.stub(IAccessibilityService, new TestAccessibilityService());
+		instantiationService.stub(IListService, store.add(new ListService()));
+		instantiationService.stub(ILayoutService, {
+			_serviceBrand: undefined,
+			activeContainer: fixture,
+			onDidLayoutContainer: Event.None,
+			getContainer: () => fixture,
+		});
+		instantiationService.stub(IContextViewService, store.add(instantiationService.createInstance(ContextViewService)));
+		instantiationService.stub(IContextKeyService, store.add(instantiationService.createInstance(ContextKeyService)));
+		instantiationService.stub(IKeybindingService, {
+			mightProducePrintableCharacter() { return false; },
+			softDispatch() { return NoMatchingKb; },
+		});
+
+		controller = store.add(instantiationService.createInstance(
+			QuickInputController,
+			{
+				container: fixture,
+				idPrefix: 'testQuickInput',
+				ignoreFocusOut() { return true; },
+				returnFocus() { },
+				backKeybindingLabel() { return undefined; },
+				setContextKey() { return undefined; },
+				linkOpenerDelegate(content) { },
+				hoverDelegate: {
+					showHover(options, focus) {
+						return undefined;
+					},
+					delay: 200
+				},
+				styles: {
+					button: unthemedButtonStyles,
+					countBadge: unthemedCountStyles,
+					inputBox: unthemedInboxStyles,
+					toggle: unthemedToggleStyles,
+					keybindingLabel: unthemedKeybindingLabelOptions,
+					list: unthemedListStyles,
+					progressBar: unthemedProgressBarOptions,
+					widget: {
+						quickInputBackground: undefined,
+						quickInputForeground: undefined,
+						quickInputTitleBackground: undefined,
+						widgetBorder: undefined,
+						widgetShadow: undefined,
+					},
+					pickerGroup: {
+						pickerGroupBorder: undefined,
+						pickerGroupForeground: undefined,
+					}
+				}
+			}
+		));
+
+		// initial layout
+		controller.layout({ height: 20, width: 40 }, 0);
+	});
+
+	teardown(() => {
+		sinon.restore();
+	});
+
+	test('close motion requires modern UI with motion enabled', () => {
+		const clock = sinon.useFakeTimers();
+		const quickpick = store.add(controller.createQuickPick());
+		const widget = fixture.querySelector<HTMLElement>('.quick-input-widget')!;
+		const states: { display: string; closing: boolean; inert: boolean; visible: boolean }[] = [];
+		const recordState = () => states.push({
+			display: widget.style.display,
+			closing: widget.classList.contains('quick-input-widget-closing'),
+			inert: widget.inert,
+			visible: controller.isVisible(),
+		});
+
+		fixture.classList.add('style-override', 'monaco-reduce-motion');
+		quickpick.show();
+		quickpick.hide();
+		recordState();
+
+		fixture.classList.replace('monaco-reduce-motion', 'monaco-enable-motion');
+		quickpick.show();
+		quickpick.hide();
+		recordState();
+
+		quickpick.show();
+		recordState();
+
+		quickpick.hide();
+		clock.tick(150);
+		recordState();
+
+		assert.deepStrictEqual(states, [
+			{ display: 'none', closing: false, inert: false, visible: false },
+			{ display: '', closing: true, inert: true, visible: false },
+			{ display: '', closing: false, inert: false, visible: true },
+			{ display: 'none', closing: false, inert: false, visible: false },
+		]);
+	});
+
+	test('overlay picker aligns its input with the anchor and bypasses motion', () => {
+		fixture.style.width = '600px';
+		fixture.style.height = '400px';
+		fixture.classList.add('style-override', 'monaco-enable-motion');
+		controller.layout({ width: 600, height: 400 }, 0);
+
+		const anchor = document.createElement('div');
+		anchor.style.position = 'absolute';
+		anchor.style.left = '80px';
+		anchor.style.top = '40px';
+		anchor.style.width = '300px';
+		anchor.style.height = '26px';
+		fixture.appendChild(anchor);
+
+		const quickpick = store.add(controller.createQuickPick());
+		quickpick.anchor = anchor;
+		quickpick.anchorPosition = 'overlay';
+		quickpick.show();
+
+		const widget = fixture.querySelector<HTMLElement>('.quick-input-widget')!;
+		const input = fixture.querySelector<HTMLElement>('.quick-input-filter .monaco-inputbox')!;
+		const anchorRect = anchor.getBoundingClientRect();
+		const inputRect = input.getBoundingClientRect();
+		const openState = {
+			alignmentDelta: {
+				left: inputRect.left - anchorRect.left,
+				top: inputRect.top - anchorRect.top,
+				width: inputRect.width - anchorRect.width,
+				height: inputRect.height - anchorRect.height,
+			},
+			animationName: mainWindow.getComputedStyle(widget).animationName,
+			overlay: widget.classList.contains('quick-input-widget-overlay'),
+		};
+
+		quickpick.hide();
+
+		assert.deepStrictEqual({
+			openState,
+			closeState: {
+				display: widget.style.display,
+				closing: widget.classList.contains('quick-input-widget-closing'),
+				inert: widget.inert,
+			},
+		}, {
+			openState: {
+				alignmentDelta: { left: 0, top: 0, width: 0, height: 0 },
+				animationName: 'none',
+				overlay: true,
+			},
+			closeState: {
+				display: 'none',
+				closing: false,
+				inert: false,
+			},
+		});
+	});
+
+	test('pick - basecase', async () => {
+		const item = { label: 'foo' };
+
+		const wait = setupWaitTilShownListener(controller);
+		const pickPromise = controller.pick([item, { label: 'bar' }]);
+		await wait;
+
+		controller.accept();
+		const pick = await raceTimeout(pickPromise, 2000);
+
+		assert.strictEqual(pick, item);
+	});
+
+	test('pick - activeItem is honored', async () => {
+		const item = { label: 'foo' };
+
+		const wait = setupWaitTilShownListener(controller);
+		const pickPromise = controller.pick([{ label: 'bar' }, item], { activeItem: item });
+		await wait;
+
+		controller.accept();
+		const pick = await pickPromise;
+
+		assert.strictEqual(pick, item);
+	});
+
+	test('input - basecase', async () => {
+		const wait = setupWaitTilShownListener(controller);
+		const inputPromise = controller.input({ value: 'foo' });
+		await wait;
+
+		controller.accept();
+		const value = await raceTimeout(inputPromise, 2000);
+
+		assert.strictEqual(value, 'foo');
+	});
+
+	test('onDidChangeValue - gets triggered when .value is set', async () => {
+		const quickpick = store.add(controller.createQuickPick());
+
+		let value: string | undefined = undefined;
+		store.add(quickpick.onDidChangeValue((e) => value = e));
+
+		// Trigger a change
+		quickpick.value = 'changed';
+
+		try {
+			assert.strictEqual(value, quickpick.value);
+		} finally {
+			quickpick.dispose();
+		}
+	});
+
+	test('keepScrollPosition - works with activeItems', async () => {
+		const quickpick = store.add(controller.createQuickPick() as QuickPick<IQuickPickItem>);
+
+		const items = [];
+		for (let i = 0; i < 1000; i++) {
+			items.push({ label: `item ${i}` });
+		}
+		quickpick.items = items;
+		// setting the active item should cause the quick pick to scroll to the bottom
+		quickpick.activeItems = [items[items.length - 1]];
+		quickpick.show();
+
+		const cursorTop = quickpick.scrollTop;
+
+		assert.notStrictEqual(cursorTop, 0);
+
+		quickpick.keepScrollPosition = true;
+		quickpick.activeItems = [items[0]];
+		assert.strictEqual(cursorTop, quickpick.scrollTop);
+
+		quickpick.keepScrollPosition = false;
+		quickpick.activeItems = [items[0]];
+		assert.strictEqual(quickpick.scrollTop, 0);
+	});
+
+	test('keepScrollPosition - works with items', async () => {
+		const quickpick = store.add(controller.createQuickPick() as QuickPick<IQuickPickItem>);
+
+		const items = [];
+		for (let i = 0; i < 1000; i++) {
+			items.push({ label: `item ${i}` });
+		}
+		quickpick.items = items;
+		// setting the active item should cause the quick pick to scroll to the bottom
+		quickpick.activeItems = [items[items.length - 1]];
+		quickpick.show();
+
+		const cursorTop = quickpick.scrollTop;
+		assert.notStrictEqual(cursorTop, 0);
+
+		quickpick.keepScrollPosition = true;
+		quickpick.items = items;
+		assert.strictEqual(cursorTop, quickpick.scrollTop);
+
+		quickpick.keepScrollPosition = false;
+		quickpick.items = items;
+		assert.strictEqual(quickpick.scrollTop, 0);
+	});
+
+	test('selectedItems - verify previous selectedItems does not hang over to next set of items', async () => {
+		const quickpick = store.add(controller.createQuickPick());
+		quickpick.items = [{ label: 'step 1' }];
+		quickpick.show();
+
+		void (await new Promise<void>(resolve => {
+			store.add(quickpick.onDidAccept(() => {
+				quickpick.canSelectMany = true;
+				quickpick.items = [{ label: 'a' }, { label: 'b' }, { label: 'c' }];
+				resolve();
+			}));
+
+			// accept 'step 1'
+			controller.accept();
+		}));
+
+		// accept in multi-select
+		controller.accept();
+
+		// Since we don't select any items, the selected items should be empty
+		assert.strictEqual(quickpick.selectedItems.length, 0);
+	});
+
+	test('activeItems - verify onDidChangeActive is triggered after setting items', async () => {
+		const quickpick = store.add(controller.createQuickPick());
+
+		// Setup listener for verification
+		const activeItemsFromEvent: IQuickPickItem[] = [];
+		store.add(quickpick.onDidChangeActive(items => activeItemsFromEvent.push(...items)));
+
+		quickpick.show();
+
+		const item = { label: 'step 1' };
+		quickpick.items = [item];
+
+		assert.strictEqual(activeItemsFromEvent.length, 1);
+		assert.strictEqual(activeItemsFromEvent[0], item);
+		assert.strictEqual(quickpick.activeItems.length, 1);
+		assert.strictEqual(quickpick.activeItems[0], item);
+	});
+
+	test('activeItems - verify setting itemActivation to None still triggers onDidChangeActive after selection #207832', async () => {
+		const quickpick = store.add(controller.createQuickPick());
+		const item = { label: 'step 1' };
+		quickpick.items = [item];
+		quickpick.show();
+		assert.strictEqual(quickpick.activeItems[0], item);
+
+		// Setup listener for verification
+		const activeItemsFromEvent: IQuickPickItem[] = [];
+		store.add(quickpick.onDidChangeActive(items => activeItemsFromEvent.push(...items)));
+
+		// Trigger a change
+		quickpick.itemActivation = ItemActivation.NONE;
+		quickpick.items = [item];
+
+		assert.strictEqual(activeItemsFromEvent.length, 0);
+		assert.strictEqual(quickpick.activeItems.length, 0);
+	});
+
+	test('isKeyModified - returns false when no modifiers are pressed', () => {
+		assert.strictEqual(isKeyModified(NO_KEY_MODS), false);
+		assert.strictEqual(isKeyModified({ ctrlCmd: false, alt: false, shift: false }), false);
+	});
+
+	test('isKeyModified - returns true when any modifier is pressed', () => {
+		assert.strictEqual(isKeyModified({ ctrlCmd: true, alt: false, shift: false }), true);
+		assert.strictEqual(isKeyModified({ ctrlCmd: false, alt: true, shift: false }), true);
+		assert.strictEqual(isKeyModified({ ctrlCmd: false, alt: false, shift: true }), true);
+		assert.strictEqual(isKeyModified({ ctrlCmd: true, alt: true, shift: true }), true);
+	});
+});

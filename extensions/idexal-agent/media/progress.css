@@ -1,0 +1,686 @@
+/* Idexal Agent — live progress WebView styles
+ * Animated cards for the plan, steps, agents, tools, review, terminals, and
+ * usage. Theme-aware (VS Code CSS variables) with motion used deliberately:
+ * cards slide in, running items pulse, status flips animate. Respects
+ * prefers-reduced-motion. */
+
+:root {
+	--bg: var(--vscode-sideBar-background, #1e1e1e);
+	--fg: var(--vscode-sideBar-foreground, #cccccc);
+	--muted: var(--vscode-descriptionForeground, #9d9d9d);
+	--border: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+	--card-bg: var(--vscode-editorWidget-background, #252526);
+	--card-hover: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.12));
+	--accent: var(--vscode-focusBorder, #0078d4);
+	--ok: #4ec9b0;
+	--fail: #f14c4c;
+	--warn: #e2c08d;
+	--run: var(--vscode-charts-blue, #3794ff);
+	--radius: 10px;
+	--font-mono: var(--vscode-editor-font-family, 'Cascadia Code', Consolas, monospace);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	height: 100%;
+}
+
+body {
+	display: flex;
+	flex-direction: column;
+	background: var(--bg);
+	color: var(--fg);
+	font-family: var(--vscode-font-family, system-ui, sans-serif);
+	font-size: 13px;
+	overflow: hidden;
+}
+
+/* ---------- Header HUD ---------- */
+
+.hud {
+	padding: 12px 14px 10px;
+	border-bottom: 1px solid var(--border);
+	background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, transparent), transparent 70%);
+	flex: none;
+}
+
+.hud-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.badge {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	padding: 2px 8px;
+	border-radius: 999px;
+	border: 1px solid var(--accent);
+	color: var(--accent);
+	background: color-mix(in srgb, var(--accent) 12%, transparent);
+	flex: none;
+}
+
+#task-title {
+	flex: 1;
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.3;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 10px;
+	border-radius: 999px;
+	border: 1px solid var(--border);
+	flex: none;
+	transition: color 0.25s ease, border-color 0.25s ease;
+}
+
+.pill .dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--muted);
+	transition: background 0.25s ease;
+}
+
+.pill.running {
+	color: var(--run);
+	border-color: var(--run);
+}
+
+.pill.running .dot {
+	background: var(--run);
+	animation: pulse 1.1s ease-in-out infinite;
+}
+
+.pill.done {
+	color: var(--ok);
+	border-color: var(--ok);
+}
+
+.pill.done .dot {
+	background: var(--ok);
+}
+
+.pill.failed {
+	color: var(--fail);
+	border-color: var(--fail);
+}
+
+.pill.failed .dot {
+	background: var(--fail);
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.35;
+		transform: scale(0.75);
+	}
+}
+
+.providers {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 8px;
+	min-height: 0;
+}
+
+.provider-chip {
+	font-size: 10.5px;
+	padding: 1px 8px;
+	border-radius: 999px;
+	border: 1px solid var(--border);
+	color: var(--muted);
+	background: color-mix(in srgb, var(--card-bg) 60%, transparent);
+	animation: chip-in 0.3s ease both;
+}
+
+@keyframes chip-in {
+	from {
+		opacity: 0;
+		transform: translateY(-3px) scale(0.9);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+.track {
+	margin-top: 10px;
+	height: 3px;
+	border-radius: 2px;
+	background: color-mix(in srgb, var(--border) 50%, transparent);
+	overflow: hidden;
+}
+
+.bar {
+	height: 100%;
+	width: 0;
+	border-radius: 2px;
+	background: linear-gradient(90deg, var(--accent), var(--run));
+	transition: width 0.4s ease;
+}
+
+body[data-running='true'] .bar {
+	width: 100%;
+	animation: indeterminate 1.4s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+	0% {
+		transform: translateX(-100%);
+	}
+	100% {
+		transform: translateX(100%);
+	}
+}
+
+/* ---------- Content ---------- */
+
+#content {
+	flex: 1;
+	overflow-y: auto;
+	padding: 12px 14px 16px;
+}
+
+.hidden {
+	display: none !important;
+}
+
+.empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	color: var(--muted);
+	padding: 48px 16px;
+	gap: 4px;
+}
+
+.empty-logo {
+	font-size: 30px;
+	margin-bottom: 10px;
+	opacity: 0.6;
+}
+
+/* ---------- Plan checklist ---------- */
+
+.plan {
+	margin-bottom: 14px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--card-bg);
+	overflow: hidden;
+}
+
+.plan-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--muted);
+	border-bottom: 1px solid var(--border);
+}
+
+.plan-head .count {
+	margin-left: auto;
+	font-weight: 600;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.plan ol {
+	list-style: none;
+	margin: 0;
+	padding: 4px 0;
+}
+
+.step {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 6px 12px;
+	border-left: 3px solid transparent;
+	transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.step:hover {
+	background: var(--card-hover);
+}
+
+.step .icon {
+	flex: none;
+	width: 18px;
+	height: 18px;
+	margin-top: 1px;
+	display: grid;
+	place-items: center;
+	border-radius: 50%;
+	font-size: 11px;
+	border: 1.5px solid var(--muted);
+	color: var(--muted);
+	transition: all 0.3s ease;
+}
+
+.step.running .icon {
+	border-color: var(--run);
+	color: var(--run);
+	animation: spin 0.9s linear infinite;
+	border-top-color: transparent;
+}
+
+.step.done .icon {
+	border-color: var(--ok);
+	color: var(--ok);
+	background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.step.failed .icon {
+	border-color: var(--fail);
+	color: var(--fail);
+	background: color-mix(in srgb, var(--fail) 14%, transparent);
+}
+
+.step.pending .icon {
+	border-style: dashed;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.step .body {
+	flex: 1;
+	min-width: 0;
+}
+
+.step .desc {
+	line-height: 1.35;
+}
+
+.step .sub {
+	font-size: 11px;
+	color: var(--muted);
+	margin-top: 2px;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.step .assignee {
+	display: inline-block;
+	font-size: 10px;
+	margin-left: 6px;
+	padding: 0 6px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--accent) 16%, transparent);
+	color: var(--accent);
+}
+
+/* ---------- Activity feed ---------- */
+
+.feed {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.card {
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--card-bg);
+	padding: 9px 12px;
+	animation: card-in 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+	transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card:hover {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+@keyframes card-in {
+	from {
+		opacity: 0;
+		transform: translateY(10px) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+.card.kind-agent {
+	border-left: 3px solid var(--run);
+}
+
+.card.kind-tool {
+	border-left: 3px solid var(--warn);
+}
+
+.card.kind-tool.ok {
+	border-left-color: var(--ok);
+}
+
+.card.kind-tool.failed {
+	border-left-color: var(--fail);
+}
+
+.card.kind-review {
+	border-left: 3px solid var(--accent);
+}
+
+.card.kind-terminal {
+	border-left: 3px solid #8a7be8;
+}
+
+.card.kind-provider {
+	border-left: 3px solid #3aa0ff;
+}
+
+.card.kind-usage {
+	border-left: 3px solid #7bc96f;
+}
+
+.card-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.card .emoji {
+	flex: none;
+	font-size: 14px;
+}
+
+.card .title {
+	flex: 1;
+	font-weight: 600;
+	font-family: var(--font-mono);
+	font-size: 12px;
+	line-height: 1.35;
+	word-break: break-word;
+}
+
+.card .time {
+	flex: none;
+	font-size: 10px;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.card .detail {
+	margin-top: 5px;
+	font-size: 12px;
+	color: var(--fg);
+	line-height: 1.45;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.card .output {
+	margin-top: 7px;
+	padding: 7px 9px;
+	border-radius: 6px;
+	background: color-mix(in srgb, var(--bg) 60%, transparent);
+	border: 1px solid var(--border);
+	font-family: var(--font-mono);
+	font-size: 11px;
+	line-height: 1.45;
+	white-space: pre-wrap;
+	word-break: break-word;
+	max-height: 180px;
+	overflow-y: auto;
+	color: var(--muted);
+	animation: fade-in 0.3s ease both;
+}
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+/* Status chips inside cards */
+.status-chip {
+	flex: none;
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	padding: 2px 8px;
+	border-radius: 999px;
+	border: 1px solid var(--border);
+	color: var(--muted);
+	transition: all 0.3s ease;
+}
+
+.status-chip.running {
+	color: var(--run);
+	border-color: var(--run);
+	animation: pulse 1.2s ease-in-out infinite;
+}
+
+.status-chip.done,
+.status-chip.ok {
+	color: var(--ok);
+	border-color: var(--ok);
+}
+
+.status-chip.failed,
+.status-chip.fix {
+	color: var(--fail);
+	border-color: var(--fail);
+}
+
+.tool-result {
+	display: flex;
+	align-items: flex-start;
+	gap: 7px;
+	margin-top: 6px;
+	font-size: 11.5px;
+	line-height: 1.4;
+	animation: fade-in 0.3s ease both;
+}
+
+.tool-result .mark {
+	flex: none;
+	font-weight: 700;
+}
+
+.tool-result.ok {
+	color: var(--ok);
+}
+
+.tool-result.failed {
+	color: var(--fail);
+}
+
+.tool-result .text {
+	word-break: break-word;
+	white-space: pre-wrap;
+}
+
+/* ---------- Stream box ---------- */
+
+.stream-wrap {
+	margin-top: 14px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	overflow: hidden;
+}
+
+.stream-head {
+	padding: 7px 12px;
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--muted);
+	border-bottom: 1px solid var(--border);
+}
+
+.stream-wrap pre {
+	margin: 0;
+	padding: 9px 12px;
+	max-height: 200px;
+	overflow-y: auto;
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: var(--fg);
+}
+
+/* ---------- Finish banner ---------- */
+
+.finish {
+	margin-top: 14px;
+	border-radius: var(--radius);
+	padding: 11px 13px;
+	border: 1px solid;
+	animation: card-in 0.35s ease both;
+}
+
+.finish.done {
+	border-color: var(--ok);
+	background: color-mix(in srgb, var(--ok) 10%, var(--card-bg));
+	color: var(--ok);
+}
+
+.finish.failed {
+	border-color: var(--fail);
+	background: color-mix(in srgb, var(--fail) 10%, var(--card-bg));
+	color: var(--fail);
+}
+
+.finish.cancelled {
+	border-color: var(--warn);
+	background: color-mix(in srgb, var(--warn) 10%, var(--card-bg));
+	color: var(--warn);
+}
+
+.finish .head {
+	font-weight: 700;
+	margin-bottom: 4px;
+}
+
+.finish .text {
+	font-size: 12px;
+	line-height: 1.45;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+/* ---------- Footer ---------- */
+
+.footer {
+	display: flex;
+	gap: 8px;
+	padding: 10px 14px;
+	border-top: 1px solid var(--border);
+	flex: none;
+}
+
+button {
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--fg);
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	padding: 5px 12px;
+	cursor: pointer;
+	transition: all 0.18s ease;
+}
+
+button:hover:not(:disabled) {
+	border-color: var(--accent);
+	background: var(--card-hover);
+}
+
+button:active:not(:disabled) {
+	transform: translateY(1px);
+}
+
+button:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+#cancel:not(:disabled) {
+	border-color: var(--fail);
+	color: var(--fail);
+}
+
+/* ---------- Scrollbar ---------- */
+
+#content::-webkit-scrollbar,
+.stream-wrap pre::-webkit-scrollbar,
+.card .output::-webkit-scrollbar {
+	width: 8px;
+}
+
+#content::-webkit-scrollbar-thumb,
+.stream-wrap pre::-webkit-scrollbar-thumb,
+.card .output::-webkit-scrollbar-thumb {
+	background: var(--border);
+	border-radius: 4px;
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+	.card,
+	.finish,
+	.provider-chip {
+		animation: none;
+	}
+
+	.step.running .icon,
+	.pill.running .dot,
+	.status-chip.running,
+	body[data-running='true'] .bar {
+		animation: none;
+	}
+
+	.bar {
+		transition: none;
+	}
+}

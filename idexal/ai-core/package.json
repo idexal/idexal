@@ -1,0 +1,24 @@
+{
+	"name": "@idexal/ai-core",
+	"version": "0.1.0",
+	"description": "Idexal AI Core — free, multi-provider, multi-agent AI engine with fallback and long-term memory",
+	"type": "module",
+	"private": true,
+	"license": "MIT",
+	"engines": {
+		"node": ">=22.6.0"
+	},
+	"bin": {
+		"idexal-ai": "./bin/idexal-ai.js"
+	},
+	"files": [
+		"bin",
+		"src"
+	],
+	"scripts": {
+		"test": "node src/test/core.test.ts",
+		"setup": "node bin/idexal-ai.js setup"
+	},
+	"dependencies": {},
+	"devDependencies": {}
+}

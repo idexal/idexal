@@ -1,0 +1,171 @@
+{
+	"name": "idexal-agent",
+	"displayName": "Idexal Agent",
+	"description": "Idexal's own chat participant — multi-agent coding tasks with live streaming and a visual task list, powered by the Idexal AI Core.",
+	"version": "0.1.0",
+	"publisher": "idexal",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.94.0"
+	},
+	"main": "./out/extension",
+	"categories": [
+		"AI",
+		"Other"
+	],
+	"extensionKind": [
+		"ui",
+		"workspace"
+	],
+	"activationEvents": [
+		"onChatParticipant:idexal.agent",
+		"onView:idexal.tasks",
+		"onView:idexal.progress"
+	],
+	"capabilities": {
+		"virtualWorkspaces": true,
+		"untrustedWorkspaces": {
+			"supported": true
+		}
+	},
+	"contributes": {
+		"chatParticipants": [
+			{
+				"id": "idexal.agent",
+			"name": "idexal",
+			"fullName": "Idexal Agent",
+			"description": "Multi-agent coding tasks with live streaming, agents, tools, and a visual task list — powered by the Idexal AI Core.",
+			"sampleRequest": "Refactor the settings module and update its tests",
+				"disambiguation": [
+					{
+						"category": "agentic_coding_tasks",
+						"description": "The user wants a multi-step coding task executed autonomously with tools.",
+						"examples": [
+							"Refactor this module and run the tests",
+							"Add error handling across the codebase",
+							"Set up a new npm script for typechecking"
+						]
+					}
+				]
+			}
+		],
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "idexal",
+					"title": "Idexal",
+					"icon": "media/idexal.svg"
+				}
+			]
+		},
+		"views": {
+			"idexal": [
+				{
+					"id": "idexal.tasks",
+					"name": "Agent Tasks",
+					"type": "tree"
+				},
+				{
+					"id": "idexal.terminals",
+					"name": "Agent Terminals",
+					"type": "tree"
+				},
+				{
+					"id": "idexal.progress",
+					"name": "Agent Progress",
+					"type": "webview"
+				}
+			]
+		},
+		"viewsWelcome": [
+			{
+				"view": "idexal.tasks",
+				"contents": "Ask **@idexal** in the chat to run a task. Live plan steps and agent progress appear here.\n[Open Idexal Chat](command:idexal.openChat)\n[Clear Task List](command:idexal.clearTasks)"
+			},
+			{
+				"view": "idexal.terminals",
+				"contents": "Background processes started by agents (dev servers, watchers) appear here with live output. Start one by asking **@idexal** to run a long-running command."
+			},
+			{
+				"view": "idexal.progress",
+				"contents": "Animated live progress cards appear here as agents work: the plan checklist, each tool call and outcome, review verdicts, and the final summary.\n[Open Idexal Chat](command:idexal.openChat)"
+			}
+		],
+		"commands": [
+			{
+				"command": "idexal.openChat",
+				"title": "Open Idexal Chat",
+				"category": "Idexal"
+			},
+			{
+				"command": "idexal.clearTasks",
+				"title": "Clear Task List",
+				"category": "Idexal"
+			},
+			{
+				"command": "idexal.cancelTask",
+				"title": "Cancel Running Task",
+				"category": "Idexal",
+				"icon": "$(debug-stop)"
+			},
+			{
+				"command": "idexal.showProgress",
+				"title": "Show Agent Progress",
+				"category": "Idexal",
+				"icon": "$(sparkle)"
+			}
+		],
+		"menus": {
+			"view/title": [
+				{
+					"command": "idexal.cancelTask",
+					"when": "view == idexal.tasks && idexal.taskRunning",
+					"group": "navigation@1"
+				},
+				{
+					"command": "idexal.clearTasks",
+					"when": "view == idexal.tasks",
+					"group": "navigation@2"
+				},
+				{
+					"command": "idexal.cancelTask",
+					"when": "view == idexal.progress && idexal.taskRunning",
+					"group": "navigation@1"
+				},
+				{
+					"command": "idexal.clearTasks",
+					"when": "view == idexal.progress",
+					"group": "navigation@2"
+				}
+			]
+		},
+		"configuration": {
+			"title": "Idexal Agent",
+			"properties": {
+				"idexal.nodePath": {
+					"type": "string",
+					"default": "",
+					"markdownDescription": "Path to the Node.js executable used to run the AI Core (defaults to `node` on PATH, or `$IDEXAL_NODE`)."
+				},
+				"idexal.aiCorePath": {
+					"type": "string",
+					"default": "",
+					"markdownDescription": "Path to the Idexal AI Core `src/cli.ts` (or its containing folder). Defaults to `$IDEXAL_AI_CORE`, then a `idexal/ai-core` checkout next to this extension."
+				},
+				"idexal.showAgentEvents": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Render the live agent transcript inside the chat response: plan checklist, agent start/end, tool calls and outcomes, and usage & cost. When disabled, only the streamed final answer and summary are shown."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"compile": "gulp compile-extension:idexal-agent",
+		"watch": "gulp watch-extension:idexal-agent",
+		"vscode:prepublish": "npm run compile"
+	},
+	"devDependencies": {
+		"@types/node": "24.x"
+	}
+}
