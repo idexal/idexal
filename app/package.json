@@ -5,7 +5,9 @@
   "description": "Idexal — Agentic IDE. Electron shell + Monaco editor, powered by the Rust idexal-core agent engine.",
   "main": "dist/main/index.js",
   "scripts": {
-    "build": "node esbuild.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "bundle": "node esbuild.mjs",
+    "build": "npm run typecheck && npm run bundle",
     "start": "npm run build && electron .",
     "dev": "node esbuild.mjs --watch"
   },
