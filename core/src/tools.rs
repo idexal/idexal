@@ -147,8 +147,25 @@ pub fn definitions() -> Vec<crate::providers::types::ToolDefinition> {
                 "required": ["command"]
             }),
         },
+        ToolDefinition {
+            name: "delegate".into(),
+            description: "Hand a self-contained sub-task to a subagent that runs its own tool loop and returns a summary. Use for work that needs several steps of its own — not for a single tool call you could make yourself.".into(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "task": { "type": "string", "description": "The precise sub-task for the subagent" },
+                    "context": { "type": "string", "description": "Short relevant context: paths already found, decisions already made" }
+                },
+                "required": ["task"]
+            }),
+        },
     ]
 }
+
+/// Name of the delegation tool. It is deliberately NOT executed by
+/// `dispatch`: delegation re-enters the async agent loop, which a
+/// synchronous dispatcher cannot do. `agent::run` intercepts it first.
+pub const DELEGATE: &str = "delegate";
 
 /// Read-only subset, used by review-style runs where the agent must not
 /// modify anything. Mirrors the reference implementation's readOnlyTools().
@@ -214,6 +231,14 @@ pub fn dispatch(cwd: &Path, name: &str, arguments: &str) -> ToolResult {
             }
             run_command(cwd, &c)
         }
+        // Guard rail: if delegation ever reaches the synchronous dispatcher
+        // it means the agent loop failed to intercept it. Fail loudly with
+        // an actionable message instead of silently reporting "unknown
+        // tool", which would send the model chasing a phantom.
+        DELEGATE => ToolResult {
+            ok: false,
+            output: "delegate is handled by the agent loop, not the tool dispatcher — this is a bug".into(),
+        },
         other => ToolResult { ok: false, output: format!("unknown tool: {other}") },
     }
 }
