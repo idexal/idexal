@@ -13,9 +13,11 @@
 // orchestration, and long-term memory are the next milestones — ported from
 // the design already validated in the previous Node implementation.
 
+mod providers;
+
 use serde::Serialize;
 use std::io::{self, Write};
-use std::{env, process, thread, time::Duration};
+use std::{env, process};
 
 #[derive(Serialize)]
 #[serde(tag = "type")]
@@ -36,30 +38,37 @@ fn emit(event: &Event) {
     io::stdout().flush().ok();
 }
 
-fn stream_task(task: &str) {
+async fn stream_task(task: &str) {
     emit(&Event::Start);
 
-    // Placeholder response until real provider integration lands — streamed
-    // word-by-word so the Electron renderer's incremental-render path is
-    // exercised identically to how it will behave with real output.
-    let response = format!(
-        "استلمت المهمة: \"{task}\". نواة Idexal بلغة Rust تعمل الآن، لكن تكامل المزودين \
-         الحقيقي (Anthropic/OpenAI/محلي) لم يُبنَ بعد في هذا الإصدار — هذا تحقق أولي \
-         لسلسلة التنفيذ الكاملة (Electron يستدعي هذا الثنائي عبر NDJSON)."
-    );
-    for word in response.split_whitespace() {
-        emit(&Event::Delta {
-            text: &format!("{word} "),
-        });
-        thread::sleep(Duration::from_millis(35));
+    match providers::resolve_anthropic() {
+        Some(cfg) => {
+            let system_prompt = "You are Idexal, a helpful coding agent. Answer concisely.";
+            let mut had_error = false;
+            let result = providers::stream_chat(&cfg, system_prompt, task, |text| {
+                emit(&Event::Delta { text });
+            })
+            .await;
+            if let Err(err) = result {
+                had_error = true;
+                emit(&Event::Error { error: err });
+            }
+            if !had_error {
+                emit(&Event::Done {
+                    summary: format!("تم الرد عبر مزود {}", cfg.model),
+                });
+            }
+        }
+        None => {
+            emit(&Event::Error {
+                error: "لا يوجد مزود مُهيَّأ — عرّف ANTHROPIC_API_KEY لتفعيل ردود حقيقية.".to_string(),
+            });
+        }
     }
-
-    emit(&Event::Done {
-        summary: "بث تجريبي مكتمل — بانتظار تكامل المزودين الحقيقي".to_string(),
-    });
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args: Vec<String> = env::args().collect();
 
     match args.get(1).map(String::as_str) {
@@ -74,7 +83,7 @@ fn main() {
                 });
                 process::exit(1);
             }
-            stream_task(&task);
+            stream_task(&task).await;
         }
         _ => {
             eprintln!("Usage: idexal-core stream \"<task>\" | idexal-core --version");
