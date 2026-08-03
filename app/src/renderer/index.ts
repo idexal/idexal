@@ -46,6 +46,11 @@ declare global {
 				status: () => Promise<{ ok: boolean; branch?: string; files?: Array<{ state: string; path: string }>; error?: string }>;
 				diff: (file: string) => Promise<{ ok: boolean; diff?: string; error?: string }>;
 			};
+			settings: {
+				load: () => Promise<{ ok: boolean; data?: unknown; error?: string }>;
+				save: (cfg: unknown) => Promise<{ ok: boolean; data?: unknown; error?: string }>;
+				testProvider: (id: string) => Promise<{ ok: boolean; data?: unknown; error?: string }>;
+			};
 		};
 		__monaco: typeof import('monaco-editor');
 	}

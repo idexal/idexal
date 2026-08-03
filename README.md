@@ -58,6 +58,36 @@ node cli/bin/idexal.js providers
 مزوديك. بلا أي إعداد: يُستخدم `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` إن وُجدا، وإلا
 Ollama محلي بلا مفتاح.
 
+## وثائق التصميم | Design Docs
+
+المرجع التصميمي الكامل (الهيكل، الواجهة، الإعدادات، المزودون، الوكلاء، الصلاحيات،
+الذاكرة، الطرفية) في [docs/design/](docs/design/README.md):
+
+| الوثيقة | المحتوى |
+|---|---|
+| [01-architecture](docs/design/01-architecture.md) | البنية المعمارية وعقد NDJSON |
+| [02-ui-layout](docs/design/02-ui-layout.md) | تصميم الواجهة والتوزيع على طراز ZCode |
+| [03-settings](docs/design/03-settings.md) | صفحة الإعدادات الشاملة — كل شيء يُدار من البرنامج |
+| [04-features](docs/design/04-features.md) | مصفوفة المميزات |
+| [05-agents](docs/design/05-agents.md) | الوكلاء وأدوارهم |
+| [06-providers](docs/design/06-providers.md) | المزودون والنماذج وFallback |
+| [07-permissions](docs/design/07-permissions.md) | الصلاحيات والموافقات |
+| [08-memory](docs/design/08-memory.md) | الذاكرة طويلة الأمد |
+| [09-cli-terminal](docs/design/09-cli-terminal.md) | الطرفية وأمر idexal |
+
+## مخططات التنفيذ لـ Claude Code | Execution Plans
+
+مخططات تنفيذ جاهزة ليقرأها Claude Code وينفّذها حرفياً (أنت تخطط، هو ينفّذ) في
+[docs/plans/](docs/plans/README.md):
+
+| # | المخطط | الحالة |
+|---|--------|--------|
+| 001 | [صفحة الإعدادات الشاملة](docs/plans/001-settings-page.md) | ⬜ جاهز للتنفيذ |
+| 002 | [Git تعديلي مع تأكيد](docs/plans/002-git-mutations.md) | ⬜ جاهز للتنفيذ |
+| 003 | [تعدد مهام متزامنة](docs/plans/003-multi-task.md) | ⬜ جاهز للتنفيذ |
+| 004 | [وكلاء فرعيون Subagents](docs/plans/004-subagents.md) | ⬜ جاهز للتنفيذ |
+| 005 | [طرفية PTY حقيقية](docs/plans/005-pty-terminal.md) | ⬜ جاهز للتنفيذ |
+
 ## خارطة الطريق
 
 راجع [ROADMAP.md](ROADMAP.md).

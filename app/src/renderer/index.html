@@ -13,6 +13,7 @@
       <span id="workspace-name" class="sub">لا مجلد مفتوح</span>
       <span class="spacer"></span>
       <button id="open-folder" class="tb-btn">فتح مجلد…</button>
+      <button id="settings-open" class="tb-btn" title="الإعدادات">⚙ الإعدادات</button>
     </div>
 
     <div id="main">
@@ -111,6 +112,43 @@
     </div>
   </div>
 
+  <!-- Settings page (overlay) -->
+  <div id="settings-page" class="hidden">
+    <div class="settings-head">
+      <span class="settings-title">⚙ الإعدادات</span>
+      <span id="settings-path" class="settings-path"></span>
+      <span class="spacer"></span>
+      <button id="settings-close" class="mini-btn" title="إغلاق">×</button>
+    </div>
+    <div class="settings-body">
+      <div class="settings-section">
+        <div class="settings-section-head">
+          <span>المزوّدون <em>— الترتيب = أولوية التبديل التلقائي</em></span>
+          <button id="provider-add" class="mini-btn">＋ إضافة مزود</button>
+        </div>
+        <div id="providers-list" class="settings-providers"></div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-head"><span>سلوك الوكيل</span></div>
+        <div class="settings-agent-grid">
+          <label>أقصى جولات أدوات
+            <input id="agent-rounds" type="number" min="1" max="100" dir="ltr" />
+          </label>
+          <label>أقصى وكلاء متوازون
+            <input id="agent-parallel" type="number" min="1" max="16" dir="ltr" />
+          </label>
+          <label class="check"><input id="agent-reviewer" type="checkbox" /> المراجع التلقائي</label>
+        </div>
+      </div>
+    </div>
+    <div class="settings-foot">
+      <span id="settings-status" class="settings-status"></span>
+      <span class="spacer"></span>
+      <button id="settings-cancel" class="mini-btn">إلغاء</button>
+      <button id="settings-save" class="settings-save">حفظ التغييرات</button>
+    </div>
+  </div>
+
   <script src="vs/loader.js"></script>
   <script>
     require.config({ paths: { vs: 'vs' } });
@@ -120,5 +158,6 @@
     });
   </script>
   <script src="index.js"></script>
+  <script src="settings.js"></script>
 </body>
 </html>

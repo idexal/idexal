@@ -37,6 +37,15 @@ const builds = [
 		format: 'iife',
 		loader: { '.ttf': 'file' },
 	}),
+	// Settings is a separate entry so the main renderer bundle stays small
+	// and the settings surface can evolve independently.
+	esbuild.context({
+		...common,
+		entryPoints: ['src/renderer/settings.ts'],
+		outfile: 'dist/renderer/settings.js',
+		platform: 'browser',
+		format: 'iife',
+	}),
 ];
 
 const contexts = await Promise.all(builds);

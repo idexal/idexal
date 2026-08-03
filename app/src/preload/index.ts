@@ -55,4 +55,10 @@ contextBridge.exposeInMainWorld('idexal', {
 		status: () => ipcRenderer.invoke('git:status'),
 		diff: (file: string) => ipcRenderer.invoke('git:diff', file),
 	},
+
+	settings: {
+		load: () => ipcRenderer.invoke('settings:load'),
+		save: (cfg: unknown) => ipcRenderer.invoke('settings:save', cfg),
+		testProvider: (id: string) => ipcRenderer.invoke('settings:test-provider', id),
+	},
 });

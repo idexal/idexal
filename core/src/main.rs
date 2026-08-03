@@ -23,9 +23,12 @@ mod orchestrator;
 mod providers;
 mod tools;
 
+use config::ProviderKind;
+use providers::types::Message;
 use providers::Registry;
 use serde::Serialize;
 use std::io::{self, Write};
+use std::time::Instant;
 use std::{env, process};
 
 #[derive(Serialize)]
@@ -319,6 +322,90 @@ fn memory_command(args: &[String]) {
     }
 }
 
+/// Effective configuration as a single JSON document: every usable and
+/// unusable provider with its resolved settings, plus agent knobs and the
+/// file the settings page should persist to. API keys are never included —
+/// only whether one is resolvable — so the renderer can render the whole
+/// page without ever touching a secret.
+fn dump_config() {
+    let cfg = config::load();
+    let providers: Vec<serde_json::Value> = cfg
+        .providers
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "id": p.id,
+                "type": match p.kind {
+                    ProviderKind::Anthropic => "anthropic",
+                    ProviderKind::OpenaiCompatible => "openai-compatible",
+                },
+                "baseUrl": p.effective_base_url(),
+                "model": p.model,
+                "priority": p.priority,
+                "enabled": p.enabled,
+                "apiKeyEnv": p.api_key_env,
+                "hasKey": p.resolve_key().is_some(),
+                "local": p.is_local(),
+                "usable": p.usable(),
+                "headers": p.headers,
+                "extraBody": p.extra_body,
+            })
+        })
+        .collect();
+    let out = serde_json::json!({
+        "providers": providers,
+        "agent": {
+            "maxToolRounds": cfg.agent.max_tool_rounds,
+            "useReviewer": cfg.agent.use_reviewer,
+            "maxParallelAgents": cfg.agent.max_parallel_agents,
+        },
+        "configPath": config::home_dir()
+            .map(|h| h.join(".idexal").join("config.json").to_string_lossy().to_string()),
+    });
+    println!("{}", serde_json::to_string_pretty(&out).unwrap());
+}
+
+/// Round-trip one tiny completion through a single provider so the settings
+/// page (and the CLI) can verify a configured endpoint actually answers.
+/// Emits one JSON document: {ok, provider?, latencyMs?, reply?, error?}.
+async fn test_provider(id: &str) {
+    let cfg = config::load();
+    let Some(provider) = cfg.providers.iter().find(|p| p.id == id).cloned() else {
+        println!("{}", serde_json::json!({ "ok": false, "error": format!("no provider named '{id}'") }));
+        return;
+    };
+    // A single-provider config so the chain can't silently fall through to
+    // another provider and mask a broken one.
+    let single = crate::config::Config { providers: vec![provider.clone()], agent: cfg.agent.clone() };
+    let mut registry = Registry::from_config(&single);
+    if registry.is_empty() {
+        println!(
+            "{}",
+            serde_json::json!({ "ok": false, "error": format!("provider '{id}' is not usable (disabled or no key)") })
+        );
+        return;
+    }
+
+    let started = Instant::now();
+    let result = registry
+        .stream_turn(&[Message::user("Reply with exactly: OK")], &[], |_| {}, |_| {})
+        .await;
+    let latency_ms = started.elapsed().as_millis();
+
+    match result {
+        Ok(outcome) => println!(
+            "{}",
+            serde_json::json!({
+                "ok": true,
+                "provider": outcome.provider_id,
+                "latencyMs": latency_ms,
+                "reply": outcome.turn.text.chars().take(80).collect::<String>(),
+            })
+        ),
+        Err(errors) => println!("{}", serde_json::json!({ "ok": false, "error": errors.join("; ") })),
+    }
+}
+
 fn list_providers() {
     let cfg = config::load();
     let list: Vec<serde_json::Value> = cfg
@@ -348,6 +435,15 @@ async fn main() {
             println!("idexal-core {}", env!("CARGO_PKG_VERSION"));
         }
         Some("providers") => list_providers(),
+        Some("config") => dump_config(),
+        Some("test") => {
+            let id = args.get(2).cloned().unwrap_or_default();
+            if id.is_empty() {
+                eprintln!("Usage: idexal-core test <provider-id>");
+                process::exit(2);
+            }
+            test_provider(&id).await;
+        }
         Some("memory") => memory_command(&args[2..]),
         Some("stream") => {
             let read_only = args.iter().any(|a| a == "--read-only");
@@ -381,6 +477,8 @@ async fn main() {
             eprintln!("  idexal-core stream [--read-only] \"<task>\"   single agent");
             eprintln!("  idexal-core agent \"<task>\"                  multi-agent (plan→execute→review)");
             eprintln!("  idexal-core providers");
+            eprintln!("  idexal-core config                effective config as JSON");
+            eprintln!("  idexal-core test <provider-id>    live connectivity round-trip");
             eprintln!("  idexal-core memory stats|recall \"<query>\"|add <kind> \"<content>\"");
             eprintln!("  idexal-core --version");
             process::exit(2);

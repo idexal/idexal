@@ -1,25 +1,11 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import { spawn } from 'node:child_process';
 import * as path from 'node:path';
-import * as fs from 'node:fs';
 import * as readline from 'node:readline';
 import { registerWorkspaceHandlers, getWorkspaceRoot } from './workspace';
 import { registerTerminalHandlers, disposeTerminals } from './terminal';
-
-function resolveCoreBinary(): string {
-	const exeName = process.platform === 'win32' ? 'idexal-core.exe' : 'idexal-core';
-	// Release first: an installed build must never lose to a stale debug one.
-	const candidates = [
-		path.join(__dirname, '..', '..', '..', 'core', 'target', 'release', exeName),
-		path.join(__dirname, '..', '..', '..', 'core', 'target', 'debug', exeName),
-	];
-	for (const candidate of candidates) {
-		if (fs.existsSync(candidate)) return candidate;
-	}
-	throw new Error(
-		`Could not find the idexal-core binary. Build it first: cd core && cargo build (looked in: ${candidates.join(', ')})`,
-	);
-}
+import { registerSettingsHandlers } from './settings';
+import { resolveCoreBinary } from './core';
 
 function createWindow(): void {
 	// Fit the work area rather than assuming a large display: a fixed
@@ -90,6 +76,7 @@ ipcMain.on(
 app.whenReady().then(() => {
 	registerWorkspaceHandlers();
 	registerTerminalHandlers();
+	registerSettingsHandlers();
 	createWindow();
 });
 
