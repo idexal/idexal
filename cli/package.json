@@ -1,0 +1,13 @@
+{
+  "name": "@idexal/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Idexal CLI — run Idexal agents from any terminal.",
+  "bin": {
+    "idexal": "./bin/idexal.js"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  }
+}

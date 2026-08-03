@@ -38,10 +38,19 @@ pub async fn run(
     system_prompt: &str,
     task: &str,
     tool_defs: &[ToolDefinition],
+    memory: Option<&crate::memory::Memory>,
     events: &mut AgentEvents<'_>,
 ) -> Result<AgentOutcome, Vec<String>> {
+    // Long-term memory is injected into the system prompt, not the user
+    // turn, so recalled context can't be mistaken for the user's request.
+    let project = cwd.file_name().map(|n| n.to_string_lossy().to_string());
+    let system = match memory.and_then(|m| m.context_block(task, project.as_deref(), 5)) {
+        Some(block) => format!("{system_prompt}\n\n{block}"),
+        None => system_prompt.to_string(),
+    };
+
     let mut messages = vec![
-        Message { role: Role::System, content: system_prompt.into(), tool_calls: vec![], tool_call_id: None },
+        Message { role: Role::System, content: system, tool_calls: vec![], tool_call_id: None },
         Message::user(task),
     ];
 
