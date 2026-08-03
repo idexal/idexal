@@ -378,7 +378,11 @@ function closeSettings(): void {
 	page.classList.add('hidden');
 }
 
-$('settings-open').addEventListener('click', openSettings);
+// The sidebar owns the entry point (⚙ next to the user), so expose the
+// opener for index.ts rather than binding a button that lives in a
+// different module's markup.
+window.__idexalOpenSettings = openSettings;
+$('nav-settings').addEventListener('click', openSettings);
 $('settings-close').addEventListener('click', closeSettings);
 $('settings-cancel').addEventListener('click', closeSettings);
 $('settings-save').addEventListener('click', () => void saveSettings());
@@ -386,9 +390,26 @@ $('provider-add').addEventListener('click', () => {
 	providers.push(emptyProvider());
 	render();
 });
-page.addEventListener('click', (e) => {
-	if (e.target === page) closeSettings();
-});
+
+// Left-nav sections (Providers / Agent / Appearance / Memory / About).
+const SECTION_TITLES: Record<string, string> = {
+	providers: 'المزوّدون والنماذج',
+	agent: 'سلوك الوكيل',
+	appearance: 'المظهر',
+	memory: 'الذاكرة',
+	about: 'عن Idexal',
+};
+for (const item of document.querySelectorAll<HTMLElement>('.set-nav-item')) {
+	item.addEventListener('click', () => {
+		const which = item.dataset.setnav ?? 'providers';
+		for (const b of document.querySelectorAll<HTMLElement>('.set-nav-item')) b.classList.toggle('active', b === item);
+		for (const s of document.querySelectorAll<HTMLElement>('.set-sec')) {
+			s.classList.toggle('active', s.dataset.setsec === which);
+		}
+		$('settings-title').textContent = SECTION_TITLES[which] ?? which;
+	});
+}
+
 window.addEventListener('keydown', (e) => {
 	if (e.key === 'Escape' && !page.classList.contains('hidden')) closeSettings();
 });

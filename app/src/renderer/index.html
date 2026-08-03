@@ -7,157 +7,252 @@
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app">
-    <div id="titlebar">
-      <span class="brand">◆ Idexal</span>
-      <span id="workspace-name" class="sub">لا مجلد مفتوح</span>
-      <span class="spacer"></span>
-      <button id="open-folder" class="tb-btn">فتح مجلد…</button>
-      <button id="settings-open" class="tb-btn" title="الإعدادات">⚙ الإعدادات</button>
+<div id="app">
+
+  <!-- ═══════════ Sidebar (ZCode-style task rail) ═══════════ -->
+  <aside id="sidebar">
+    <div class="sb-top">
+      <button class="sb-logo" id="sb-logo" title="Idexal"><span data-icon="logo" data-icon-size="15"></span></button>
     </div>
 
-    <div id="main">
-      <!-- Activity rail -->
-      <div id="rail">
-        <button class="rail-btn active" data-panel="files" title="الملفات">📁</button>
-        <button class="rail-btn" data-panel="git" title="Git">⎇</button>
-        <button class="rail-btn" data-panel="agents" title="الوكلاء">◆</button>
-      </div>
+    <nav class="sb-nav">
+      <button class="sb-item" id="nav-new-task">
+        <span class="ic" data-icon="plus"></span><span class="lb">مهمة جديدة</span><kbd>Ctrl+N</kbd>
+      </button>
+      <button class="sb-item" id="nav-search">
+        <span class="ic" data-icon="search"></span><span class="lb">بحث</span><kbd>Ctrl+K</kbd>
+      </button>
+      <button class="sb-item" id="nav-automations">
+        <span class="ic" data-icon="automation"></span><span class="lb">الأتمتة</span>
+      </button>
+      <button class="sb-item" id="nav-skills">
+        <span class="ic" data-icon="sparkle"></span><span class="lb">المهارات</span>
+      </button>
+    </nav>
 
-      <!-- Side panel -->
-      <div id="side">
-        <div class="side-panel active" data-panel="files">
-          <div class="side-head">المستكشف</div>
-          <div id="file-tree" class="side-body"><div class="empty">افتح مجلداً للبدء</div></div>
-        </div>
-        <div class="side-panel" data-panel="git">
-          <div class="side-head">Git <button id="git-refresh" class="mini-btn">تحديث</button></div>
-          <div id="git-panel" class="side-body"><div class="empty">لا مستودع</div></div>
-        </div>
-        <div class="side-panel" data-panel="agents">
-          <div class="side-head">مهام الوكلاء</div>
-          <div id="agent-tasks" class="side-body"><div class="empty">لا مهام بعد</div></div>
+    <div class="sb-tabs">
+      <button class="sb-tab active" data-sbtab="project"><span data-icon="folder" data-icon-size="13"></span> المشاريع</button>
+      <button class="sb-tab" data-sbtab="group"><span data-icon="hash" data-icon-size="13"></span> المجموعات</button>
+      <span class="spacer"></span>
+      <button class="sb-icon" id="sb-open-folder" title="فتح مجلد"><span data-icon="plus" data-icon-size="15"></span></button>
+    </div>
+
+    <div class="sb-scroll">
+      <div class="sb-section">
+        <div class="sb-section-head">المشاريع</div>
+        <div id="project-list" class="sb-list">
+          <div class="sb-empty">لا مشاريع — افتح مجلداً</div>
         </div>
       </div>
+      <div class="sb-section">
+        <div class="sb-section-head">المهام</div>
+        <div id="task-list" class="sb-list">
+          <div class="sb-empty">لا مهام بعد</div>
+        </div>
+      </div>
+    </div>
 
-      <!-- Center: editor + bottom dock -->
-      <div id="center">
-        <div id="tabs"></div>
-        <div id="editor-wrap">
-          <div id="monaco-container"></div>
-          <div id="preview-wrap" class="hidden">
-            <div id="preview-bar">
-              <input id="preview-url" type="text" value="http://localhost:3000" dir="ltr" />
-              <button id="preview-go" class="mini-btn">انتقال</button>
-              <button id="preview-reload" class="mini-btn">↻</button>
-              <span class="spacer"></span>
-              <button id="preview-close" class="mini-btn">إغلاق</button>
-            </div>
-            <webview id="preview-view" src="about:blank"></webview>
+    <div class="sb-foot">
+      <div class="sb-user">
+        <span class="sb-avatar">Z</span>
+        <span class="sb-username" id="sb-username">Idexal</span>
+      </div>
+      <button class="sb-icon" id="nav-settings" title="الإعدادات"><span data-icon="gear" data-icon-size="16"></span></button>
+    </div>
+  </aside>
+
+  <!-- ═══════════ Main ═══════════ -->
+  <main id="main">
+
+    <!-- ── Home: greeting + composer ── -->
+    <section id="view-home" class="view active">
+      <div class="home-inner">
+        <div class="home-mark" data-icon="logo" data-icon-size="40"></div>
+        <h1 class="home-greeting" id="home-greeting">مساء الخير، عمل جيد اليوم</h1>
+
+        <div class="composer">
+          <div class="composer-head">
+            <button class="chip" id="chip-workspace"><span class="ic" data-icon="folder" data-icon-size="13"></span><span id="chip-workspace-label">اختر مجلداً</span><span class="cv" data-icon="chevron" data-icon-size="12"></span></button>
+            <button class="chip" id="chip-branch"><span class="ic" data-icon="branch" data-icon-size="13"></span><span id="chip-branch-label">—</span></button>
           </div>
-        </div>
-        <div id="dock">
-          <div id="dock-tabs">
-            <button class="dock-tab active" data-dock="terminal">الطرفية</button>
-            <button class="dock-tab" data-dock="diff">الفروق</button>
+          <textarea id="composer-input" rows="3"
+            placeholder="اسأل Idexal أي شيء — @ للملفات، / للأوامر، # للمهام السابقة"></textarea>
+          <div class="composer-foot">
+            <button class="chip sm" id="chip-attach" title="إرفاق"><span data-icon="plus" data-icon-size="13"></span></button>
+            <button class="chip sm" id="chip-access"><span class="dot warn"></span><span id="chip-access-label">صلاحية كاملة</span><span class="cv" data-icon="chevron" data-icon-size="12"></span></button>
             <span class="spacer"></span>
-            <button id="toggle-preview" class="mini-btn">معاينة حية</button>
-            <button id="dock-toggle" class="mini-btn">▾</button>
+            <button class="chip sm" id="chip-model"><span id="chip-model-label">اختر نموذجاً</span><span class="cv" data-icon="chevron" data-icon-size="12"></span></button>
+            <button class="send" id="composer-send" title="إرسال"><span data-icon="send" data-icon-size="15"></span></button>
           </div>
-          <div id="dock-body">
-            <div class="dock-panel active" data-dock="terminal">
-              <div id="terminal-output"></div>
-              <div id="terminal-input-row">
-                <span class="prompt">❯</span>
-                <input id="terminal-input" type="text" dir="ltr" autocomplete="off" spellcheck="false" />
+        </div>
+
+        <div class="home-cards">
+          <button class="hcard" data-preset="git-summary">
+            <div class="hc-t"><span data-icon="branch" data-icon-size="14"></span> ملخّص Git</div>
+            <div class="hc-d">ماذا تغيّر في المستودع، وما الذي يحتاج انتباهاً.</div>
+          </button>
+          <button class="hcard" data-preset="review">
+            <div class="hc-t"><span data-icon="check" data-icon-size="14"></span> مراجعة الكود</div>
+            <div class="hc-d">فحص للقراءة فقط: مشاكل حقيقية مع file:line وإصلاحات.</div>
+          </button>
+          <button class="hcard" data-preset="custom">
+            <div class="hc-t"><span data-icon="sparkle" data-icon-size="14"></span> مخصّص</div>
+            <div class="hc-d">تخطَّ القوالب وصِف ما تريده مباشرةً.</div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Task: conversation + plan ── -->
+    <section id="view-task" class="view">
+      <div class="task-head">
+        <button class="chip sm" id="task-back"><span data-icon="back" data-icon-size="13"></span> الرئيسية</button>
+        <span class="task-title" id="task-title">مهمة</span>
+        <span class="spacer"></span>
+        <span class="pill" id="task-state">idle</span>
+        <button class="chip sm" id="task-open-workspace">مساحة العمل</button>
+      </div>
+      <div class="task-body">
+        <div id="task-log" class="task-log"></div>
+        <aside id="task-plan" class="task-plan">
+          <div class="tp-head">خطة الوكلاء</div>
+          <div id="task-plan-list" class="tp-list"><div class="sb-empty">لا خطة — وضع وكيل واحد</div></div>
+        </aside>
+      </div>
+      <div class="task-composer">
+        <textarea id="task-input" rows="2" placeholder="تابع المحادثة…"></textarea>
+        <button class="send" id="task-send"><span data-icon="send" data-icon-size="15"></span></button>
+      </div>
+    </section>
+
+    <!-- ── Workspace: editor + terminal + git ── -->
+    <section id="view-workspace" class="view">
+      <div class="ws-head">
+        <button class="chip sm" id="ws-back"><span data-icon="back" data-icon-size="13"></span> رجوع</button>
+        <span class="spacer"></span>
+        <button class="chip sm" id="ws-toggle-preview"><span data-icon="monitor" data-icon-size="13"></span> معاينة حية</button>
+      </div>
+      <div class="ws-body">
+        <div class="ws-side">
+          <div class="ws-side-tabs">
+            <button class="ws-st active" data-wsp="files">الملفات</button>
+            <button class="ws-st" data-wsp="git">Git</button>
+          </div>
+          <div class="ws-panel active" data-wsp="files"><div id="file-tree" class="sb-list"><div class="sb-empty">افتح مجلداً</div></div></div>
+          <div class="ws-panel" data-wsp="git">
+            <div id="git-panel" class="sb-list"><div class="sb-empty">لا مستودع</div></div>
+          </div>
+        </div>
+        <div class="ws-center">
+          <div id="tabs" class="ws-tabs"></div>
+          <div class="ws-editor-wrap">
+            <div id="monaco-container"></div>
+            <div id="preview-wrap" class="hidden">
+              <div id="preview-bar">
+                <input id="preview-url" type="text" value="http://localhost:3000" dir="ltr" />
+                <button id="preview-go" class="mini-btn">انتقال</button>
+                <button id="preview-reload" class="mini-btn"><span data-icon="refresh" data-icon-size="13"></span></button>
+                <span class="spacer"></span>
+                <button id="preview-close" class="mini-btn"><span data-icon="close" data-icon-size="13"></span></button>
               </div>
+              <webview id="preview-view" src="about:blank"></webview>
             </div>
-            <div class="dock-panel" data-dock="diff">
-              <pre id="diff-output" dir="ltr"></pre>
+          </div>
+          <div id="dock">
+            <div id="dock-tabs">
+              <button class="dock-tab active" data-dock="terminal"><span data-icon="terminal" data-icon-size="13"></span> الطرفية</button>
+              <button class="dock-tab" data-dock="diff"><span data-icon="diff" data-icon-size="13"></span> الفروق</button>
+              <span class="spacer"></span>
+              <button id="dock-toggle" class="mini-btn">▾</button>
+            </div>
+            <div id="dock-body">
+              <div class="dock-panel active" data-dock="terminal">
+                <div id="terminal-output"></div>
+                <div id="terminal-input-row">
+                  <span class="prompt">❯</span>
+                  <input id="terminal-input" type="text" dir="ltr" autocomplete="off" spellcheck="false" />
+                </div>
+              </div>
+              <div class="dock-panel" data-dock="diff"><pre id="diff-output" dir="ltr"></pre></div>
             </div>
           </div>
         </div>
       </div>
+    </section>
+  </main>
 
-      <!-- Agent panel -->
-      <div id="agent-pane">
-        <div id="agent-topbar">
-          <span class="badge">idexal-core</span>
-          <span id="agent-mode-label" class="branch">وكيل واحد</span>
-          <span class="spacer"></span>
-          <label class="switch" title="تشغيل تعدد الوكلاء: مخطط ← منفذون ← مراجع">
-            <input id="multi-agent" type="checkbox" />
-            <span>تعدد الوكلاء</span>
-          </label>
-        </div>
-        <div id="agent-log"></div>
-        <div id="agent-statusbar">
-          <span id="git-branch">⎇ —</span>
-          <span id="agent-diffstat" class="diffstat"></span>
-          <span class="spacer"></span>
-          <span id="agent-state" class="state">idle</span>
-        </div>
-        <div id="agent-input-wrap">
-          <div id="agent-input-row">
-            <input id="agent-input" type="text" placeholder="صف ما تريد من الوكيل…" dir="rtl" />
-            <button id="agent-send">إرسال</button>
-          </div>
-          <div id="agent-input-foot">
-            <span class="perm">local · no account</span>
-            <span class="spacer"></span>
-            <span class="modelname">Idexal Core</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Settings page (overlay) -->
+  <!-- ═══════════ Settings (full page, ZCode-style left nav) ═══════════ -->
   <div id="settings-page" class="hidden">
-    <div class="settings-head">
-      <span class="settings-title">⚙ الإعدادات</span>
-      <span id="settings-path" class="settings-path"></span>
-      <span class="spacer"></span>
-      <button id="settings-close" class="mini-btn" title="إغلاق">×</button>
-    </div>
-    <div class="settings-body">
-      <div class="settings-section">
-        <div class="settings-section-head">
-          <span>المزوّدون <em>— الترتيب = أولوية التبديل التلقائي</em></span>
-          <button id="provider-add" class="mini-btn">＋ إضافة مزود</button>
-        </div>
-        <div id="providers-list" class="settings-providers"></div>
+    <aside class="set-nav">
+      <button class="set-back" id="settings-close"><span data-icon="back" data-icon-size="13"></span> رجوع لمساحة العمل</button>
+      <div class="set-group">الأساسيات</div>
+      <button class="set-nav-item active" data-setnav="providers">المزوّدون والنماذج</button>
+      <button class="set-nav-item" data-setnav="agent">سلوك الوكيل</button>
+      <button class="set-nav-item" data-setnav="appearance">المظهر</button>
+      <div class="set-group">البيانات</div>
+      <button class="set-nav-item" data-setnav="memory">الذاكرة</button>
+      <button class="set-nav-item" data-setnav="about">عن Idexal</button>
+    </aside>
+    <div class="set-main">
+      <div class="set-head">
+        <span class="set-title" id="settings-title">المزوّدون والنماذج</span>
+        <span id="settings-path" class="settings-path"></span>
       </div>
-      <div class="settings-section">
-        <div class="settings-section-head"><span>سلوك الوكيل</span></div>
-        <div class="settings-agent-grid">
-          <label>أقصى جولات أدوات
-            <input id="agent-rounds" type="number" min="1" max="100" dir="ltr" />
-          </label>
-          <label>أقصى وكلاء متوازون
-            <input id="agent-parallel" type="number" min="1" max="16" dir="ltr" />
-          </label>
-          <label class="check"><input id="agent-reviewer" type="checkbox" /> المراجع التلقائي</label>
-        </div>
+      <div class="set-body">
+        <section class="set-sec active" data-setsec="providers">
+          <div class="settings-section-head">
+            <span>المزوّدون <em>— الترتيب = أولوية التبديل التلقائي</em></span>
+            <button id="provider-add" class="mini-btn"><span data-icon="plus" data-icon-size="13"></span> إضافة مزود</button>
+          </div>
+          <div id="providers-list" class="settings-providers"></div>
+        </section>
+        <section class="set-sec" data-setsec="agent">
+          <div class="settings-section-head"><span>سلوك الوكيل</span></div>
+          <div class="settings-agent-grid">
+            <label>أقصى جولات أدوات
+              <input id="agent-rounds" type="number" min="1" max="100" dir="ltr" />
+            </label>
+            <label>أقصى وكلاء متوازون
+              <input id="agent-parallel" type="number" min="1" max="16" dir="ltr" />
+            </label>
+            <label class="check"><input id="agent-reviewer" type="checkbox" /> المراجع التلقائي</label>
+          </div>
+        </section>
+        <section class="set-sec" data-setsec="appearance">
+          <div class="settings-section-head"><span>المظهر</span></div>
+          <p class="set-note">السمة الداكنة هي الافتراضية حالياً. سمات إضافية قادمة.</p>
+        </section>
+        <section class="set-sec" data-setsec="memory">
+          <div class="settings-section-head"><span>الذاكرة طويلة الأمد</span></div>
+          <p class="set-note">تُخزَّن محلياً في <code dir="ltr">~/.idexal/memory.db</code> — حقائق وقرارات وتفضيلات وجلسات.</p>
+        </section>
+        <section class="set-sec" data-setsec="about">
+          <div class="settings-section-head"><span>عن Idexal</span></div>
+          <p class="set-note">Idexal — Agentic IDE. نواة Rust، غلاف Electron، بلا حساب وبلا قيود.</p>
+        </section>
       </div>
-    </div>
-    <div class="settings-foot">
-      <span id="settings-status" class="settings-status"></span>
-      <span class="spacer"></span>
-      <button id="settings-cancel" class="mini-btn">إلغاء</button>
-      <button id="settings-save" class="settings-save">حفظ التغييرات</button>
+      <div class="set-foot">
+        <span id="settings-status" class="settings-status"></span>
+        <span class="spacer"></span>
+        <button id="settings-cancel" class="mini-btn">إلغاء</button>
+        <button id="settings-save" class="settings-save">حفظ التغييرات</button>
+      </div>
     </div>
   </div>
 
-  <script src="vs/loader.js"></script>
-  <script>
-    require.config({ paths: { vs: 'vs' } });
-    require(['vs/editor/editor.main'], function () {
-      window.__monaco = monaco;
-      window.dispatchEvent(new Event('monaco-ready'));
-    });
-  </script>
-  <script src="index.js"></script>
-  <script src="settings.js"></script>
+  <!-- Dropdown menu (shared, positioned at runtime) -->
+  <div id="menu" class="menu hidden"></div>
+</div>
+
+<script src="vs/loader.js"></script>
+<script>
+  require.config({ paths: { vs: 'vs' } });
+  require(['vs/editor/editor.main'], function () {
+    window.__monaco = monaco;
+    window.dispatchEvent(new Event('monaco-ready'));
+  });
+</script>
+<script src="index.js"></script>
+<script src="settings.js"></script>
 </body>
 </html>
