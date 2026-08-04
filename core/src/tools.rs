@@ -257,6 +257,10 @@ pub fn read_file(cwd: &Path, rel: &str) -> ToolResult {
 
 pub fn write_file(cwd: &Path, rel: &str, content: &str) -> ToolResult {
     let Some(abs) = resolve_inside_root(cwd, rel) else { return escaped(rel) };
+    // Best-effort: a workspace we cannot snapshot into (read-only, full
+    // disk) must not block the edit — that would make the agent useless
+    // for the sake of an undo the user may never invoke.
+    let _ = crate::checkpoint::take(cwd, rel);
     if let Some(parent) = abs.parent() {
         if let Err(e) = fs::create_dir_all(parent) {
             return ToolResult { ok: false, output: format!("write_file failed (mkdir): {e}") };
@@ -416,6 +420,11 @@ pub fn edit_file(cwd: &Path, rel: &str, old: &str, new: &str) -> ToolResult {
             ),
         };
     }
+
+    // Snapshot only once the edit is known to be valid: refusing an
+    // ambiguous or stale edit leaves the file untouched, so a snapshot
+    // there would be noise in the undo history.
+    let _ = crate::checkpoint::take(cwd, rel);
 
     let updated = content.replacen(old, new, 1);
     match fs::write(&abs, &updated) {

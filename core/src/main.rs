@@ -17,6 +17,7 @@
 //   idexal-core --version
 
 mod agent;
+mod checkpoint;
 mod config;
 mod memory;
 mod orchestrator;
@@ -488,6 +489,45 @@ async fn main() {
             println!("idexal-core {}", env!("CARGO_PKG_VERSION"));
         }
         Some("providers") => list_providers(),
+        // Undo for agent edits, independent of git: it works in a dirty
+        // tree and in directories that are not repositories at all.
+        Some("undo") => {
+            let cwd = env::current_dir().unwrap_or_else(|_| ".".into());
+            match args.get(2).map(String::as_str) {
+                Some("list") => {
+                    let out: Vec<serde_json::Value> = checkpoint::list(&cwd)
+                        .into_iter()
+                        .map(|s| {
+                            serde_json::json!({
+                                "path": s.path,
+                                "takenAt": s.taken_at as u64,
+                                "created": !s.existed,
+                            })
+                        })
+                        .collect();
+                    println!("{}", serde_json::to_string_pretty(&out).unwrap());
+                }
+                Some("clear") => match checkpoint::clear(&cwd) {
+                    Ok(n) => println!("{}", serde_json::json!({ "cleared": n })),
+                    Err(e) => {
+                        eprintln!("{e}");
+                        process::exit(1);
+                    }
+                },
+                // `undo` with no argument reverts everything; `undo <path>`
+                // reverts one file.
+                other => {
+                    let target = other.filter(|s| !s.is_empty());
+                    match checkpoint::restore(&cwd, target) {
+                        Ok(paths) => println!("{}", serde_json::json!({ "restored": paths })),
+                        Err(e) => {
+                            eprintln!("{e}");
+                            process::exit(1);
+                        }
+                    }
+                }
+            }
+        }
         // Run one tool directly — how you verify tool behaviour without
         // burning a model call, and what the CLI's `idexal grep` uses.
         Some("tool") => {
