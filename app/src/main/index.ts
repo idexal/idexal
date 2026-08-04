@@ -56,15 +56,16 @@ ipcMain.on(
 		// Agents act on files, so they must run in the folder the user
 		// actually opened — not wherever Electron happened to start.
 		const cwd = getWorkspaceRoot() ?? process.cwd();
-		// Sessions only apply to single-agent turns: the orchestrator's
-		// planner/executors/reviewer are separate agents by design, so
-		// replaying one conversation across them would be meaningless.
-		const coreArgs =
-			mode === 'agent'
-				? ['agent', task]
-				: sessionId
-					? ['stream', '--session', sessionId, task]
-					: ['stream', task];
+		// Conversation *history* only applies to single-agent turns: the
+		// orchestrator's planner/executors/reviewer are separate agents by
+		// design, so replaying one transcript across them would be
+		// meaningless — and `agent` does not load it. The id is still worth
+		// passing, because it is also what groups the run's spend in the
+		// usage ledger; without it a multi-agent run is scattered across
+		// every other ungrouped call.
+		const coreArgs = sessionId
+			? [mode === 'agent' ? 'agent' : 'stream', '--session', sessionId, task]
+			: [mode === 'agent' ? 'agent' : 'stream', task];
 		const child = spawn(corePath, coreArgs, {
 			cwd,
 			stdio: ['ignore', 'pipe', 'pipe'],

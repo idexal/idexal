@@ -412,6 +412,44 @@ mod tests {
     }
 
     #[test]
+    fn parallel_writers_do_not_lose_records() {
+        // The multi-agent path runs executors on separate tasks, and a
+        // rusqlite Connection cannot be shared, so each opens its own handle
+        // onto the same file. SQLite serializes writers with a lock, and a
+        // connection that finds the lock held would give up immediately if
+        // no busy timeout were set — rusqlite sets one (5s) on every open,
+        // so the contention resolves by waiting. This test pins that down,
+        // because losing it would be silent: record() drops its error on
+        // purpose so the ledger can never fail a turn, and a parallel run
+        // would simply under-report its own spend.
+        let path = temp_db("parallel");
+        let _ = std::fs::remove_file(&path);
+        const WRITERS: usize = 6;
+        const EACH: usize = 25;
+
+        let handles: Vec<_> = (0..WRITERS)
+            .map(|w| {
+                let path = path.clone();
+                std::thread::spawn(move || {
+                    let u = Usage::open(Some(path)).unwrap();
+                    for _ in 0..EACH {
+                        u.record(&call(&format!("p{w}"), "gpt-4o-mini", 10, 5)).unwrap();
+                    }
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().expect("writer thread panicked");
+        }
+
+        let u = Usage::open(Some(path.clone())).unwrap();
+        assert_eq!(u.totals().unwrap().calls, (WRITERS * EACH) as i64);
+
+        drop(u);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn totals_of_an_empty_ledger_are_zero_not_an_error() {
         // AVG() over no rows is NULL in SQLite; without COALESCE this would
         // fail to decode and the usage page would show an error instead of

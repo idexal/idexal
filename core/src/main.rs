@@ -233,7 +233,7 @@ async fn stream_task(task: &str, read_only: bool, session_id: Option<&str>) {
 }
 
 /// Multi-agent run: planner → parallel executors → reviewer.
-async fn orchestrate_task(task: &str) {
+async fn orchestrate_task(task: &str, session_id: Option<String>) {
     let cfg = config::load();
     let registry = Registry::from_config(&cfg);
     if registry.is_empty() {
@@ -248,6 +248,16 @@ async fn orchestrate_task(task: &str) {
     // Resolve the memory path once and hand it down: each parallel agent
     // opens its own SQLite handle (a Connection can't be shared).
     let memory_path = config::home_dir().map(|h| h.join(".idexal").join("memory.db"));
+    // Without an explicit session, the run still gets one id of its own so
+    // its calls stay grouped; a NULL task_id would scatter them among every
+    // other ungrouped call in the ledger.
+    let task_id = Some(session_id.unwrap_or_else(|| {
+        let ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
+        format!("run-{ms}")
+    }));
 
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<orchestrator::OrchestratorEvent>();
 
@@ -277,7 +287,7 @@ async fn orchestrate_task(task: &str) {
         }
     });
 
-    let result = orchestrator::run(&cfg, cwd.clone(), task, memory_path.clone(), tx).await;
+    let result = orchestrator::run(&cfg, cwd.clone(), task, memory_path.clone(), task_id, tx).await;
     // Dropping the sender inside `run` ends the channel; wait for the pump
     // so no event is lost between the last send and process exit.
     let _ = pump.await;
@@ -755,17 +765,30 @@ async fn main() {
             }
         }
         Some("agent") => {
+            // Same `--session <id>` as `stream`, and for the same reason:
+            // the id groups every call of the run — planner, each executor,
+            // reviewer — into one line of spend.
+            let session_id = args
+                .iter()
+                .position(|a| a == "--session")
+                .and_then(|i| args.get(i + 1))
+                .cloned();
             let task = args
                 .iter()
+                .enumerate()
                 .skip(2)
-                .find(|a| !a.starts_with("--"))
-                .cloned()
+                .find(|(i, a)| {
+                    !a.starts_with("--") && args.get(i.wrapping_sub(1)).map(String::as_str) != Some("--session")
+                })
+                .map(|(_, a)| a.clone())
                 .unwrap_or_default();
             if task.is_empty() {
-                emit(&Event::Error { error: "Usage: idexal-core agent \"<task>\"".into() });
+                emit(&Event::Error {
+                    error: "Usage: idexal-core agent [--session <id>] \"<task>\"".into(),
+                });
                 process::exit(1);
             }
-            orchestrate_task(&task).await;
+            orchestrate_task(&task, session_id).await;
         }
         _ => {
             eprintln!("Usage:");
