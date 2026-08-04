@@ -19,7 +19,10 @@ const builds = [
 		outfile: 'dist/main/index.js',
 		platform: 'node',
 		format: 'cjs',
-		external: ['electron'],
+		// node-pty must stay external: it loads a prebuilt .node and forks
+		// helper scripts by path relative to its own directory, neither of
+		// which survives being inlined into the bundle.
+		external: ['electron', '@lydell/node-pty'],
 	}),
 	esbuild.context({
 		...common,

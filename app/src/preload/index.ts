@@ -35,14 +35,21 @@ contextBridge.exposeInMainWorld('idexal', {
 	},
 
 	terminal: {
-		start(id: string, onData: (data: string) => void, onExit: (code: number | null) => void) {
+		start(
+			id: string,
+			onData: (data: string) => void,
+			onExit: (code: number | null) => void,
+			size?: { cols: number; rows: number },
+		) {
 			const dataChannel = `terminal:data:${id}`;
 			const exitChannel = `terminal:exit:${id}`;
 			const dataListener = (_: unknown, data: string) => onData(data);
 			const exitListener = (_: unknown, code: number | null) => onExit(code);
 			ipcRenderer.on(dataChannel, dataListener);
 			ipcRenderer.on(exitChannel, exitListener);
-			void ipcRenderer.invoke('terminal:start', id);
+			// The PTY is born with a size; getting it right up front spares
+			// the shell from drawing its first prompt at the wrong width.
+			void ipcRenderer.invoke('terminal:start', id, size?.cols, size?.rows);
 			return () => {
 				ipcRenderer.removeListener(dataChannel, dataListener);
 				ipcRenderer.removeListener(exitChannel, exitListener);
@@ -50,6 +57,7 @@ contextBridge.exposeInMainWorld('idexal', {
 			};
 		},
 		write: (id: string, data: string) => ipcRenderer.invoke('terminal:write', id, data),
+		resize: (id: string, cols: number, rows: number) => ipcRenderer.invoke('terminal:resize', id, cols, rows),
 	},
 
 	sessions: {
