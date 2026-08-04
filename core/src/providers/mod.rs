@@ -13,6 +13,7 @@ pub mod types;
 use crate::config::{Config, ProviderConfig, ProviderKind};
 use crate::usage::{CallRecord, Usage};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use types::{Delta, Message, ToolDefinition, Turn};
 
@@ -37,10 +38,29 @@ pub(crate) fn truncate(s: &str, max: usize) -> String {
 /// Per-provider failure tracking. A provider that fails goes into cooldown
 /// with an exponentially growing window (capped), so a dead endpoint stops
 /// costing a timeout on every single turn.
-#[derive(Default)]
-struct Health {
+/// Public only because it appears in `SharedHealth`; the fields stay
+/// private, so callers can pass the map around but not edit a cooldown.
+#[derive(Default, Clone, Copy)]
+pub struct Health {
     consecutive_failures: u32,
     cooling_until: Option<Instant>,
+}
+
+/// Health shared between the registries of one multi-agent run.
+///
+/// Each agent needs its own `Registry` (a rusqlite handle cannot cross into
+/// a spawned executor), but health is knowledge about the outside world, not
+/// per-agent state. Keeping it private meant a dead provider was rediscovered
+/// by every agent: one measured run against a real gateway attempted a
+/// broken provider **seven times**, once per agent, each paying the full
+/// round trip.
+///
+/// A plain `std::sync::Mutex` is right here: every critical section is a map
+/// lookup, and it is never held across an await.
+pub type SharedHealth = Arc<Mutex<HashMap<String, Health>>>;
+
+pub fn new_shared_health() -> SharedHealth {
+    Arc::new(Mutex::new(HashMap::new()))
 }
 
 const BASE_COOLDOWN: Duration = Duration::from_secs(15);
@@ -71,7 +91,7 @@ impl Pin {
 
 pub struct Registry {
     providers: Vec<ProviderConfig>,
-    health: HashMap<String, Health>,
+    health: SharedHealth,
     /// Optional because the ledger is a product concern, not an engine one:
     /// tests and one-off runs build a registry without touching the user's
     /// database.
@@ -88,7 +108,7 @@ pub struct TurnOutcome {
 impl Registry {
     pub fn from_config(cfg: &Config) -> Self {
         let providers = cfg.providers.iter().filter(|p| p.usable()).cloned().collect();
-        Self { providers, health: HashMap::new(), usage: None, task_id: None }
+        Self { providers, health: new_shared_health(), usage: None, task_id: None }
     }
 
     /// Apply a per-task pin, reducing the registry to the single chosen
@@ -164,8 +184,23 @@ impl Registry {
         self.providers.is_empty()
     }
 
+    /// Share this registry's health with another. Every agent in a
+    /// multi-agent run gets its own Registry but the same view of which
+    /// providers are currently dead.
+    pub fn with_shared_health(mut self, health: SharedHealth) -> Self {
+        self.health = health;
+        self
+    }
+
+    /// A poisoned lock means another thread panicked mid-update. The map is
+    /// still structurally sound and this is advisory data, so recovering the
+    /// guard beats taking the whole run down over a cooldown timestamp.
+    fn health(&self) -> std::sync::MutexGuard<'_, HashMap<String, Health>> {
+        self.health.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
     fn in_cooldown(&self, id: &str) -> bool {
-        self.health
+        self.health()
             .get(id)
             .and_then(|h| h.cooling_until)
             .map(|until| Instant::now() < until)
@@ -173,7 +208,8 @@ impl Registry {
     }
 
     fn record_failure(&mut self, id: &str) {
-        let entry = self.health.entry(id.to_string()).or_default();
+        let mut health = self.health();
+        let entry = health.entry(id.to_string()).or_default();
         entry.consecutive_failures += 1;
         // Exponential backoff on the cooldown window: 15s, 30s, 60s… capped
         // at 5 minutes. The reference implementation tracked the failure
@@ -184,7 +220,8 @@ impl Registry {
     }
 
     fn record_success(&mut self, id: &str) {
-        let entry = self.health.entry(id.to_string()).or_default();
+        let mut health = self.health();
+        let entry = health.entry(id.to_string()).or_default();
         entry.consecutive_failures = 0;
         entry.cooling_until = None;
     }
@@ -283,6 +320,41 @@ mod tests {
     }
 
     #[test]
+    fn a_dead_provider_discovered_by_one_agent_is_known_to_the_next() {
+        // The multi-agent path gives every agent its own Registry. Before
+        // health was shared, each one rediscovered the same dead provider:
+        // a real run attempted a broken provider seven times, once per
+        // agent, each paying a full round trip.
+        let cfg = cfg_with(&[("a", 1), ("b", 2)]);
+        let shared = new_shared_health();
+
+        let mut planner = Registry::from_config(&cfg).with_shared_health(shared.clone());
+        planner.record_failure("a");
+
+        let executor = Registry::from_config(&cfg).with_shared_health(shared.clone());
+        assert!(executor.in_cooldown("a"), "the second agent must not rediscover it");
+        assert!(!executor.in_cooldown("b"), "a healthy provider stays available");
+
+        // And recovery propagates the same way, or a provider that came back
+        // would stay shunned for the rest of the run.
+        let mut reviewer = Registry::from_config(&cfg).with_shared_health(shared.clone());
+        reviewer.record_success("a");
+        assert!(!executor.in_cooldown("a"));
+    }
+
+    #[test]
+    fn registries_that_do_not_share_health_stay_independent() {
+        // The single-agent path builds one registry per process; nothing
+        // should leak between unrelated registries just because health
+        // became shareable.
+        let cfg = cfg_with(&[("a", 1)]);
+        let mut first = Registry::from_config(&cfg);
+        first.record_failure("a");
+        let second = Registry::from_config(&cfg);
+        assert!(!second.in_cooldown("a"));
+    }
+
+    #[test]
     fn an_empty_pin_leaves_the_registry_and_its_fallback_alone() {
         let reg = Registry::from_config(&cfg_with(&[("a", 1), ("b", 2)])).pinned(&Pin::default()).unwrap();
         assert_eq!(reg.provider_ids(), vec!["a", "b"]);
@@ -362,13 +434,13 @@ mod tests {
         let cfg = cfg_with(&[("a", 1)]);
         let mut reg = Registry::from_config(&cfg);
         reg.record_failure("a");
-        let first = reg.health.get("a").unwrap().cooling_until.unwrap();
+        let first = reg.health().get("a").unwrap().clone().cooling_until.unwrap();
         reg.record_failure("a");
-        let second = reg.health.get("a").unwrap().cooling_until.unwrap();
+        let second = reg.health().get("a").unwrap().clone().cooling_until.unwrap();
         assert!(second > first, "second failure must cool down longer");
         reg.record_success("a");
-        assert!(reg.health.get("a").unwrap().cooling_until.is_none());
-        assert_eq!(reg.health.get("a").unwrap().consecutive_failures, 0);
+        assert!(reg.health().get("a").unwrap().clone().cooling_until.is_none());
+        assert_eq!(reg.health().get("a").unwrap().clone().consecutive_failures, 0);
     }
 
     #[tokio::test]

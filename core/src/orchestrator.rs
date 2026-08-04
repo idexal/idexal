@@ -8,15 +8,19 @@
 // by that value.
 //
 // Concurrency note: each parallel executor builds its own Registry from the
-// shared Config. Provider health (cooldowns) is therefore per-executor for
-// the duration of a batch rather than globally shared. Sharing one Registry
-// behind a Mutex would serialize every provider call and defeat the point;
-// the cost is that a dead provider may be tried once per parallel executor
-// within a single batch instead of once overall.
+// shared Config, because a Registry owns a SQLite handle that cannot cross
+// into a spawned task. Sharing one Registry behind a Mutex would serialize
+// every provider call and defeat the point.
+//
+// Provider *health* is shared, though — it is knowledge about the outside
+// world, not per-agent state. It used to be private to each Registry, so a
+// dead provider was rediscovered by every agent: one measured run against a
+// real gateway attempted a broken provider seven times, once per agent,
+// each paying the full round trip.
 
 use crate::config::Config;
 use crate::memory::Memory;
-use crate::providers::{Pin, Registry};
+use crate::providers::{new_shared_health, Pin, Registry, SharedHealth};
 use crate::usage::Usage;
 use crate::{agent, tools};
 use serde::{Deserialize, Serialize};
@@ -53,8 +57,13 @@ fn project_name(cwd: &std::path::Path) -> Option<String> {
 /// statistics, never a run. The **pin is not** — if it cannot be honoured
 /// the agent must not run, because running on a provider the user did not
 /// ask for is a worse outcome than not running at all.
-fn agent_registry(cfg: &Config, task_id: &Option<String>, pin: &Pin) -> Result<Registry, String> {
-    let registry = Registry::from_config(cfg).pinned(pin)?;
+fn agent_registry(
+    cfg: &Config,
+    task_id: &Option<String>,
+    pin: &Pin,
+    health: &SharedHealth,
+) -> Result<Registry, String> {
+    let registry = Registry::from_config(cfg).pinned(pin)?.with_shared_health(health.clone());
     Ok(match Usage::open(None) {
         Ok(u) => registry.with_usage(u, task_id.clone()),
         Err(e) => {
@@ -206,7 +215,10 @@ pub async fn run(
 ) -> Result<OrchestratorOutcome, Vec<String>> {
     // ---- Phase 1: plan ----
     let _ = tx.send(OrchestratorEvent::Phase("planning".into()));
-    let mut registry = agent_registry(cfg, &task_id, &pin).map_err(|e| vec![e])?;
+    // One health map for the whole run: a provider that is down is a fact
+    // about the world, not about the agent that happened to discover it.
+    let health = new_shared_health();
+    let mut registry = agent_registry(cfg, &task_id, &pin, &health).map_err(|e| vec![e])?;
     let project = project_name(&cwd);
     let plan_memory = recall_block(&memory_path, task, project.as_deref());
 
@@ -254,6 +266,7 @@ pub async fn run(
             let task_ctx = task.to_string();
             let task_id = task_id.clone();
             let pin = pin.clone();
+            let health = health.clone();
             // Recall happens here, on the parent task, so no SQLite handle
             // is alive inside the spawned (Send-required) future.
             let step_memory = recall_block(&memory_path, &step.description, project.as_deref());
@@ -264,7 +277,7 @@ pub async fn run(
                     description: step.description.clone(),
                 });
 
-                let mut registry = match agent_registry(&cfg, &task_id, &pin) {
+                let mut registry = match agent_registry(&cfg, &task_id, &pin, &health) {
                     Ok(r) => r,
                     Err(e) => {
                         let _ = tx.send(OrchestratorEvent::StepFinished {
@@ -370,7 +383,10 @@ pub async fn run(
             .join("\n\n");
         let review_task = format!("Original task: {task}\n\nWhat the executors reported:\n{transcript}");
 
-        let mut registry = agent_registry(cfg, &task_id, &pin).map_err(|e| vec![e])?;
+        // One health map for the whole run: a provider that is down is a fact
+    // about the world, not about the agent that happened to discover it.
+    let health = new_shared_health();
+    let mut registry = agent_registry(cfg, &task_id, &pin, &health).map_err(|e| vec![e])?;
         let review_memory = recall_block(&memory_path, task, project.as_deref());
         let tx_p = tx.clone();
         let tx_t = tx.clone();

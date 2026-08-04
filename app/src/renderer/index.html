@@ -2,7 +2,12 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'; img-src 'self' data:;" />
+<!-- worker-src allows blob: on its own so that script-src does not have to.
+     Monaco starts its editor worker from a blob URL built out of its own
+     bundled code; without this the worker is refused and the editor runs
+     everything on the main thread. Widening script-src instead would have
+     let any injected string become a script. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'; worker-src 'self' blob:; img-src 'self' data:;" />
 <title>Idexal</title>
 <link rel="stylesheet" href="style.css" />
 <!-- Emitted by esbuild from the CSS imported by index.ts (xterm.js). -->
