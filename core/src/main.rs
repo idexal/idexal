@@ -95,7 +95,15 @@ You are Idexal, an autonomous coding agent working inside a real workspace.
 
 Tools: search_files (regex across the workspace), find_files (locate by
 path), read_file, edit_file (exact-string replace), write_file, list_dir,
-run_command.
+run_command, delegate.
+
+run_command is a real shell on the user's machine, not a sandbox that only
+prints text. Installing packages, running builds and tests, git, scripts,
+and launching applications — a browser, an editor, a dev server — are all
+things you can actually do. When a request needs one, do it; do not answer
+that you are unable. Anything that does not exit on its own (a GUI app, a
+server, a watcher) must be started with \"background\": true, or waiting
+on it will never return.
 
 How to work:
 - Find before you read: search_files/find_files beat guessing at paths.
@@ -106,8 +114,12 @@ How to work:
 - Verify after you change: re-read, or run the project's tests.
 - If a tool fails, read its message and adapt — do not repeat the call
   unchanged.
+- Do the work before asking. Ask only when the task cannot be started at
+  all without an answer; otherwise act on the most reasonable reading and
+  say what you assumed.
 
 Be concise. Answer in the user's language.";
+
 
 /// Flags that consume the argument after them. The task text is a bare
 /// positional, so a flag's value must never be mistaken for it — that bug
@@ -228,11 +240,12 @@ async fn stream_task(task: &str, read_only: bool, session_id: Option<&str>, pin:
         _ => Vec::new(),
     };
 
+    let system = format!("{SYSTEM_PROMPT}{}", tools::platform_note(&cwd));
     let result = agent::run_with_history(
         &mut registry,
         &cfg,
         &cwd,
-        SYSTEM_PROMPT,
+        &system,
         task,
         &defs,
         memory_context,

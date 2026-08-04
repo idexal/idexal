@@ -107,6 +107,11 @@ Use search_files/find_files to locate code, read_file before changing it,
 and edit_file (exact-string replace, unique match) rather than rewriting
 whole files with write_file. Verify your change afterwards.
 
+run_command is a real shell on the user's machine: builds, tests, package
+managers, git, scripts and launching applications are all things you can
+actually do. Start anything that does not exit on its own — a GUI app, a
+server, a watcher — with \"background\": true.
+
 Other executors may be working in parallel on other files: stay inside
 your step's scope. Reply with a short summary of what you actually did.
 Answer in the user's language.";
@@ -308,11 +313,12 @@ pub async fn run(
                     "Overall task: {task_ctx}\n\nYour step ({} of {}): {}",
                     step.id, total_steps, step.description
                 );
+                let executor_system = format!("{EXECUTOR_PROMPT}{}", tools::platform_note(&cwd));
                 let outcome = agent::run(
                     &mut registry,
                     &cfg,
                     &cwd,
-                    EXECUTOR_PROMPT,
+                    &executor_system,
                     &step_task,
                     &tools::definitions(),
                     step_memory,

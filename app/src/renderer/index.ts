@@ -274,6 +274,46 @@ $('chip-access').addEventListener('click', (e) => {
 	], 'الصلاحيات');
 });
 
+// How many agents a task gets. This used to be decided silently by the
+// length of the prompt (>60 characters ⇒ multi-agent), which is arbitrary,
+// invisible, and left no way to ask for parallel work at all — a short
+// sentence can describe a job for five agents.
+type AgentMode = 'auto' | 'single' | 'multi';
+const AGENT_LABEL: Record<AgentMode, string> = {
+	auto: 'تلقائي',
+	single: 'وكيل واحد',
+	multi: 'تعدد وكلاء',
+};
+let agentMode: AgentMode = 'auto';
+
+$('chip-agents').addEventListener('click', (e) => {
+	const pick = (m: AgentMode) => () => {
+		agentMode = m;
+		$('chip-agents-label').textContent = AGENT_LABEL[m];
+		$('chip-agents').classList.toggle('pinned', m !== 'auto');
+	};
+	openMenu(e.currentTarget as HTMLElement, [
+		{
+			label: AGENT_LABEL.auto,
+			detail: 'يقرّر حسب حجم الطلب',
+			checked: agentMode === 'auto',
+			onPick: pick('auto'),
+		},
+		{
+			label: AGENT_LABEL.single,
+			detail: 'وكيل واحد ينفّذ كل شيء بالترتيب',
+			checked: agentMode === 'single',
+			onPick: pick('single'),
+		},
+		{
+			label: AGENT_LABEL.multi,
+			detail: 'مخطّط يوزّع المهمة، منفّذون يعملون بالتوازي، ثم مراجع',
+			checked: agentMode === 'multi',
+			onPick: pick('multi'),
+		},
+	], 'الوكلاء');
+});
+
 // null = no pin, i.e. the core's normal priority chain with automatic
 // fallback. A pin is deliberately the exception: picking one provider turns
 // fallback off, so the task runs where the user said or not at all.
@@ -649,9 +689,9 @@ function submitComposer(): void {
 	const text = composer.value.trim();
 	if (!text) return;
 	composer.value = '';
-	// Multi-agent is implied for anything but a trivially short ask; the
-	// orchestrator collapses to a single step when the task is simple.
-	startTask(text, text.length > 60);
+	// 'auto' keeps the old length heuristic, but only as the default the
+	// user can now override — the chip is what decides.
+	startTask(text, agentMode === 'multi' || (agentMode === 'auto' && text.length > 60));
 }
 
 $('composer-send').addEventListener('click', submitComposer);

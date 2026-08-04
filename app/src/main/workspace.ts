@@ -7,6 +7,7 @@
 
 import { dialog, ipcMain, BrowserWindow } from 'electron';
 import * as fs from 'node:fs/promises';
+import * as fsSync from 'node:fs';
 import * as path from 'node:path';
 
 /** Directories that are never worth showing in a file tree. */
@@ -20,6 +21,36 @@ let workspaceRoot: string | null = null;
 
 export function getWorkspaceRoot(): string | null {
 	return workspaceRoot;
+}
+
+/**
+ * Open a folder given on the command line or in `IDEXAL_WORKSPACE`, the way
+ * an editor opens the directory you launched it from. Without this the only
+ * way in is a native folder dialog, which means the app can never start
+ * ready to work — and, since an agent refuses to run with no workspace, it
+ * cannot be driven from a script or a shortcut either.
+ *
+ * A path that is not a real directory is ignored rather than fatal: the
+ * window still opens and the user can pick a folder.
+ */
+export function adoptStartupWorkspace(argv: string[]): string | null {
+	const candidates = [
+		process.env.IDEXAL_WORKSPACE,
+		...argv.slice(1).filter((a) => !a.startsWith('-') && a !== '.'),
+	].filter((c): c is string => typeof c === 'string' && c.length > 0);
+
+	for (const candidate of candidates) {
+		const abs = path.resolve(candidate);
+		try {
+			if (fsSync.statSync(abs).isDirectory()) {
+				workspaceRoot = abs;
+				return abs;
+			}
+		} catch {
+			// Not a path we can use; try the next candidate.
+		}
+	}
+	return null;
 }
 
 /**

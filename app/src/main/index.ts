@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import { spawn } from 'node:child_process';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
-import { registerWorkspaceHandlers, getWorkspaceRoot } from './workspace';
+import { registerWorkspaceHandlers, getWorkspaceRoot, adoptStartupWorkspace } from './workspace';
 import { registerTerminalHandlers, disposeTerminals } from './terminal';
 import { registerSettingsHandlers } from './settings';
 import { registerSessionHandlers } from './sessions';
@@ -61,8 +61,20 @@ ipcMain.on(
 		}
 
 		// Agents act on files, so they must run in the folder the user
-		// actually opened — not wherever Electron happened to start.
-		const cwd = getWorkspaceRoot() ?? process.cwd();
+		// actually opened. Falling back to process.cwd() meant that with no
+		// folder open the agent operated on Idexal's own install directory:
+		// it wrote real files there, and the user saw nothing happen in the
+		// project they had in mind. Refusing is the only safe answer — there
+		// is no sensible default for "which code should I edit".
+		const workspace = getWorkspaceRoot();
+		if (!workspace) {
+			sender.send(channel, {
+				type: 'error',
+				error: 'لم تفتح مجلداً بعد. الوكيل يعدّل ملفات حقيقية، فلا يمكنه العمل بلا مساحة عمل — افتح مجلد مشروعك أولاً (زر «اختر مجلداً»).',
+			});
+			return;
+		}
+		const cwd = workspace;
 		// Conversation *history* only applies to single-agent turns: the
 		// orchestrator's planner/executors/reviewer are separate agents by
 		// design, so replaying one transcript across them would be
@@ -106,6 +118,10 @@ ipcMain.on(
 );
 
 app.whenReady().then(() => {
+	// Before anything else: `idexal <folder>` (or IDEXAL_WORKSPACE) should
+	// start with that project already open, so the app is ready to work.
+	const startupWorkspace = adoptStartupWorkspace(process.argv);
+	if (startupWorkspace) console.log(`[idexal] workspace: ${startupWorkspace}`);
 	registerWorkspaceHandlers();
 	registerTerminalHandlers();
 	registerSettingsHandlers();

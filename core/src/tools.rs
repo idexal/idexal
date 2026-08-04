@@ -8,7 +8,9 @@
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::sync::mpsc;
+use std::time::Duration;
 use walkdir::WalkDir;
 
 const MAX_OUTPUT: usize = 20_000;
@@ -140,10 +142,20 @@ pub fn definitions() -> Vec<crate::providers::types::ToolDefinition> {
         },
         ToolDefinition {
             name: "run_command".into(),
-            description: "Run a shell command in the workspace and return its combined stdout/stderr.".into(),
+            description: "Run any shell command in the workspace and return its combined stdout/stderr. This is a real shell on the user's machine: build tools, package managers, git, scripts, and launching applications (a browser, an editor, a dev server) are all in scope — not only commands that print text.".into(),
             input_schema: json!({
                 "type": "object",
-                "properties": { "command": { "type": "string", "description": "The shell command to execute" } },
+                "properties": {
+                    "command": { "type": "string", "description": "The shell command to execute" },
+                    "background": {
+                        "type": "boolean",
+                        "description": "Start it and return at once, without waiting or capturing output. Required for anything that does not exit on its own: a GUI application, a dev server, a watcher. Waiting on those never returns."
+                    },
+                    "timeoutSeconds": {
+                        "type": "integer",
+                        "description": "How long to wait before killing it (default 120, max 900). Raise it for a long build or test suite."
+                    }
+                },
                 "required": ["command"]
             }),
         },
@@ -229,7 +241,18 @@ pub fn dispatch(cwd: &Path, name: &str, arguments: &str) -> ToolResult {
             if c.is_empty() {
                 return ToolResult { ok: false, output: "run_command requires 'command'".into() };
             }
-            run_command(cwd, &c)
+            // Models are inconsistent about JSON key casing, and a missed
+            // `background` here means a hang rather than a wrong answer.
+            let background = args
+                .get("background")
+                .or_else(|| args.get("detached"))
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let timeout = args
+                .get("timeoutSeconds")
+                .or_else(|| args.get("timeout_seconds"))
+                .and_then(|v| v.as_u64());
+            run_command(cwd, &c, background, timeout)
         }
         // Guard rail: if delegation ever reaches the synchronous dispatcher
         // it means the agent loop failed to intercept it. Fail loudly with
@@ -443,14 +466,128 @@ pub fn edit_file(cwd: &Path, rel: &str, old: &str, new: &str) -> ToolResult {
 /// Runs a shell command with the same trust model as Claude Code's Bash
 /// tool: the model decides what to run, no allow/deny list. Intentional,
 /// not an oversight — see reference/ai-core-node-reference/src/tools/tools.ts.
-pub fn run_command(cwd: &Path, command: &str) -> ToolResult {
-    let output = if cfg!(target_os = "windows") {
-        Command::new("cmd").args(["/C", command]).current_dir(cwd).output()
+/// Tell the model which machine it is actually driving.
+///
+/// Without this it guesses, and the guess is Unix: on Windows, "open a
+/// browser" produced `google-chrome &` — a command that exists on neither
+/// this shell nor this OS. It lives here, next to run_command, because it
+/// describes that tool's environment and both the single agent and the
+/// orchestrator's executors need it.
+pub fn platform_note(cwd: &Path) -> String {
+    let (os, shell_name, hint) = if cfg!(target_os = "windows") {
+        (
+            "Windows",
+            "cmd.exe",
+            "Use Windows commands: `dir`, `type`, `where`, `start \"\" <app>`, `taskkill`. \
+             Paths use backslashes. `&&` chains commands, but a trailing `&` does NOT put one \
+             in the background — pass \"background\": true instead.",
+        )
+    } else if cfg!(target_os = "macos") {
+        ("macOS", "sh", "Use POSIX commands. `open -a <app>` launches an application.")
     } else {
-        Command::new("sh").args(["-c", command]).current_dir(cwd).output()
+        ("Linux", "sh", "Use POSIX commands. `xdg-open <target>` launches the default application.")
     };
-    match output {
-        Ok(out) => {
+    format!("\n\nEnvironment: {os}, shell {shell_name}, workspace {}.\n{hint}", cwd.display())
+}
+
+/// How long a foreground command may run before it is killed. Long enough
+/// for a real build or test suite, short enough that a hung command costs
+/// minutes rather than the whole session.
+const DEFAULT_TIMEOUT_SECS: u64 = 120;
+const MAX_TIMEOUT_SECS: u64 = 900;
+
+fn shell(command: &str) -> Command {
+    let mut cmd = if cfg!(target_os = "windows") {
+        let mut c = Command::new("cmd");
+        c.args(["/C", command]);
+        c
+    } else {
+        let mut c = Command::new("sh");
+        c.args(["-c", command]);
+        c
+    };
+    cmd.stdin(Stdio::null());
+    cmd
+}
+
+/// Kill a process **and everything it started**. Killing only the shell
+/// leaves its children running and, worse, still holding the pipes this
+/// tool is waiting on.
+fn kill_tree(pid: u32) {
+    if cfg!(target_os = "windows") {
+        let _ = Command::new("taskkill").args(["/PID", &pid.to_string(), "/T", "/F"]).output();
+    } else {
+        let _ = Command::new("kill").args(["-9", &pid.to_string()]).output();
+    }
+}
+
+/// Start a command and return immediately, without waiting for it.
+///
+/// This exists because waiting is not merely slow for some commands, it
+/// never ends: `.output()` waits for the pipes to close, and a launched GUI
+/// app or dev server inherits those pipes and holds them open for as long
+/// as it lives. Launching a browser used to hang the agent until the
+/// browser was closed. Detaching the stdio is what actually fixes it —
+/// there is nothing left to inherit.
+fn run_detached(cwd: &Path, command: &str) -> ToolResult {
+    let mut child = match shell(command)
+        .current_dir(cwd)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(e) => return ToolResult { ok: false, output: format!("run_command failed to spawn: {e}") },
+    };
+    let pid = child.id();
+
+    // Spawning succeeds even when the command does not exist — the shell
+    // starts, then fails. Reporting that as "started" is worse than useless:
+    // the model goes on believing the browser opened. A short grace period
+    // catches the immediate failures without delaying anything real.
+    std::thread::sleep(Duration::from_millis(400));
+    match child.try_wait() {
+        Ok(Some(status)) if !status.success() => ToolResult {
+            ok: false,
+            output: format!(
+                "Command exited immediately with {status}: {command}\n\
+                 Output was not captured because it ran in the background. \
+                 The command may not exist on this system — check the name, \
+                 or run it in the foreground to see the error."
+            ),
+        },
+        Ok(Some(_)) => ToolResult { ok: true, output: format!("Ran and exited cleanly: {command}") },
+        _ => ToolResult {
+            ok: true,
+            output: format!(
+                "Started in the background (pid {pid}) and still running. \
+                 Output is not captured; run it in the foreground if you need to read it."
+            ),
+        },
+    }
+}
+
+pub fn run_command(cwd: &Path, command: &str, background: bool, timeout_secs: Option<u64>) -> ToolResult {
+    if background {
+        return run_detached(cwd, command);
+    }
+    let limit = Duration::from_secs(timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS).min(MAX_TIMEOUT_SECS));
+
+    let child = match shell(command).current_dir(cwd).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
+        Ok(c) => c,
+        Err(e) => return ToolResult { ok: false, output: format!("run_command failed to spawn: {e}") },
+    };
+    // The pid is captured before the child moves into the waiting thread:
+    // on timeout it is the only handle left to kill the tree with.
+    let pid = child.id();
+
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = tx.send(child.wait_with_output());
+    });
+
+    match rx.recv_timeout(limit) {
+        Ok(Ok(out)) => {
             let mut combined = String::from_utf8_lossy(&out.stdout).to_string();
             let stderr = String::from_utf8_lossy(&out.stderr);
             if !stderr.is_empty() {
@@ -459,7 +596,19 @@ pub fn run_command(cwd: &Path, command: &str) -> ToolResult {
             }
             ToolResult { ok: out.status.success(), output: truncate_output(combined) }
         }
-        Err(e) => ToolResult { ok: false, output: format!("run_command failed to spawn: {e}") },
+        Ok(Err(e)) => ToolResult { ok: false, output: format!("run_command failed: {e}") },
+        Err(_) => {
+            kill_tree(pid);
+            ToolResult {
+                ok: false,
+                output: format!(
+                    "Command timed out after {}s and was killed: {command}\n\
+                     If it is meant to keep running (a server, a watcher, a GUI app), \
+                     call run_command again with \"background\": true.",
+                    limit.as_secs()
+                ),
+            }
+        }
     }
 }
 
@@ -609,6 +758,77 @@ mod tests {
             assert!(!names.contains(&forbidden.to_string()), "{forbidden} must not be offered read-only");
         }
         assert!(names.contains(&"search_files".to_string()), "review mode still needs search");
+    }
+
+    #[test]
+    fn a_command_that_never_finishes_is_killed_instead_of_hanging_the_agent() {
+        // Before the timeout existed this blocked forever: `.output()` waits
+        // for the pipes to close, so one `npm run dev` froze the whole turn.
+        let tmp = env::temp_dir();
+        let sleeper = if cfg!(target_os = "windows") { "ping -t 127.0.0.1" } else { "sleep 600" };
+        let started = std::time::Instant::now();
+        let r = run_command(&tmp, sleeper, false, Some(2));
+        assert!(!r.ok, "a killed command is a failure, not a silent success");
+        assert!(r.output.contains("timed out"), "the model must be told why: {}", r.output);
+        assert!(r.output.contains("background"), "and told the way out: {}", r.output);
+        assert!(started.elapsed().as_secs() < 30, "took {:?}", started.elapsed());
+    }
+
+    #[test]
+    fn a_background_command_returns_at_once_even_though_it_keeps_running() {
+        // The real failure this guards: a launched GUI app inherits the
+        // pipes and holds them open, so waiting never returns even though
+        // the command itself "finished". Detached stdio is the fix — this
+        // must come back immediately, not after the child dies.
+        let tmp = env::temp_dir();
+        let sleeper = if cfg!(target_os = "windows") { "ping -n 30 127.0.0.1" } else { "sleep 30" };
+        let started = std::time::Instant::now();
+        let r = run_command(&tmp, sleeper, true, None);
+        assert!(r.ok, "{}", r.output);
+        assert!(r.output.contains("pid"), "the pid is the only handle the user gets: {}", r.output);
+        assert!(started.elapsed().as_secs() < 10, "took {:?}", started.elapsed());
+    }
+
+    #[test]
+    fn a_background_command_that_does_not_exist_is_reported_as_a_failure() {
+        // Spawning succeeds even for a nonexistent command — the shell
+        // starts, then fails. Calling that "started" left the model
+        // believing the browser had opened.
+        let r = run_command(&env::temp_dir(), "definitely-not-a-real-command-xyz", true, None);
+        assert!(!r.ok, "should not claim success: {}", r.output);
+        assert!(r.output.contains("exited immediately"), "{}", r.output);
+    }
+
+    #[test]
+    fn the_platform_note_names_this_machines_shell() {
+        let note = platform_note(Path::new("/tmp/x"));
+        let expected = if cfg!(target_os = "windows") { "cmd.exe" } else { "sh" };
+        assert!(note.contains(expected), "{note}");
+        assert!(note.contains("/tmp/x") || note.contains("\\tmp\\x"), "{note}");
+    }
+
+    #[test]
+    fn a_normal_command_still_returns_its_output() {
+        let r = run_command(&env::temp_dir(), "echo idexal-ok", false, None);
+        assert!(r.ok, "{}", r.output);
+        assert!(r.output.contains("idexal-ok"), "{}", r.output);
+    }
+
+    #[test]
+    fn background_is_read_from_the_arguments_in_either_casing() {
+        // A missed `background` flag is a hang, not a wrong answer, so both
+        // spellings models actually emit are accepted.
+        let tmp = env::temp_dir();
+        let sleeper = if cfg!(target_os = "windows") { "ping -n 30 127.0.0.1" } else { "sleep 30" };
+        for args in [
+            format!(r#"{{"command":"{sleeper}","background":true}}"#),
+            format!(r#"{{"command":"{sleeper}","detached":true}}"#),
+        ] {
+            let started = std::time::Instant::now();
+            let r = dispatch(&tmp, "run_command", &args);
+            assert!(r.ok, "{args} -> {}", r.output);
+            assert!(started.elapsed().as_secs() < 10, "{args} took {:?}", started.elapsed());
+        }
     }
 
     #[test]

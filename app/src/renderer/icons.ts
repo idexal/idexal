@@ -32,6 +32,8 @@ const PATHS: Record<string, string> = {
 	check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
 	dot: '<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>',
 	logo: '<path d="M4 18 11 4l3 7h6l-7 9-2.5-6.5H4z"/>',
+	// Several agents fanning out from one task — the multi-agent chip.
+	agents: '<circle cx="5" cy="6" r="2.2"/><circle cx="5" cy="18" r="2.2"/><circle cx="18" cy="12" r="2.2"/><path d="M7.2 6.9 15.8 11M7.2 17.1 15.8 13"/>',
 };
 
 /** Build an inline SVG icon element. `size` is in px. */
