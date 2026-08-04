@@ -7,3 +7,6 @@ Thumbs.db
 
 # Agent edit snapshots (undo). Local, disposable.
 .idexal/
+
+# Subagent worktrees — transient, never part of the project.
+.claude/
