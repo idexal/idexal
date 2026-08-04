@@ -76,6 +76,14 @@ declare global {
 				save: (cfg: unknown) => Promise<{ ok: boolean; data?: unknown; error?: string }>;
 				testProvider: (id: string) => Promise<{ ok: boolean; data?: unknown; error?: string }>;
 			};
+			usage: {
+				load: () => Promise<{ ok: boolean; data?: unknown; error?: string }>;
+			};
+			undo: {
+				list: () => Promise<{ ok: boolean; data?: unknown; error?: string }>;
+				restore: (relative?: string) => Promise<{ ok: boolean; data?: unknown; error?: string }>;
+				clear: () => Promise<{ ok: boolean; data?: unknown; error?: string }>;
+			};
 			sessions: {
 				list: () => Promise<{ ok: boolean; data?: unknown; error?: string }>;
 				show: (id: string) => Promise<{ ok: boolean; data?: unknown; error?: string }>;
@@ -624,6 +632,9 @@ function startTask(prompt: string, multi: boolean, existing?: TaskRecord): void 
 					breakText();
 					void refreshGit();
 					void reloadOpenTabs();
+					// The badge is how the user learns an agent touched
+					// files at all without going looking for it.
+					void refreshUndo();
 					break;
 				}
 				case 'done':
@@ -928,6 +939,136 @@ async function reloadOpenTabs(): Promise<void> {
 	renderTabs();
 }
 
+// ───────────────────────── checkpoints / undo ─────────────────────────
+//
+// The core snapshots a file before every write an agent makes, and
+// `restore` CONSUMES the snapshot it restores — so undo walks backwards one
+// step per click rather than jumping to the beginning. None of this is git:
+// it works in a folder that was never a repository, and it never touches
+// the user's staged changes.
+
+interface Snapshot {
+	path: string;
+	takenAt: number;
+	/** The agent created this file; undoing therefore deletes it. */
+	created: boolean;
+}
+
+let snapshots: Snapshot[] = [];
+
+/** After an undo the file on disk changed underneath any open tab. Leaving
+ *  it showing the old text is the dangerous case: the next Ctrl+S would
+ *  quietly re-apply exactly what was just undone. */
+async function syncTabsAfterUndo(paths: string[]): Promise<void> {
+	for (const path of paths) {
+		const tab = openTabs.get(path);
+		if (!tab) continue;
+		const result = await window.idexal.workspace.read(path);
+		if (result.ok && result.content !== undefined) {
+			tab.model.setValue(result.content);
+			tab.dirty = false;
+		} else {
+			// Undoing a created file deletes it; a tab onto a file that no
+			// longer exists can only mislead.
+			closeTab(path);
+		}
+	}
+	renderTabs();
+	void renderTree();
+	void refreshGit();
+}
+
+function undoRow(snapshot: Snapshot): HTMLElement {
+	const row = document.createElement('div');
+	row.className = 'undo-row';
+
+	const kind = document.createElement('span');
+	kind.className = `undo-kind ${snapshot.created ? 'created' : 'edited'}`;
+	kind.textContent = snapshot.created ? 'أُنشئ' : 'عُدّل';
+	kind.title = snapshot.created
+		? 'أنشأه الوكيل — التراجع سيحذفه'
+		: 'عدّله الوكيل — التراجع يعيد النسخة السابقة';
+
+	const name = document.createElement('span');
+	name.className = 'undo-path';
+	name.textContent = snapshot.path;
+	name.title = snapshot.path;
+	name.addEventListener('click', () => void openFile(snapshot.path));
+
+	const when = document.createElement('span');
+	when.className = 'undo-time';
+	when.textContent = new Date(snapshot.takenAt).toLocaleTimeString('ar-EG', {
+		hour: '2-digit',
+		minute: '2-digit',
+	});
+
+	const button = document.createElement('button');
+	button.className = 'mini-btn';
+	button.textContent = snapshot.created ? 'حذف (تراجع)' : 'تراجع';
+	button.addEventListener('click', async () => {
+		button.disabled = true;
+		const result = await window.idexal.undo.restore(snapshot.path);
+		const restored = (result.data as { restored?: string[] } | undefined)?.restored ?? [];
+		if (result.ok) await syncTabsAfterUndo(restored.length ? restored : [snapshot.path]);
+		await refreshUndo();
+	});
+
+	row.append(kind, name, when, button);
+	return row;
+}
+
+async function refreshUndo(): Promise<void> {
+	const host = $('undo-list');
+	const result = await window.idexal.undo.list();
+	snapshots = Array.isArray(result.data) ? (result.data as Snapshot[]) : [];
+
+	const badge = $('undo-count');
+	badge.textContent = String(snapshots.length);
+	badge.classList.toggle('hidden', snapshots.length === 0);
+
+	host.innerHTML = '';
+	if (!result.ok) {
+		const err = document.createElement('div');
+		err.className = 'sb-empty';
+		err.textContent = result.error ?? 'تعذّرت قراءة اللقطات';
+		host.appendChild(err);
+		return;
+	}
+	if (snapshots.length === 0) {
+		const empty = document.createElement('div');
+		empty.className = 'sb-empty';
+		empty.textContent = 'لا لقطات — لم يعدّل أي وكيل ملفاً في هذه المساحة بعد.';
+		host.appendChild(empty);
+		return;
+	}
+	// Newest first: the most likely thing to undo is the last thing that happened.
+	for (const snapshot of [...snapshots].sort((a, b) => b.takenAt - a.takenAt)) {
+		host.appendChild(undoRow(snapshot));
+	}
+}
+
+$('undo-refresh').addEventListener('click', () => void refreshUndo());
+
+$('undo-all').addEventListener('click', async () => {
+	if (snapshots.length === 0) return;
+	const result = await window.idexal.undo.restore();
+	const restored = (result.data as { restored?: string[] } | undefined)?.restored ?? [];
+	if (result.ok) await syncTabsAfterUndo(restored);
+	await refreshUndo();
+});
+
+$('undo-clear').addEventListener('click', async () => {
+	if (snapshots.length === 0) return;
+	// Throwing away every snapshot cannot be undone — it is the one action
+	// here with no way back, so it asks first, like committing does.
+	const ok = confirm(
+		`مسح ${snapshots.length} لقطة نهائياً؟\n\nلن يتغيّر أي ملف الآن، لكن لن يعود بالإمكان التراجع عمّا فعله الوكلاء.`,
+	);
+	if (!ok) return;
+	await window.idexal.undo.clear();
+	await refreshUndo();
+});
+
 // ───────────────────────── file tree ─────────────────────────
 
 const expanded = new Set<string>();
@@ -1131,7 +1272,13 @@ function selectDock(name: string): void {
 	for (const p of document.querySelectorAll<HTMLElement>('.dock-panel')) p.classList.toggle('active', p.dataset.dock === name);
 }
 for (const tab of document.querySelectorAll<HTMLElement>('.dock-tab')) {
-	tab.addEventListener('click', () => selectDock(tab.dataset.dock!));
+	tab.addEventListener('click', () => {
+		const which = tab.dataset.dock!;
+		selectDock(which);
+		// Snapshots appear as agents work, so the list is read when opened
+		// rather than trusted from whenever it was last drawn.
+		if (which === 'undo') void refreshUndo();
+	});
 }
 $('dock-toggle').addEventListener('click', () => {
 	const dock = $('dock');

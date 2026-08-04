@@ -6,6 +6,7 @@ import { registerWorkspaceHandlers, getWorkspaceRoot, adoptStartupWorkspace } fr
 import { registerTerminalHandlers, disposeTerminals } from './terminal';
 import { registerSettingsHandlers } from './settings';
 import { registerSessionHandlers } from './sessions';
+import { registerUsageHandlers } from './usage';
 import { resolveCoreBinary } from './core';
 
 function createWindow(): void {
@@ -126,6 +127,7 @@ app.whenReady().then(() => {
 	registerTerminalHandlers();
 	registerSettingsHandlers();
 	registerSessionHandlers();
+	registerUsageHandlers();
 	createWindow();
 });
 

@@ -56,6 +56,10 @@ const contexts = await Promise.all(builds);
 mkdirSync(path.join(__dirname, 'dist/renderer'), { recursive: true });
 cpSync(path.join(__dirname, 'src/renderer/index.html'), path.join(__dirname, 'dist/renderer/index.html'));
 cpSync(path.join(__dirname, 'src/renderer/style.css'), path.join(__dirname, 'dist/renderer/style.css'));
+// Copied, not bundled: it runs before our bundles and speaks to Monaco's AMD
+// loader, which esbuild would rewrite. It is a separate file rather than an
+// inline script because the page's CSP forbids inline execution.
+cpSync(path.join(__dirname, 'src/renderer/monaco-boot.js'), path.join(__dirname, 'dist/renderer/monaco-boot.js'));
 // Monaco's built-in editor worker (minimal: no per-language workers yet — degraded
 // language-feature mode until LSP workers are wired up in a follow-up milestone).
 mkdirSync(path.join(__dirname, 'dist/renderer/vs'), { recursive: true });

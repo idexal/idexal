@@ -67,6 +67,22 @@ contextBridge.exposeInMainWorld('idexal', {
 		resize: (id: string, cols: number, rows: number) => ipcRenderer.invoke('terminal:resize', id, cols, rows),
 	},
 
+	usage: {
+		load: () => ipcRenderer.invoke('usage:load'),
+	},
+
+	/**
+	 * Checkpoints: a snapshot is taken before every write the agent makes.
+	 * `restore` consumes the snapshot it restores, so calling it repeatedly
+	 * walks back through history one step at a time — it is not a single
+	 * "revert to the beginning" button. None of this touches git.
+	 */
+	undo: {
+		list: () => ipcRenderer.invoke('undo:list'),
+		restore: (relative?: string) => ipcRenderer.invoke('undo:restore', relative),
+		clear: () => ipcRenderer.invoke('undo:clear'),
+	},
+
 	sessions: {
 		list: () => ipcRenderer.invoke('sessions:list'),
 		show: (id: string) => ipcRenderer.invoke('sessions:show', id),

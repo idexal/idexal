@@ -165,6 +165,7 @@
             <div id="dock-tabs">
               <button class="dock-tab active" data-dock="terminal"><span data-icon="terminal" data-icon-size="13"></span> الطرفية</button>
               <button class="dock-tab" data-dock="diff"><span data-icon="diff" data-icon-size="13"></span> الفروق</button>
+              <button class="dock-tab" data-dock="undo"><span data-icon="undo" data-icon-size="13"></span> التراجع <span id="undo-count" class="dock-badge hidden">0</span></button>
               <span class="spacer"></span>
               <button id="dock-toggle" class="mini-btn">▾</button>
             </div>
@@ -173,6 +174,16 @@
                 <div id="terminal-output" dir="ltr"></div>
               </div>
               <div class="dock-panel" data-dock="diff"><pre id="diff-output" dir="ltr"></pre></div>
+              <div class="dock-panel" data-dock="undo">
+                <div id="undo-head">
+                  <span class="undo-note">لقطة تُؤخذ قبل كل تعديل يجريه وكيل — مستقلة تماماً عن Git.</span>
+                  <span class="spacer"></span>
+                  <button id="undo-refresh" class="mini-btn"><span data-icon="refresh" data-icon-size="12"></span> تحديث</button>
+                  <button id="undo-all" class="mini-btn">تراجع خطوة عن الكل</button>
+                  <button id="undo-clear" class="mini-btn danger">مسح اللقطات</button>
+                </div>
+                <div id="undo-list"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -189,6 +200,7 @@
       <button class="set-nav-item" data-setnav="agent">سلوك الوكيل</button>
       <button class="set-nav-item" data-setnav="appearance">المظهر</button>
       <div class="set-group">البيانات</div>
+      <button class="set-nav-item" data-setnav="usage">الاستهلاك</button>
       <button class="set-nav-item" data-setnav="memory">الذاكرة</button>
       <button class="set-nav-item" data-setnav="about">عن Idexal</button>
     </aside>
@@ -221,6 +233,13 @@
           <div class="settings-section-head"><span>المظهر</span></div>
           <p class="set-note">السمة الداكنة هي الافتراضية حالياً. سمات إضافية قادمة.</p>
         </section>
+        <section class="set-sec" data-setsec="usage">
+          <div class="settings-section-head">
+            <span>الاستهلاك <em>— رموز وتكلفة تقديرية لكل نداء</em></span>
+            <button id="usage-refresh" class="mini-btn"><span data-icon="refresh" data-icon-size="13"></span> تحديث</button>
+          </div>
+          <div id="usage-body"></div>
+        </section>
         <section class="set-sec" data-setsec="memory">
           <div class="settings-section-head"><span>الذاكرة طويلة الأمد</span></div>
           <p class="set-note">تُخزَّن محلياً في <code dir="ltr">~/.idexal/memory.db</code> — حقائق وقرارات وتفضيلات وجلسات.</p>
@@ -244,13 +263,9 @@
 </div>
 
 <script src="vs/loader.js"></script>
-<script>
-  require.config({ paths: { vs: 'vs' } });
-  require(['vs/editor/editor.main'], function () {
-    window.__monaco = monaco;
-    window.dispatchEvent(new Event('monaco-ready'));
-  });
-</script>
+<!-- External, not inline: the CSP has no 'unsafe-inline', so an inline
+     bootstrap is refused and the editor never loads. -->
+<script src="monaco-boot.js"></script>
 <script src="index.js"></script>
 <script src="settings.js"></script>
 </body>

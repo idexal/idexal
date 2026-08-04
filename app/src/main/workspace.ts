@@ -10,8 +10,10 @@ import * as fs from 'node:fs/promises';
 import * as fsSync from 'node:fs';
 import * as path from 'node:path';
 
-/** Directories that are never worth showing in a file tree. */
-const IGNORED = new Set(['node_modules', '.git', 'target', 'dist', 'out', '.next', '.cache']);
+/** Directories that are never worth showing in a file tree. `.idexal` is
+ *  ours — the checkpoint store — and showing our own bookkeeping inside the
+ *  user's project reads as clutter they have to wonder about. */
+const IGNORED = new Set(['node_modules', '.git', 'target', 'dist', 'out', '.next', '.cache', '.idexal']);
 
 /** Files above this size open as read-only placeholders rather than
  * freezing the editor on a multi-megabyte blob. */

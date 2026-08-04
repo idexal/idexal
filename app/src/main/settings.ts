@@ -14,55 +14,14 @@
 // accepted on save but never echoed back.
 
 import { ipcMain } from 'electron';
-import { spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { resolveCoreBinary } from './core';
+import { runCoreJson } from './core';
 
 /** Path the settings page persists to — mirrors core/src/config.rs. */
 export function settingsConfigPath(): string {
 	return path.join(os.homedir(), '.idexal', 'config.json');
-}
-
-interface CoreJsonResult {
-	ok: boolean;
-	data?: unknown;
-	error?: string;
-}
-
-/**
- * Run the core with args that produce ONE JSON document on stdout and parse
- * it. `config` and `test` print pretty JSON, not NDJSON, so this is the
- * right channel for settings (as opposed to the NDJSON stream for tasks).
- */
-function runCoreJson(args: string[]): Promise<CoreJsonResult> {
-	return new Promise((resolve) => {
-		let corePath: string;
-		try {
-			corePath = resolveCoreBinary();
-		} catch (err) {
-			resolve({ ok: false, error: err instanceof Error ? err.message : String(err) });
-			return;
-		}
-		const child = spawn(corePath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-		let out = '';
-		let err = '';
-		child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()));
-		child.stderr.on('data', (chunk: Buffer) => (err += chunk.toString()));
-		child.on('close', (code) => {
-			if (code !== 0) {
-				resolve({ ok: false, error: err.trim() || `idexal-core exited with code ${code}` });
-				return;
-			}
-			try {
-				resolve({ ok: true, data: JSON.parse(out.trim()) });
-			} catch {
-				resolve({ ok: false, error: 'idexal-core returned non-JSON output' });
-			}
-		});
-		child.on('error', (e) => resolve({ ok: false, error: `failed to start idexal-core: ${e.message}` }));
-	});
 }
 
 /** Drop empty optional fields (empty apiKey etc.) before persisting. */

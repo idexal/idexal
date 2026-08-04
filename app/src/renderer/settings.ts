@@ -391,11 +391,217 @@ $('provider-add').addEventListener('click', () => {
 	render();
 });
 
-// Left-nav sections (Providers / Agent / Appearance / Memory / About).
+// ───────────────────────── usage / spend ─────────────────────────
+
+interface UsageTotals {
+	calls: number;
+	failed: number;
+	inputTokens: number;
+	outputTokens: number;
+	costUsd: number;
+	avgLatencyMs: number;
+	topModel: string | null;
+}
+interface UsageProvider {
+	provider: string;
+	calls: number;
+	failed: number;
+	inputTokens: number;
+	outputTokens: number;
+	costUsd: number;
+}
+interface UsageDay {
+	day: string;
+	calls: number;
+	inputTokens: number;
+	outputTokens: number;
+	costUsd: number;
+}
+interface UsageCall {
+	id: number;
+	provider: string;
+	model: string;
+	inputTokens: number;
+	outputTokens: number;
+	costUsd: number;
+	latencyMs: number;
+	ok: boolean;
+	error?: string | null;
+	createdAt: number;
+}
+
+// Western digits throughout this page even though the UI is Arabic: every
+// figure here sits beside a dollar amount, a model id or a latency, and
+// mixing ٢٢٤٬٢٠٧ with $0.7198 in adjacent tiles reads as two unrelated
+// systems.
+const nf = new Intl.NumberFormat('en-US');
+const num = (n: number): string => nf.format(Math.round(n));
+
+/** Money is shown to four places: single calls genuinely cost fractions of
+ *  a cent, and rounding them to two would render most rows as "0.00". */
+const money = (n: number): string => `$${n.toFixed(4)}`;
+
+const ms = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)} ث` : `${Math.round(n)} م.ث`);
+
+function el(tag: string, className?: string, text?: string): HTMLElement {
+	const node = document.createElement(tag);
+	if (className) node.className = className;
+	if (text !== undefined) node.textContent = text;
+	return node;
+}
+
+function sectionHead(text: string): HTMLElement {
+	const head = el('div', 'settings-section-head');
+	head.appendChild(el('span', undefined, text));
+	return head;
+}
+
+function tile(label: string, value: string, hint?: string): HTMLElement {
+	const box = el('div', 'usage-tile');
+	box.append(el('div', 'ut-label', label), el('div', 'ut-value', value));
+	if (hint) box.appendChild(el('div', 'ut-hint', hint));
+	return box;
+}
+
+/**
+ * The daily trend, drawn with plain elements rather than a chart library:
+ * the page runs under a CSP that blocks every external origin, and a
+ * dependency for fourteen bars would not earn its weight.
+ *
+ * Flex boxes rather than an SVG viewBox — a stretched viewBox turns a
+ * single day into one enormous smeared rectangle, and days arrive one at a
+ * time on a new install.
+ */
+function trendChart(days: UsageDay[]): HTMLElement {
+	const wrap = el('div', 'usage-chart');
+	const max = Math.max(...days.map((d) => d.calls), 1);
+
+	for (const day of days) {
+		const column = el('div', 'uch-col');
+		column.title = `${day.day} — ${day.calls} نداء · ${money(day.costUsd)}`;
+
+		const track = el('div', 'uch-track');
+		const bar = el('div', 'uch-bar');
+		// A day with calls always shows something: a 1-call day next to a
+		// 200-call day would otherwise round to invisible.
+		bar.style.height = day.calls > 0 ? `${Math.max((day.calls / max) * 100, 6)}%` : '0';
+		track.appendChild(bar);
+
+		column.append(track, el('div', 'uch-label', day.day.slice(-2)));
+		wrap.appendChild(column);
+	}
+	return wrap;
+}
+
+function providerRows(list: UsageProvider[]): HTMLElement {
+	const table = el('div', 'usage-table');
+	const head = el('div', 'usage-row head');
+	for (const h of ['المزوّد', 'نداءات', 'فشل', 'دخل', 'خرج', 'تكلفة']) head.appendChild(el('span', undefined, h));
+	table.appendChild(head);
+
+	for (const p of list) {
+		const row = el('div', 'usage-row');
+		row.appendChild(el('span', 'up-id', p.provider));
+		row.appendChild(el('span', undefined, num(p.calls)));
+		row.appendChild(el('span', p.failed > 0 ? 'bad' : undefined, num(p.failed)));
+		row.appendChild(el('span', undefined, num(p.inputTokens)));
+		row.appendChild(el('span', undefined, num(p.outputTokens)));
+		// A provider that moved real tokens for zero cost has no price in the
+		// table. Showing "$0.0000" there would be a fabricated number; the
+		// core deliberately stores no price rather than inventing one.
+		const priced = p.costUsd > 0 || p.inputTokens + p.outputTokens === 0;
+		const cost = el('span', priced ? undefined : 'muted', priced ? money(p.costUsd) : 'سعر غير معروف');
+		if (!priced) cost.title = 'لا سعر معروف لهذا النموذج — لا يُحتسب بدل اختلاق رقم';
+		row.appendChild(cost);
+		table.appendChild(row);
+	}
+	return table;
+}
+
+function recentRows(calls: UsageCall[]): HTMLElement {
+	const list = el('div', 'usage-calls');
+	for (const c of calls) {
+		const row = el('div', `usage-call${c.ok ? '' : ' failed'}`);
+		const when = new Date(c.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+		row.appendChild(el('span', 'uc-dot'));
+		row.appendChild(el('span', 'uc-model', c.model));
+		row.appendChild(el('span', 'uc-provider', c.provider));
+		row.appendChild(el('span', 'uc-tokens', `${num(c.inputTokens)} ← ${num(c.outputTokens)}`));
+		row.appendChild(el('span', 'uc-latency', ms(c.latencyMs)));
+		row.appendChild(el('span', 'uc-time', when));
+		if (!c.ok && c.error) {
+			const why = el('div', 'uc-error', c.error);
+			row.appendChild(why);
+		}
+		list.appendChild(row);
+	}
+	return list;
+}
+
+let usageLoaded = false;
+
+async function loadUsage(): Promise<void> {
+	const host = $('usage-body');
+	host.textContent = '';
+	host.appendChild(el('p', 'set-note', 'يُقرأ الدفتر…'));
+
+	const res = (await window.idexal.usage.load()) as {
+		ok: boolean;
+		error?: string;
+		data?: { summary?: { totals?: UsageTotals; providers?: UsageProvider[] }; daily?: { buckets?: UsageDay[] } | null; recent?: UsageCall[] | null };
+	};
+	host.textContent = '';
+	usageLoaded = true;
+
+	if (!res.ok) {
+		host.appendChild(el('p', 'set-note bad', `تعذّر قراءة الدفتر: ${res.error ?? 'سبب غير معروف'}`));
+		return;
+	}
+
+	const totals = res.data?.summary?.totals;
+	if (!totals || totals.calls === 0) {
+		host.appendChild(el('p', 'set-note', 'لا استهلاك بعد — شغّل مهمة وسيظهر هنا كل نداء برموزه وزمنه وتكلفته.'));
+		return;
+	}
+
+	const tiles = el('div', 'usage-tiles');
+	tiles.append(
+		tile('نداءات', num(totals.calls), totals.failed > 0 ? `${num(totals.failed)} فاشلة` : 'كلها ناجحة'),
+		tile('رموز الدخل', num(totals.inputTokens)),
+		tile('رموز الخرج', num(totals.outputTokens)),
+		tile('تكلفة تقديرية', money(totals.costUsd), 'قائمة أسعار محلية، ليست فاتورة'),
+		tile('متوسط الزمن', ms(totals.avgLatencyMs)),
+		tile('الأكثر استخداماً', totals.topModel ?? '—'),
+	);
+	host.appendChild(tiles);
+
+	const buckets = res.data?.daily?.buckets ?? [];
+	if (buckets.length > 0) {
+		host.appendChild(sectionHead('آخر أيام'));
+		host.appendChild(trendChart(buckets));
+	}
+
+	const perProvider = res.data?.summary?.providers ?? [];
+	if (perProvider.length > 0) {
+		host.appendChild(sectionHead('حسب المزوّد'));
+		host.appendChild(providerRows(perProvider));
+	}
+
+	const recent = res.data?.recent ?? [];
+	if (recent.length > 0) {
+		host.appendChild(sectionHead('أحدث النداءات'));
+		host.appendChild(recentRows(recent));
+	}
+}
+
+$('usage-refresh').addEventListener('click', () => void loadUsage());
+
+// Left-nav sections (Providers / Agent / Appearance / Usage / Memory / About).
 const SECTION_TITLES: Record<string, string> = {
 	providers: 'المزوّدون والنماذج',
 	agent: 'سلوك الوكيل',
 	appearance: 'المظهر',
+	usage: 'الاستهلاك',
 	memory: 'الذاكرة',
 	about: 'عن Idexal',
 };
@@ -407,6 +613,10 @@ for (const item of document.querySelectorAll<HTMLElement>('.set-nav-item')) {
 			s.classList.toggle('active', s.dataset.setsec === which);
 		}
 		$('settings-title').textContent = SECTION_TITLES[which] ?? which;
+		// Spend changes while the app is open, so the page is loaded when it
+		// is opened rather than once at startup — but only the first time,
+		// so switching tabs is not three process spawns each visit.
+		if (which === 'usage' && !usageLoaded) void loadUsage();
 	});
 }
 
