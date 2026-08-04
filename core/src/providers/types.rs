@@ -71,9 +71,22 @@ pub enum Delta {
     Text(String),
 }
 
+/// Token counts as reported by the provider for one turn. Both APIs send
+/// these and both adapters used to drop them on the floor, which left the
+/// product with no way to show real spend.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TokenUsage {
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+}
+
 /// The result of one non-streaming or fully-consumed streaming turn.
 #[derive(Debug, Clone, Default)]
 pub struct Turn {
     pub text: String,
     pub tool_calls: Vec<ToolCall>,
+    /// None when the provider reported nothing — some OpenAI-compatible
+    /// servers omit usage entirely, and a missing count must stay
+    /// distinguishable from a genuine zero.
+    pub usage: Option<TokenUsage>,
 }

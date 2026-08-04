@@ -24,6 +24,7 @@ mod orchestrator;
 mod providers;
 mod session;
 mod tools;
+mod usage;
 
 use config::ProviderKind;
 use providers::types::Message;
@@ -111,6 +112,13 @@ Be concise. Answer in the user's language.";
 async fn stream_task(task: &str, read_only: bool, session_id: Option<&str>) {
     let cfg = config::load();
     let mut registry = Registry::from_config(&cfg);
+    // Usage tracking is best-effort too: no ledger means no stats, never a
+    // refused turn. The session id doubles as the task id so spend can be
+    // attributed back to a conversation.
+    match usage::Usage::open(None) {
+        Ok(u) => registry = registry.with_usage(u, session_id.map(str::to_string)),
+        Err(e) => eprintln!("[idexal] usage tracking unavailable: {e}"),
+    }
     // Sessions are best-effort like memory: an unwritable store degrades to
     // a one-shot turn rather than refusing to run.
     let sessions = match session_id {
@@ -376,6 +384,99 @@ fn memory_command(args: &[String]) {
     }
 }
 
+/// `usage` subcommands: what the model calls actually cost.
+///   idexal-core usage                totals + per-provider breakdown
+///   idexal-core usage daily [days]   per-day token counts for the chart
+///   idexal-core usage recent [n]     the last n calls
+fn usage_command(args: &[String]) {
+    let store = match usage::Usage::open(None) {
+        Ok(u) => u,
+        Err(e) => {
+            eprintln!("usage unavailable: {e}");
+            process::exit(1);
+        }
+    };
+
+    /// Every query here fails the same way; this keeps the three arms from
+    /// repeating the exit dance.
+    fn unwrap_or_die<T>(result: Result<T, String>) -> T {
+        result.unwrap_or_else(|e| {
+            eprintln!("{e}");
+            process::exit(1);
+        })
+    }
+
+    let out = match args.first().map(String::as_str) {
+        Some("daily") => {
+            let days: u32 = args.get(1).and_then(|d| d.parse().ok()).unwrap_or(30);
+            let buckets = unwrap_or_die(store.daily(days));
+            serde_json::json!({
+                "days": days,
+                "buckets": buckets
+                    .iter()
+                    .map(|b| serde_json::json!({
+                        "day": b.day,
+                        "calls": b.calls,
+                        "inputTokens": b.input_tokens,
+                        "outputTokens": b.output_tokens,
+                        "costUsd": b.cost_usd,
+                    }))
+                    .collect::<Vec<_>>(),
+            })
+        }
+        Some("recent") => {
+            let limit: usize = args.get(1).and_then(|n| n.parse().ok()).unwrap_or(20);
+            let calls = unwrap_or_die(store.recent(limit));
+            serde_json::json!(calls
+                .iter()
+                .map(|c| serde_json::json!({
+                    "id": c.id,
+                    "provider": c.provider_id,
+                    "model": c.model,
+                    "inputTokens": c.input_tokens,
+                    "outputTokens": c.output_tokens,
+                    "costUsd": c.cost_usd,
+                    "latencyMs": c.latency_ms,
+                    "ok": c.ok,
+                    "error": c.error,
+                    "createdAt": c.created_at,
+                }))
+                .collect::<Vec<_>>())
+        }
+        None => {
+            let totals = unwrap_or_die(store.totals());
+            let per_provider = unwrap_or_die(store.per_provider());
+            serde_json::json!({
+                "totals": {
+                    "calls": totals.calls,
+                    "failed": totals.failed,
+                    "inputTokens": totals.input_tokens,
+                    "outputTokens": totals.output_tokens,
+                    "costUsd": totals.cost_usd,
+                    "avgLatencyMs": totals.avg_latency_ms,
+                    "topModel": totals.top_model,
+                },
+                "providers": per_provider
+                    .iter()
+                    .map(|p| serde_json::json!({
+                        "provider": p.provider_id,
+                        "calls": p.calls,
+                        "failed": p.failed,
+                        "inputTokens": p.input_tokens,
+                        "outputTokens": p.output_tokens,
+                        "costUsd": p.cost_usd,
+                    }))
+                    .collect::<Vec<_>>(),
+            })
+        }
+        Some(other) => {
+            eprintln!("unknown usage subcommand: {other}");
+            process::exit(2);
+        }
+    };
+    println!("{}", serde_json::to_string_pretty(&out).unwrap());
+}
+
 /// Effective configuration as a single JSON document: every usable and
 /// unusable provider with its resolved settings, plus agent knobs and the
 /// file the settings page should persist to. API keys are never included —
@@ -554,6 +655,7 @@ async fn main() {
             test_provider(&id).await;
         }
         Some("memory") => memory_command(&args[2..]),
+        Some("usage") => usage_command(&args[2..]),
         Some("stream") => {
             let read_only = args.iter().any(|a| a == "--read-only");
             // `--session <id>` continues an existing conversation. Its value
@@ -673,6 +775,7 @@ async fn main() {
             eprintln!("  idexal-core config                effective config as JSON");
             eprintln!("  idexal-core test <provider-id>    live connectivity round-trip");
             eprintln!("  idexal-core memory stats|recall \"<query>\"|add <kind> \"<content>\"");
+            eprintln!("  idexal-core usage [daily <days>|recent <n>]  token & cost stats");
             eprintln!("  idexal-core --version");
             process::exit(2);
         }
