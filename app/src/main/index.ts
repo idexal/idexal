@@ -42,7 +42,14 @@ ipcMain.on(
 			channel,
 			mode,
 			sessionId,
-		}: { task: string; channel: string; mode?: 'stream' | 'agent'; sessionId?: string },
+			pin,
+		}: {
+			task: string;
+			channel: string;
+			mode?: 'stream' | 'agent';
+			sessionId?: string;
+			pin?: { provider?: string; model?: string };
+		},
 	) => {
 		const sender = event.sender;
 		let corePath: string;
@@ -63,9 +70,15 @@ ipcMain.on(
 		// passing, because it is also what groups the run's spend in the
 		// usage ledger; without it a multi-agent run is scattered across
 		// every other ungrouped call.
-		const coreArgs = sessionId
-			? [mode === 'agent' ? 'agent' : 'stream', '--session', sessionId, task]
-			: [mode === 'agent' ? 'agent' : 'stream', task];
+		const coreArgs = [mode === 'agent' ? 'agent' : 'stream'];
+		if (sessionId) coreArgs.push('--session', sessionId);
+		// A pin narrows the run to one provider and switches fallback off in
+		// the core. Only send flags the user actually chose: an empty string
+		// here would reach the core as a provider id and fail the run.
+		if (pin?.provider) coreArgs.push('--provider', pin.provider);
+		if (pin?.model) coreArgs.push('--model', pin.model);
+		// The task goes last so it is never mistaken for a flag's value.
+		coreArgs.push(task);
 		const child = spawn(corePath, coreArgs, {
 			cwd,
 			stdio: ['ignore', 'pipe', 'pipe'],

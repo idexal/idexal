@@ -162,6 +162,9 @@ kbd {
 .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); }
 .chip .dot.warn { background: var(--warn); }
 .chip .dot.ok { background: var(--accent-2); }
+/* A pinned provider is a real change in behaviour — fallback is off — so it
+   must be visible on the closed chip, not only inside the open menu. */
+.chip.pinned { border-color: var(--accent); color: var(--ink); }
 
 #composer-input, #task-input {
   width: 100%; background: transparent; border: none; resize: none;

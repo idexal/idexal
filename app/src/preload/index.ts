@@ -12,17 +12,24 @@ export interface CoreEvent {
 }
 
 contextBridge.exposeInMainWorld('idexal', {
-	/** Run an agent. `mode: 'agent'` uses the multi-agent orchestrator. */
+	/**
+	 * Run an agent. `mode: 'agent'` uses the multi-agent orchestrator.
+	 *
+	 * `pin` names the provider (and optionally the model) this one task must
+	 * use. Pinning turns fallback off in the core by design — see Pin in
+	 * `core/src/providers/mod.rs`. Omit it to keep automatic fallback.
+	 */
 	runTask(
 		task: string,
 		onEvent: (event: CoreEvent) => void,
 		mode: 'stream' | 'agent' = 'stream',
 		sessionId?: string,
+		pin?: { provider?: string; model?: string },
 	): () => void {
 		const channel = `idexal-core-event-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 		const listener = (_: unknown, event: CoreEvent) => onEvent(event);
 		ipcRenderer.on(channel, listener);
-		ipcRenderer.send('idexal-run-task', { task, channel, mode, sessionId });
+		ipcRenderer.send('idexal-run-task', { task, channel, mode, sessionId, pin });
 		return () => ipcRenderer.removeListener(channel, listener);
 	},
 

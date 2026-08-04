@@ -28,7 +28,7 @@ mod usage;
 
 use config::ProviderKind;
 use providers::types::Message;
-use providers::Registry;
+use providers::{Pin, Registry};
 use serde::Serialize;
 use std::io::{self, Write};
 use std::time::Instant;
@@ -109,9 +109,55 @@ How to work:
 
 Be concise. Answer in the user's language.";
 
-async fn stream_task(task: &str, read_only: bool, session_id: Option<&str>) {
+/// Flags that consume the argument after them. The task text is a bare
+/// positional, so a flag's value must never be mistaken for it — that bug
+/// would silently run the wrong prompt, which is worse than any error.
+const VALUE_FLAGS: [&str; 3] = ["--session", "--provider", "--model"];
+
+fn flag_value(args: &[String], flag: &str) -> Option<String> {
+    let at = args.iter().position(|a| a == flag)?;
+    // A missing value is deliberately not special-cased: `--provider
+    // --read-only` yields "--read-only", which fails loudly as an unknown
+    // provider id. Treating it as "no pin" would silently run the task
+    // unpinned — the exact surprise pinning exists to prevent.
+    args.get(at + 1).cloned()
+}
+
+/// The first bare argument after the subcommand.
+fn positional(args: &[String]) -> Option<String> {
+    let mut skip = false;
+    for arg in args.iter().skip(2) {
+        if skip {
+            skip = false;
+            continue;
+        }
+        if VALUE_FLAGS.contains(&arg.as_str()) {
+            skip = true;
+            continue;
+        }
+        if arg.starts_with("--") {
+            continue;
+        }
+        return Some(arg.clone());
+    }
+    None
+}
+
+fn pin_from(args: &[String]) -> Pin {
+    Pin { provider: flag_value(args, "--provider"), model: flag_value(args, "--model") }
+}
+
+async fn stream_task(task: &str, read_only: bool, session_id: Option<&str>, pin: Pin) {
     let cfg = config::load();
-    let mut registry = Registry::from_config(&cfg);
+    // A pin that cannot be honoured stops the turn. Running the task on a
+    // provider the user did not ask for would be worse than not running it.
+    let mut registry = match Registry::from_config(&cfg).pinned(&pin) {
+        Ok(r) => r,
+        Err(e) => {
+            emit(&Event::Error { error: e });
+            process::exit(1);
+        }
+    };
     // Usage tracking is best-effort too: no ledger means no stats, never a
     // refused turn. The session id doubles as the task id so spend can be
     // attributed back to a conversation.
@@ -233,9 +279,17 @@ async fn stream_task(task: &str, read_only: bool, session_id: Option<&str>) {
 }
 
 /// Multi-agent run: planner → parallel executors → reviewer.
-async fn orchestrate_task(task: &str, session_id: Option<String>) {
+async fn orchestrate_task(task: &str, session_id: Option<String>, pin: Pin) {
     let cfg = config::load();
-    let registry = Registry::from_config(&cfg);
+    // Validate the pin once, here, rather than letting each of the
+    // planner/executor/reviewer registries fail separately mid-run.
+    let registry = match Registry::from_config(&cfg).pinned(&pin) {
+        Ok(r) => r,
+        Err(e) => {
+            emit(&Event::Error { error: e });
+            process::exit(1);
+        }
+    };
     if registry.is_empty() {
         emit(&Event::Error {
             error: "لا يوجد مزود صالح. عرّف ANTHROPIC_API_KEY أو OPENAI_API_KEY، أو شغّل Ollama محلياً.".into(),
@@ -287,7 +341,7 @@ async fn orchestrate_task(task: &str, session_id: Option<String>) {
         }
     });
 
-    let result = orchestrator::run(&cfg, cwd.clone(), task, memory_path.clone(), task_id, tx).await;
+    let result = orchestrator::run(&cfg, cwd.clone(), task, memory_path.clone(), task_id, pin, tx).await;
     // Dropping the sender inside `run` ends the channel; wait for the pump
     // so no event is lost between the last send and process exit.
     let _ = pump.await;
@@ -668,30 +722,15 @@ async fn main() {
         Some("usage") => usage_command(&args[2..]),
         Some("stream") => {
             let read_only = args.iter().any(|a| a == "--read-only");
-            // `--session <id>` continues an existing conversation. Its value
-            // must be skipped when looking for the task, or the id would be
-            // mistaken for the prompt.
-            let session_id = args
-                .iter()
-                .position(|a| a == "--session")
-                .and_then(|i| args.get(i + 1))
-                .cloned();
-            let task = args
-                .iter()
-                .enumerate()
-                .skip(2)
-                .find(|(i, a)| {
-                    !a.starts_with("--") && args.get(i.wrapping_sub(1)).map(String::as_str) != Some("--session")
-                })
-                .map(|(_, a)| a.clone())
-                .unwrap_or_default();
+            let session_id = flag_value(&args, "--session");
+            let task = positional(&args).unwrap_or_default();
             if task.is_empty() {
                 emit(&Event::Error {
-                    error: "Usage: idexal-core stream [--read-only] [--session <id>] \"<task>\"".into(),
+                    error: "Usage: idexal-core stream [--read-only] [--session <id>] [--provider <id>] [--model <name>] \"<task>\"".into(),
                 });
                 process::exit(1);
             }
-            stream_task(&task, read_only, session_id.as_deref()).await;
+            stream_task(&task, read_only, session_id.as_deref(), pin_from(&args)).await;
         }
         Some("sessions") => {
             let store = match session::Sessions::open(None) {
@@ -768,27 +807,15 @@ async fn main() {
             // Same `--session <id>` as `stream`, and for the same reason:
             // the id groups every call of the run — planner, each executor,
             // reviewer — into one line of spend.
-            let session_id = args
-                .iter()
-                .position(|a| a == "--session")
-                .and_then(|i| args.get(i + 1))
-                .cloned();
-            let task = args
-                .iter()
-                .enumerate()
-                .skip(2)
-                .find(|(i, a)| {
-                    !a.starts_with("--") && args.get(i.wrapping_sub(1)).map(String::as_str) != Some("--session")
-                })
-                .map(|(_, a)| a.clone())
-                .unwrap_or_default();
+            let session_id = flag_value(&args, "--session");
+            let task = positional(&args).unwrap_or_default();
             if task.is_empty() {
                 emit(&Event::Error {
-                    error: "Usage: idexal-core agent [--session <id>] \"<task>\"".into(),
+                    error: "Usage: idexal-core agent [--session <id>] [--provider <id>] [--model <name>] \"<task>\"".into(),
                 });
                 process::exit(1);
             }
-            orchestrate_task(&task, session_id).await;
+            orchestrate_task(&task, session_id, pin_from(&args)).await;
         }
         _ => {
             eprintln!("Usage:");
@@ -802,5 +829,69 @@ async fn main() {
             eprintln!("  idexal-core --version");
             process::exit(2);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn argv(rest: &[&str]) -> Vec<String> {
+        std::iter::once("idexal-core".to_string())
+            .chain(rest.iter().map(|s| s.to_string()))
+            .collect()
+    }
+
+    #[test]
+    fn the_task_is_the_first_bare_argument() {
+        assert_eq!(positional(&argv(&["stream", "do the thing"])).as_deref(), Some("do the thing"));
+    }
+
+    #[test]
+    fn a_flags_value_is_never_mistaken_for_the_task() {
+        // The bug this guards: running "s1" (or a model name) as the prompt.
+        let args = argv(&["stream", "--session", "s1", "--provider", "ollama", "--model", "llama3.1", "real task"]);
+        assert_eq!(positional(&args).as_deref(), Some("real task"));
+        assert_eq!(flag_value(&args, "--session").as_deref(), Some("s1"));
+        let pin = pin_from(&args);
+        assert_eq!(pin.provider.as_deref(), Some("ollama"));
+        assert_eq!(pin.model.as_deref(), Some("llama3.1"));
+    }
+
+    #[test]
+    fn valueless_flags_do_not_swallow_the_task() {
+        let args = argv(&["stream", "--read-only", "real task"]);
+        assert_eq!(positional(&args).as_deref(), Some("real task"));
+    }
+
+    #[test]
+    fn the_task_may_come_before_the_flags() {
+        let args = argv(&["agent", "real task", "--session", "s1"]);
+        assert_eq!(positional(&args).as_deref(), Some("real task"));
+        assert_eq!(flag_value(&args, "--session").as_deref(), Some("s1"));
+    }
+
+    #[test]
+    fn a_task_that_looks_like_a_flag_value_is_still_found() {
+        // "--model" here is the *task text*, quoted by the user. It follows
+        // no value-taking flag, so it must not be swallowed... but it does
+        // start with `--`, so it is skipped and the next bare word wins.
+        let args = argv(&["stream", "--session", "--model", "the real task"]);
+        assert_eq!(flag_value(&args, "--session").as_deref(), Some("--model"));
+        assert_eq!(positional(&args).as_deref(), Some("the real task"));
+    }
+
+    #[test]
+    fn no_pin_flags_means_no_pin_and_therefore_fallback_stays_on() {
+        assert!(pin_from(&argv(&["stream", "--read-only", "t"])).is_empty());
+    }
+
+    #[test]
+    fn a_missing_pin_value_becomes_a_loud_bad_id_not_a_silent_unpinned_run() {
+        // `--provider` with nothing after it but another flag: the next
+        // token is taken verbatim so the run fails naming it, rather than
+        // quietly proceeding on whatever provider happened to be first.
+        let args = argv(&["stream", "--provider", "--read-only", "t"]);
+        assert_eq!(pin_from(&args).provider.as_deref(), Some("--read-only"));
     }
 }

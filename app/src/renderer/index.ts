@@ -40,6 +40,7 @@ declare global {
 				onEvent: (e: CoreEvent) => void,
 				mode?: 'stream' | 'agent',
 				sessionId?: string,
+				pin?: { provider?: string; model?: string },
 			) => () => void;
 			workspace: {
 				open: () => Promise<{ root: string; name: string } | null>;
@@ -273,36 +274,45 @@ $('chip-access').addEventListener('click', (e) => {
 	], 'الصلاحيات');
 });
 
-let modelLabel = 'تلقائي (حسب الأولوية)';
-$('chip-model-label').textContent = modelLabel;
+// null = no pin, i.e. the core's normal priority chain with automatic
+// fallback. A pin is deliberately the exception: picking one provider turns
+// fallback off, so the task runs where the user said or not at all.
+const AUTO_LABEL = 'تلقائي (حسب الأولوية)';
+let providerPin: { provider: string; model?: string } | null = null;
+
+function setPin(pin: typeof providerPin): void {
+	providerPin = pin;
+	$('chip-model-label').textContent = pin ? `${pin.provider} · ${pin.model ?? ''}`.trim() : AUTO_LABEL;
+	$('chip-model').classList.toggle('pinned', pin !== null);
+	$('chip-model').title = pin
+		? `مثبّت على ${pin.provider} — بلا تبديل تلقائي لمزود آخر`
+		: 'يجرّب المزودين بالترتيب مع تبديل تلقائي';
+}
+setPin(null);
 
 async function modelMenu(anchor: HTMLElement): Promise<void> {
 	const res = await window.idexal.settings.load();
 	const entries: MenuEntry[] = [
 		{
-			label: 'تلقائي (حسب الأولوية)',
+			label: AUTO_LABEL,
 			detail: 'يجرّب المزودين بالترتيب مع تبديل تلقائي',
-			checked: modelLabel.startsWith('تلقائي'),
-			onPick: () => {
-				modelLabel = 'تلقائي (حسب الأولوية)';
-				$('chip-model-label').textContent = modelLabel;
-			},
+			checked: providerPin === null,
+			onPick: () => setPin(null),
 		},
 	];
 
 	const data = res.ok ? (res.data as { providers?: Array<{ id?: string; model?: string; usable?: boolean }> }) : null;
 	for (const p of data?.providers ?? []) {
 		if (!p.id) continue;
+		const id = p.id;
 		entries.push({
-			label: `${p.id} · ${p.model ?? ''}`,
-			detail: p.usable ? 'جاهز' : 'غير مهيأ — أضف مفتاحاً في الإعدادات',
-			checked: modelLabel.startsWith(p.id),
-			onPick: () => {
-				// Selection is informational until per-task provider pinning
-				// lands in the core; the chain still decides at run time.
-				modelLabel = `${p.id} · ${p.model ?? ''}`;
-				$('chip-model-label').textContent = modelLabel;
-			},
+			label: `${id} · ${p.model ?? ''}`,
+			// Say plainly what pinning costs. A user who picks a local
+			// provider for privacy must not discover only afterwards that
+			// the app would have fallen back to a cloud API.
+			detail: p.usable ? 'يُستخدم وحده — بلا تبديل تلقائي' : 'غير مهيأ — أضف مفتاحاً في الإعدادات',
+			checked: providerPin?.provider === id,
+			onPick: () => setPin({ provider: id, model: p.model }),
 		});
 	}
 	entries.push({ label: 'إدارة المزوّدين…', onPick: () => window.__idexalOpenSettings?.() });
@@ -591,10 +601,13 @@ function startTask(prompt: string, multi: boolean, existing?: TaskRecord): void 
 			}
 		},
 		effectiveMulti ? 'agent' : 'stream',
-		// Multi-agent runs are several distinct agents, so a single
-		// conversation history doesn't apply; sessions are for the
-		// single-agent path.
-		effectiveMulti ? undefined : id,
+		// Sent for both modes, but it means different things in each. On the
+		// single-agent path the core replays that conversation's history; on
+		// the multi-agent path it does not — planner, executors and reviewer
+		// are distinct agents and a shared transcript would be meaningless.
+		// There it only groups the run's spend under one id in the ledger.
+		id,
+		providerPin ?? undefined,
 	);
 }
 

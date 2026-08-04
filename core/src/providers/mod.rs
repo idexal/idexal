@@ -46,6 +46,29 @@ struct Health {
 const BASE_COOLDOWN: Duration = Duration::from_secs(15);
 const MAX_COOLDOWN: Duration = Duration::from_secs(300);
 
+/// A per-task override of which provider and model to use.
+///
+/// Pinning deliberately turns **off** fallback. Falling back is the right
+/// default when the user expressed no preference, but once they have named
+/// a provider, silently rerouting to a different one is the wrong answer —
+/// someone who pins a local Ollama is often doing it precisely so their
+/// code never leaves the machine, and "the local one was down so I sent it
+/// to a cloud API" is not a recoverable mistake.
+///
+/// A model name is meaningless outside the provider that serves it, so a
+/// model pinned on its own pins the highest-priority provider with it.
+#[derive(Debug, Clone, Default)]
+pub struct Pin {
+    pub provider: Option<String>,
+    pub model: Option<String>,
+}
+
+impl Pin {
+    pub fn is_empty(&self) -> bool {
+        self.provider.is_none() && self.model.is_none()
+    }
+}
+
 pub struct Registry {
     providers: Vec<ProviderConfig>,
     health: HashMap<String, Health>,
@@ -66,6 +89,39 @@ impl Registry {
     pub fn from_config(cfg: &Config) -> Self {
         let providers = cfg.providers.iter().filter(|p| p.usable()).cloned().collect();
         Self { providers, health: HashMap::new(), usage: None, task_id: None }
+    }
+
+    /// Apply a per-task pin, reducing the registry to the single chosen
+    /// provider (see [`Pin`] for why fallback is dropped rather than kept).
+    ///
+    /// An unknown id is an error, not a silent fall-through to the default:
+    /// a typo that quietly ran on a different provider than the one asked
+    /// for is exactly the surprise pinning exists to prevent.
+    pub fn pinned(mut self, pin: &Pin) -> Result<Self, String> {
+        if pin.is_empty() {
+            return Ok(self);
+        }
+        let index = match &pin.provider {
+            Some(id) => self.providers.iter().position(|p| &p.id == id).ok_or_else(|| {
+                let available = self.provider_ids();
+                if available.is_empty() {
+                    format!("no usable provider to pin to '{id}'")
+                } else {
+                    format!("no usable provider with id '{id}' (available: {})", available.join(", "))
+                }
+            })?,
+            // Highest priority: config order is the priority order.
+            None => 0,
+        };
+        if self.providers.is_empty() {
+            return Err("no usable provider to pin a model to".into());
+        }
+        let mut chosen = self.providers.remove(index);
+        if let Some(model) = &pin.model {
+            chosen.model = model.clone();
+        }
+        self.providers = vec![chosen];
+        Ok(self)
     }
 
     /// Attach a usage ledger so every attempt through this registry is
@@ -224,6 +280,62 @@ mod tests {
                 .collect(),
             agent: Default::default(),
         }
+    }
+
+    #[test]
+    fn an_empty_pin_leaves_the_registry_and_its_fallback_alone() {
+        let reg = Registry::from_config(&cfg_with(&[("a", 1), ("b", 2)])).pinned(&Pin::default()).unwrap();
+        assert_eq!(reg.provider_ids(), vec!["a", "b"]);
+    }
+
+    #[test]
+    fn pinning_a_provider_drops_the_others_so_no_fallback_can_reroute_the_task() {
+        // The point of a pin: someone who names their local provider must
+        // not have the task quietly sent somewhere else when it is down.
+        let reg = Registry::from_config(&cfg_with(&[("a", 1), ("b", 2), ("c", 3)]))
+            .pinned(&Pin { provider: Some("b".into()), model: None })
+            .unwrap();
+        assert_eq!(reg.provider_ids(), vec!["b"]);
+    }
+
+    #[test]
+    fn pinning_an_unknown_provider_fails_and_names_the_ones_that_exist() {
+        // `err()` rather than `unwrap_err()`: Registry owns a SQLite handle
+        // and is deliberately not Debug.
+        let err = Registry::from_config(&cfg_with(&[("a", 1), ("b", 2)]))
+            .pinned(&Pin { provider: Some("typo".into()), model: None })
+            .err()
+            .expect("an unknown id must not silently succeed");
+        assert!(err.contains("typo"), "{err}");
+        assert!(err.contains('a') && err.contains('b'), "should list what is available: {err}");
+    }
+
+    #[test]
+    fn a_pinned_model_overrides_only_the_pinned_provider() {
+        let reg = Registry::from_config(&cfg_with(&[("a", 1), ("b", 2)]))
+            .pinned(&Pin { provider: Some("b".into()), model: Some("some-other-model".into()) })
+            .unwrap();
+        assert_eq!(reg.providers.len(), 1);
+        assert_eq!(reg.providers[0].id, "b");
+        assert_eq!(reg.providers[0].model, "some-other-model");
+    }
+
+    #[test]
+    fn a_model_pinned_alone_takes_the_highest_priority_provider_with_it() {
+        // A model name has no meaning apart from the provider serving it,
+        // so pinning one necessarily pins a provider too.
+        let reg = Registry::from_config(&cfg_with(&[("a", 1), ("b", 2)]))
+            .pinned(&Pin { provider: None, model: Some("m2".into()) })
+            .unwrap();
+        assert_eq!(reg.provider_ids(), vec!["a"]);
+        assert_eq!(reg.providers[0].model, "m2");
+    }
+
+    #[test]
+    fn pinning_a_model_with_no_usable_provider_is_an_error_not_a_panic() {
+        // `remove(0)` on an empty vec would panic; this is the guard.
+        let reg = Registry::from_config(&cfg_with(&[]));
+        assert!(reg.pinned(&Pin { provider: None, model: Some("m2".into()) }).is_err(), "must not panic");
     }
 
     #[test]

@@ -16,7 +16,7 @@
 
 use crate::config::Config;
 use crate::memory::Memory;
-use crate::providers::Registry;
+use crate::providers::{Pin, Registry};
 use crate::usage::Usage;
 use crate::{agent, tools};
 use serde::{Deserialize, Serialize};
@@ -40,24 +40,28 @@ fn project_name(cwd: &std::path::Path) -> Option<String> {
     cwd.file_name().map(|n| n.to_string_lossy().to_string())
 }
 
-/// Attach a usage ledger to one agent's registry.
+/// Build one agent's registry: the shared provider config, narrowed by the
+/// run's pin, with a usage ledger attached.
 ///
-/// Every agent in the pipeline gets its own handle for the same reason it
-/// gets its own Registry: a `Connection` is !Sync and cannot cross into a
-/// spawned executor. They all write to the same file under one `task_id`,
-/// so a multi-agent run adds up to a single line of spend instead of
-/// scattering across the planner, each executor and the reviewer.
+/// Every agent in the pipeline gets its own of both for the same reason: a
+/// rusqlite `Connection` is !Sync and cannot cross into a spawned executor.
+/// They all write to the same file under one `task_id`, so a multi-agent
+/// run adds up to a single line of spend instead of scattering across the
+/// planner, each executor and the reviewer.
 ///
-/// Best-effort, like memory: a ledger that will not open costs statistics,
-/// never a run.
-fn with_ledger(registry: Registry, task_id: &Option<String>) -> Registry {
-    match Usage::open(None) {
+/// The ledger is best-effort, like memory: one that will not open costs
+/// statistics, never a run. The **pin is not** — if it cannot be honoured
+/// the agent must not run, because running on a provider the user did not
+/// ask for is a worse outcome than not running at all.
+fn agent_registry(cfg: &Config, task_id: &Option<String>, pin: &Pin) -> Result<Registry, String> {
+    let registry = Registry::from_config(cfg).pinned(pin)?;
+    Ok(match Usage::open(None) {
         Ok(u) => registry.with_usage(u, task_id.clone()),
         Err(e) => {
             eprintln!("[idexal] usage tracking unavailable: {e}");
             registry
         }
-    }
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,11 +196,12 @@ pub async fn run(
     task: &str,
     memory_path: Option<PathBuf>,
     task_id: Option<String>,
+    pin: Pin,
     tx: mpsc::UnboundedSender<OrchestratorEvent>,
 ) -> Result<OrchestratorOutcome, Vec<String>> {
     // ---- Phase 1: plan ----
     let _ = tx.send(OrchestratorEvent::Phase("planning".into()));
-    let mut registry = with_ledger(Registry::from_config(cfg), &task_id);
+    let mut registry = agent_registry(cfg, &task_id, &pin).map_err(|e| vec![e])?;
     let project = project_name(&cwd);
     let plan_memory = recall_block(&memory_path, task, project.as_deref());
 
@@ -243,6 +248,7 @@ pub async fn run(
             let tx = tx.clone();
             let task_ctx = task.to_string();
             let task_id = task_id.clone();
+            let pin = pin.clone();
             // Recall happens here, on the parent task, so no SQLite handle
             // is alive inside the spawned (Send-required) future.
             let step_memory = recall_block(&memory_path, &step.description, project.as_deref());
@@ -253,7 +259,17 @@ pub async fn run(
                     description: step.description.clone(),
                 });
 
-                let mut registry = with_ledger(Registry::from_config(&cfg), &task_id);
+                let mut registry = match agent_registry(&cfg, &task_id, &pin) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        let _ = tx.send(OrchestratorEvent::StepFinished {
+                            id: step.id,
+                            ok: false,
+                            summary: e.clone(),
+                        });
+                        return (step.id, false, e);
+                    }
+                };
                 let step_id = step.id;
 
                 let tx_p = tx.clone();
@@ -348,7 +364,7 @@ pub async fn run(
             .join("\n\n");
         let review_task = format!("Original task: {task}\n\nWhat the executors reported:\n{transcript}");
 
-        let mut registry = with_ledger(Registry::from_config(cfg), &task_id);
+        let mut registry = agent_registry(cfg, &task_id, &pin).map_err(|e| vec![e])?;
         let review_memory = recall_block(&memory_path, task, project.as_deref());
         let tx_p = tx.clone();
         let tx_t = tx.clone();
