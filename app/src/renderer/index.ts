@@ -9,6 +9,9 @@
 // preload bridge — the renderer never touches Node directly.
 
 import { hydrateIcons } from './icons';
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import '@xterm/xterm/css/xterm.css';
 
 interface CoreEvent {
 	type: string;
@@ -46,8 +49,14 @@ declare global {
 				write: (rel: string, content: string) => Promise<{ ok: boolean; error?: string }>;
 			};
 			terminal: {
-				start: (id: string, onData: (d: string) => void, onExit: (c: number | null) => void) => () => void;
+				start: (
+					id: string,
+					onData: (d: string) => void,
+					onExit: (c: number | null) => void,
+					size?: { cols: number; rows: number },
+				) => () => void;
 				write: (id: string, data: string) => Promise<unknown>;
+				resize: (id: string, cols: number, rows: number) => Promise<unknown>;
 			};
 			git: {
 				status: () => Promise<{
@@ -1079,35 +1088,92 @@ $('dock-toggle').addEventListener('click', () => {
 
 // ───────────────────────── terminal ─────────────────────────
 
+// A real PTY emits escape sequences for colour, cursor movement and full
+// screen redraws, so the pane needs a terminal emulator rather than a text
+// node. xterm.js parses the stream and owns the keyboard: what the user
+// types goes to the shell byte for byte, Ctrl-C included.
+
 const TERMINAL_ID = 'main';
-const termOut = $('terminal-output');
+const termHost = $('terminal-output');
 let terminalStarted = false;
 
-function appendTerminal(text: string): void {
-	termOut.appendChild(document.createTextNode(text));
-	termOut.scrollTop = termOut.scrollHeight;
+// The palette is read from the app's own CSS variables so the terminal is
+// the same dark theme as everything else, not xterm's defaults.
+const rootStyle = getComputedStyle(document.documentElement);
+const themeVar = (name: string): string => rootStyle.getPropertyValue(name).trim();
+
+const term = new Terminal({
+	fontFamily: themeVar('--mono'),
+	fontSize: 12,
+	cursorBlink: true,
+	scrollback: 5000,
+	theme: {
+		background: themeVar('--bg-side'),
+		foreground: themeVar('--ink-soft'),
+		cursor: themeVar('--accent-2'),
+		cursorAccent: themeVar('--bg-side'),
+		selectionBackground: themeVar('--bg-hover'),
+		black: themeVar('--bg'),
+		red: themeVar('--danger'),
+		green: themeVar('--accent-2'),
+		yellow: themeVar('--warn'),
+		blue: themeVar('--accent'),
+		white: themeVar('--ink'),
+		brightBlack: themeVar('--ink-faint'),
+	},
+});
+const termFit = new FitAddon();
+term.loadAddon(termFit);
+term.open(termHost);
+
+function fitTerminal(): void {
+	// A hidden pane measures 0, and fitting to that would resize the shell
+	// to nothing.
+	if (!termHost.offsetWidth || !termHost.offsetHeight) return;
+	termFit.fit();
 }
 
 function ensureTerminal(): void {
 	if (terminalStarted) return;
 	terminalStarted = true;
+	// The shell should be born at the size it will be drawn at, not at the
+	// 80x24 default it would otherwise print its first prompt into.
+	fitTerminal();
 	window.idexal.terminal.start(
 		TERMINAL_ID,
-		(data) => appendTerminal(data),
-		(code) => appendTerminal(`\n[انتهت الجلسة، رمز ${code ?? '?'}]\n`),
+		(data) => term.write(data),
+		(code) => {
+			term.write(`\r\n[انتهت الجلسة، رمز ${code ?? '?'} — انقر لبدء جلسة جديدة]\r\n`);
+			terminalStarted = false;
+		},
+		{ cols: term.cols, rows: term.rows },
 	);
 }
 
-const termInput = $<HTMLInputElement>('terminal-input');
-termInput.addEventListener('keydown', (e) => {
-	if (e.key !== 'Enter') return;
-	const line = termInput.value;
-	termInput.value = '';
-	appendTerminal(`❯ ${line}\n`);
+// Two sources change the grid size: the window and the dock.
+new ResizeObserver(() => {
+	if (!termHost.offsetWidth || !termHost.offsetHeight) return;
+	fitTerminal();
+	// First non-zero measurement means the dock just became visible: an
+	// empty terminal pane is useless, so the shell starts with it.
 	ensureTerminal();
-	void window.idexal.terminal.write(TERMINAL_ID, line + '\n');
+}).observe(termHost);
+
+// ResizeObserver callbacks are only delivered while the window is painting.
+// An app sitting behind another window can therefore miss every layout
+// change and keep an 80x24 grid over a much wider pane — observed. Refit
+// when the window is looked at again.
+window.addEventListener('focus', fitTerminal);
+document.addEventListener('visibilitychange', fitTerminal);
+
+// Only fires when the grid actually changed, so the PTY is told once per
+// real size change rather than once per layout pass.
+term.onResize(({ cols, rows }) => void window.idexal.terminal.resize(TERMINAL_ID, cols, rows));
+term.onData((data) => {
+	ensureTerminal();
+	void window.idexal.terminal.write(TERMINAL_ID, data);
 });
-termInput.addEventListener('focus', ensureTerminal);
+termHost.addEventListener('mousedown', ensureTerminal);
 
 // ───────────────────────── live preview ─────────────────────────
 

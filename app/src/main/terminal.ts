@@ -1,63 +1,138 @@
 // Idexal — integrated terminal & Git
 //
-// Shell sessions run as child processes with piped stdio. This is not a
-// full PTY (no curses apps, no job control) — a real PTY needs a native
-// module, which is a deliberate later step; piped stdio covers the
-// overwhelmingly common case of running build/test/git commands and keeps
-// the app free of native build dependencies for now.
+// Shell sessions run on a real PTY: job control, curses apps, colour from
+// programs that check isatty, and a window size that can change. The
+// renderer draws them with xterm.js, so raw escape sequences go through
+// untouched in both directions.
+//
+// @lydell/node-pty ships N-API prebuilds per platform, so there is nothing
+// to compile and no electron-rebuild step — one binary loads under both
+// Node and Electron's ABI. If that binary is missing (unsupported platform,
+// or `npm install --omit=optional`) we fall back to piped stdio, which
+// still runs build/test/git commands. Degraded, but never broken.
 
 import { ipcMain, WebContents } from 'electron';
-import { spawn, execFile, type ChildProcess } from 'node:child_process';
+import { spawn, execFile, execFileSync, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { getWorkspaceRoot } from './workspace';
 
 const execFileAsync = promisify(execFile);
 
-interface Session {
-	child: ChildProcess;
-	sender: WebContents;
+type PtyModule = typeof import('@lydell/node-pty');
+
+let ptyLib: PtyModule | null = null;
+try {
+	ptyLib = require('@lydell/node-pty') as PtyModule;
+} catch (err) {
+	console.warn('[terminal] no PTY binary for this platform; using piped stdio:', err);
 }
+
+type Session =
+	| { kind: 'pty'; proc: import('@lydell/node-pty').IPty; sender: WebContents }
+	| { kind: 'pipe'; child: ChildProcess; sender: WebContents };
 
 const sessions = new Map<string, Session>();
 
 function shell(): { cmd: string; args: string[] } {
-	return process.platform === 'win32'
-		? { cmd: process.env.COMSPEC || 'cmd.exe', args: [] }
-		: { cmd: process.env.SHELL || '/bin/bash', args: ['-i'] };
+	if (process.platform === 'win32') return { cmd: process.env.COMSPEC || 'cmd.exe', args: [] };
+	// `-i` only exists to force interactivity when stdio is a pipe; on a PTY
+	// the shell works that out itself and the flag re-reads rc files.
+	return { cmd: process.env.SHELL || '/bin/bash', args: ptyLib ? [] : ['-i'] };
+}
+
+function killSession(session: Session): void {
+	if (session.kind === 'pipe') {
+		session.child.kill();
+		return;
+	}
+	// node-pty's Windows kill() is asynchronous — it forks a helper to
+	// enumerate the console's process list before killing anything — so on
+	// quit the app exits first and the shell is left behind. Verified: with
+	// kill() alone, cmd.exe outlived the closed window. taskkill returns
+	// only once the tree is gone, and /T takes with it whatever the shell
+	// was running.
+	if (process.platform === 'win32') {
+		try {
+			execFileSync('taskkill', ['/pid', String(session.proc.pid), '/T', '/F'], { stdio: 'ignore' });
+		} catch {
+			// Non-zero exit just means the tree was already gone.
+		}
+		return;
+	}
+	try {
+		session.proc.kill();
+	} catch {
+		// Already gone.
+	}
 }
 
 export function registerTerminalHandlers(): void {
-	ipcMain.handle('terminal:start', (event, id: string) => {
+	ipcMain.handle('terminal:start', (event, id: string, cols?: number, rows?: number) => {
 		const cwd = getWorkspaceRoot() ?? process.cwd();
 		const { cmd, args } = shell();
-		const child = spawn(cmd, args, { cwd, env: process.env });
 		const sender = event.sender;
 
 		const send = (data: string) => {
 			if (!sender.isDestroyed()) sender.send(`terminal:data:${id}`, data);
 		};
-		child.stdout?.on('data', (chunk: Buffer) => send(chunk.toString()));
-		child.stderr?.on('data', (chunk: Buffer) => send(chunk.toString()));
-		child.on('exit', (code) => {
+		const finish = (code: number | null) => {
 			if (!sender.isDestroyed()) sender.send(`terminal:exit:${id}`, code);
 			sessions.delete(id);
-		});
+		};
 
-		sessions.set(id, { child, sender });
-		return { ok: true, cwd };
+		// Starting an already-live session would orphan the old shell.
+		const existing = sessions.get(id);
+		if (existing) {
+			killSession(existing);
+			sessions.delete(id);
+		}
+
+		if (ptyLib) {
+			const proc = ptyLib.spawn(cmd, args, {
+				name: 'xterm-256color',
+				cols: cols && cols > 0 ? cols : 80,
+				rows: rows && rows > 0 ? rows : 24,
+				cwd,
+				// TERM is how POSIX programs decide which escapes they may
+				// emit; ConPTY ignores it but passing it costs nothing.
+				env: { ...process.env, TERM: 'xterm-256color' } as Record<string, string>,
+			});
+			proc.onData(send);
+			proc.onExit(({ exitCode }) => finish(exitCode));
+			sessions.set(id, { kind: 'pty', proc, sender });
+			return { ok: true, cwd, pty: true };
+		}
+
+		const child = spawn(cmd, args, { cwd, env: process.env });
+		child.stdout?.on('data', (chunk: Buffer) => send(chunk.toString()));
+		child.stderr?.on('data', (chunk: Buffer) => send(chunk.toString()));
+		child.on('exit', finish);
+		sessions.set(id, { kind: 'pipe', child, sender });
+		return { ok: true, cwd, pty: false };
 	});
 
 	ipcMain.handle('terminal:write', (_e, id: string, data: string) => {
 		const session = sessions.get(id);
 		if (!session) return { ok: false, error: 'no such terminal session' };
-		session.child.stdin?.write(data);
+		if (session.kind === 'pty') session.proc.write(data);
+		else session.child.stdin?.write(data);
+		return { ok: true };
+	});
+
+	ipcMain.handle('terminal:resize', (_e, id: string, cols: number, rows: number) => {
+		const session = sessions.get(id);
+		// The renderer resizes on every layout change, including before the
+		// shell exists — that is not worth an error.
+		if (!session || session.kind !== 'pty') return { ok: true };
+		if (!(cols > 0 && rows > 0)) return { ok: false, error: 'invalid size' };
+		session.proc.resize(cols, rows);
 		return { ok: true };
 	});
 
 	ipcMain.handle('terminal:stop', (_e, id: string) => {
 		const session = sessions.get(id);
 		if (session) {
-			session.child.kill();
+			killSession(session);
 			sessions.delete(id);
 		}
 		return { ok: true };
@@ -168,6 +243,6 @@ export function registerTerminalHandlers(): void {
 
 /** Kill every live shell on quit so no orphan processes survive the app. */
 export function disposeTerminals(): void {
-	for (const { child } of sessions.values()) child.kill();
+	for (const session of sessions.values()) killSession(session);
 	sessions.clear();
 }

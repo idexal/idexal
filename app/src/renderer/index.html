@@ -5,6 +5,8 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'; img-src 'self' data:;" />
 <title>Idexal</title>
 <link rel="stylesheet" href="style.css" />
+<!-- Emitted by esbuild from the CSS imported by index.ts (xterm.js). -->
+<link rel="stylesheet" href="index.css" />
 </head>
 <body>
 <div id="app">
@@ -167,11 +169,7 @@
             </div>
             <div id="dock-body">
               <div class="dock-panel active" data-dock="terminal">
-                <div id="terminal-output"></div>
-                <div id="terminal-input-row">
-                  <span class="prompt">❯</span>
-                  <input id="terminal-input" type="text" dir="ltr" autocomplete="off" spellcheck="false" />
-                </div>
+                <div id="terminal-output" dir="ltr"></div>
               </div>
               <div class="dock-panel" data-dock="diff"><pre id="diff-output" dir="ltr"></pre></div>
             </div>
