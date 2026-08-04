@@ -11,6 +11,7 @@ pub mod openai_compat;
 pub mod types;
 
 use crate::config::{Config, ProviderConfig, ProviderKind};
+use crate::usage::{CallRecord, Usage};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use types::{Delta, Message, ToolDefinition, Turn};
@@ -48,6 +49,11 @@ const MAX_COOLDOWN: Duration = Duration::from_secs(300);
 pub struct Registry {
     providers: Vec<ProviderConfig>,
     health: HashMap<String, Health>,
+    /// Optional because the ledger is a product concern, not an engine one:
+    /// tests and one-off runs build a registry without touching the user's
+    /// database.
+    usage: Option<Usage>,
+    task_id: Option<String>,
 }
 
 #[derive(Debug)]
@@ -59,7 +65,39 @@ pub struct TurnOutcome {
 impl Registry {
     pub fn from_config(cfg: &Config) -> Self {
         let providers = cfg.providers.iter().filter(|p| p.usable()).cloned().collect();
-        Self { providers, health: HashMap::new() }
+        Self { providers, health: HashMap::new(), usage: None, task_id: None }
+    }
+
+    /// Attach a usage ledger so every attempt through this registry is
+    /// recorded. `task_id` is the session the calls belong to, when there
+    /// is one, so spend can later be attributed to a conversation.
+    pub fn with_usage(mut self, usage: Usage, task_id: Option<String>) -> Self {
+        self.usage = Some(usage);
+        self.task_id = task_id;
+        self
+    }
+
+    /// Append one attempt to the ledger. The registry is the only place
+    /// that knows all four of provider, model, latency and outcome, which
+    /// is why recording lives here rather than in the agent loop.
+    ///
+    /// Write errors are swallowed on purpose: a bookkeeping failure must
+    /// never be the reason a model call fails.
+    fn log_call(&self, provider: &ProviderConfig, turn: Option<&Turn>, error: Option<&str>, latency_ms: u64) {
+        let Some(usage) = &self.usage else { return };
+        // A provider that reported nothing is stored as zero tokens; the
+        // call itself still counts, and its latency is still real.
+        let counts = turn.and_then(|t| t.usage).unwrap_or_default();
+        let _ = usage.record(&CallRecord {
+            provider_id: &provider.id,
+            model: &provider.model,
+            input_tokens: counts.input_tokens,
+            output_tokens: counts.output_tokens,
+            latency_ms,
+            ok: error.is_none(),
+            error,
+            task_id: self.task_id.as_deref(),
+        });
     }
 
     pub fn provider_ids(&self) -> Vec<String> {
@@ -127,6 +165,7 @@ impl Registry {
                 }
                 attempted.insert(p.id.clone());
                 on_provider(&p.id);
+                let started = Instant::now();
                 let result = match p.kind {
                     ProviderKind::Anthropic => {
                         anthropic::stream_turn(p, messages, tools, &mut on_delta).await
@@ -135,13 +174,19 @@ impl Registry {
                         openai_compat::stream_turn(p, messages, tools, &mut on_delta).await
                     }
                 };
+                let latency_ms = started.elapsed().as_millis() as u64;
                 match result {
                     Ok(turn) => {
                         self.record_success(&p.id);
+                        self.log_call(p, Some(&turn), None, latency_ms);
                         return Ok(TurnOutcome { turn, provider_id: p.id.clone() });
                     }
                     Err(e) => {
                         self.record_failure(&p.id);
+                        // Failures are logged too: they cost real latency
+                        // and they are what makes a provider look unhealthy
+                        // on the usage page.
+                        self.log_call(p, None, Some(&e), latency_ms);
                         errors.push(format!("{}: {e}", p.id));
                     }
                 }
@@ -263,6 +308,44 @@ mod tests {
         assert_eq!(attempts, vec!["a".to_string(), "b".to_string()], "each provider exactly once");
         let errors = result.unwrap_err();
         assert_eq!(errors.len(), 2, "one error per provider, not duplicated");
+    }
+
+    #[tokio::test]
+    async fn every_attempt_reaches_the_usage_ledger() {
+        // Both providers point at dead local ports, so this exercises the
+        // failure path end to end: two attempts, two rows, both marked
+        // failed and attributed to the session that made them.
+        let path = std::env::temp_dir().join(format!("idexal-usage-registry-{}.db", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+        let mut cfg = cfg_with(&[("a", 1), ("b", 2)]);
+        cfg.providers[0].base_url = Some("http://127.0.0.1:1/v1".into());
+        cfg.providers[1].base_url = Some("http://127.0.0.1:2/v1".into());
+        let ledger = crate::usage::Usage::open(Some(path.clone())).unwrap();
+        let mut reg = Registry::from_config(&cfg).with_usage(ledger, Some("sess-1".into()));
+
+        let result = reg.stream_turn(&[Message::user("hi")], &[], |_| {}, |_| {}).await;
+        assert!(result.is_err());
+
+        let ledger = crate::usage::Usage::open(Some(path.clone())).unwrap();
+        let totals = ledger.totals().unwrap();
+        assert_eq!(totals.calls, 2, "one row per attempted provider");
+        assert_eq!(totals.failed, 2);
+        let recent = ledger.recent(10).unwrap();
+        assert!(recent.iter().all(|r| r.error.is_some()), "a failure must carry its message");
+
+        drop(reg);
+        drop(ledger);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn logging_without_a_ledger_is_a_no_op() {
+        // The engine must not require the ledger: an unwritable home
+        // directory degrades to "no stats", never to "no agent".
+        let cfg = cfg_with(&[("a", 1)]);
+        let reg = Registry::from_config(&cfg);
+        assert!(reg.usage.is_none());
+        reg.log_call(&cfg.providers[0], None, Some("boom"), 5);
     }
 
     #[test]
