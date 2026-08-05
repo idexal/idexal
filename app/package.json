@@ -9,11 +9,14 @@
     "bundle": "node esbuild.mjs",
     "build": "npm run typecheck && npm run bundle",
     "start": "npm run build && electron .",
-    "dev": "node esbuild.mjs --watch"
+    "dev": "node esbuild.mjs --watch",
+    "package": "npm run build && electron-builder --config electron-builder.yml",
+    "package:dir": "npm run build && electron-builder --config electron-builder.yml --dir"
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",
     "electron": "^33.0.0",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.24.0",
     "monaco-editor": "^0.52.0",
     "typescript": "^5.6.0"
@@ -23,5 +26,8 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "ws": "^8.21.2"
-  }
+  },
+  "author": "Zakariae Lahbabi <team@idexal.com>",
+  "homepage": "https://idexal.com",
+  "license": "MIT"
 }

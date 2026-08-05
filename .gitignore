@@ -11,3 +11,8 @@ Thumbs.db
 # Subagent worktrees — transient, never part of the project.
 .claude/
 .freebuff/
+
+# Packaged output. Installers are build products, not sources — they are
+# published as release assets, never committed.
+app/release/
+app/release-out/

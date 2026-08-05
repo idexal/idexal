@@ -10,8 +10,13 @@ import * as path from 'node:path';
 
 export function resolveCoreBinary(): string {
 	const exeName = process.platform === 'win32' ? 'idexal-core.exe' : 'idexal-core';
-	// Release first: an installed build must never lose to a stale debug one.
 	const candidates = [
+		// Installed app: electron-builder copies the engine here. It is first
+		// so a packaged Idexal can never pick up a stale build tree that
+		// happens to be on the same machine.
+		path.join(process.resourcesPath ?? '', 'core', exeName),
+		// Development: release before debug, so an installed build never
+		// loses to a stale debug one.
 		path.join(__dirname, '..', '..', '..', 'core', 'target', 'release', exeName),
 		path.join(__dirname, '..', '..', '..', 'core', 'target', 'debug', exeName),
 	];

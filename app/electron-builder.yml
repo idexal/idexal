@@ -1,0 +1,67 @@
+## Idexal — packaging
+##
+## What ships: the bundled renderer/main output, the runtime dependencies
+## that must stay outside the bundle (a native PTY, ws), and the Rust engine
+## as an extra resource. Source and build tooling are deliberately excluded —
+## an installed app has no use for TypeScript sources or esbuild.
+
+appId: com.idexal.app
+productName: Idexal
+copyright: Zakariae Lahbabi
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**
+  - package.json
+  ## node-pty and ws are marked external in the bundle because they load a
+  ## native binary and fork helpers by path; they must exist on disk.
+  - node_modules/@lydell/node-pty/**
+  - node_modules/@lydell/node-pty-*/**
+  - node_modules/ws/**
+  - '!**/*.map'
+  - '!**/*.ts'
+
+## The engine is a separate binary, not a Node module, so it goes beside the
+## app rather than inside the asar: it has to be executable and spawnable.
+## resolveCoreBinary() looks here first.
+extraResources:
+  - from: ../core/target/release/
+    to: core
+    filter:
+      - idexal-core.exe
+      - idexal-core
+
+win:
+  target:
+    ## nsis installs; portable is a single .exe that needs no install at all,
+    ## which matches "free, nothing in the way" better than an installer does.
+    - nsis
+    - portable
+
+## Both Windows targets emit a .exe, so each needs its OWN name. A shared
+## `artifactName` is not a cosmetic problem: the two builds write the same
+## path and the second silently overwrites the first, so a release ships one
+## file where it promised two. Observed — the portable build replaced the
+## installer with no warning.
+nsis:
+  artifactName: ${productName}-Setup-${version}-${arch}.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  shortcutName: Idexal
+
+portable:
+  artifactName: ${productName}-Portable-${version}-${arch}.${ext}
+
+linux:
+  target:
+    - AppImage
+  category: Development
+
+mac:
+  target:
+    - dmg
+  category: public.app-category.developer-tools
