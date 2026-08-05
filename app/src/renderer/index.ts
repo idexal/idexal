@@ -48,6 +48,12 @@ declare global {
 				list: (rel: string) => Promise<{ ok: boolean; entries?: Array<{ name: string; path: string; directory: boolean }>; error?: string }>;
 				read: (rel: string) => Promise<{ ok: boolean; content?: string; readOnly?: boolean; error?: string }>;
 				write: (rel: string, content: string) => Promise<{ ok: boolean; error?: string }>;
+				pickFiles: () => Promise<{ ok: boolean; files?: string[]; skipped?: number; error?: string }>;
+			};
+			skills: {
+				list: () => Promise<{ ok: boolean; skills?: Array<{ id: string; name: string; prompt: string }>; error?: string }>;
+				save: (skill: { id?: string; name: string; prompt: string }) => Promise<{ ok: boolean; error?: string }>;
+				remove: (id: string) => Promise<{ ok: boolean; error?: string }>;
 			};
 			terminal: {
 				start: (
@@ -705,6 +711,119 @@ function markStep(rec: TaskRecord, id: number | undefined, cls: string): void {
 	row.classList.add(cls);
 }
 
+// ───────────────────────── attach & skills ─────────────────────────
+//
+// Both of these were buttons that did nothing when clicked. A control that
+// looks live and answers with silence is worse than no control at all.
+
+/** Insert text at the caret rather than replacing what the user has typed. */
+function insertIntoComposer(text: string): void {
+	const start = composer.selectionStart ?? composer.value.length;
+	const end = composer.selectionEnd ?? start;
+	const before = composer.value.slice(0, start);
+	const after = composer.value.slice(end);
+	// Keep a space between what was there and what is added, without
+	// doubling one that already exists.
+	const glue = before && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : '';
+	composer.value = `${before}${glue}${text}${after}`;
+	const caret = (before + glue + text).length;
+	composer.setSelectionRange(caret, caret);
+	composer.focus();
+}
+
+$('chip-attach').addEventListener('click', async () => {
+	const result = (await window.idexal.workspace.pickFiles()) as {
+		ok: boolean;
+		files?: string[];
+		skipped?: number;
+		error?: string;
+	};
+	if (!result.ok) {
+		openMenu($('chip-attach'), [{ label: result.error ?? 'تعذّر فتح المتصفّح', onPick: () => {} }], 'إرفاق');
+		return;
+	}
+	if (!result.files?.length) return;
+	// `@path` is the same reference the composer's placeholder advertises,
+	// and the agent resolves it with its own file tools.
+	insertIntoComposer(result.files.map((f) => `@${f}`).join(' '));
+	if (result.skipped) {
+		// Files outside the workspace cannot be read by the agent at all, so
+		// silently dropping them would leave the user waiting on nothing.
+		insertIntoComposer(`\n(تُجوهل ${result.skipped} ملفاً خارج مساحة العمل)`);
+	}
+});
+
+interface SkillEntry { id: string; name: string; prompt: string }
+
+$('nav-skills').addEventListener('click', async (e) => {
+	const result = (await window.idexal.skills.list()) as { ok: boolean; skills?: SkillEntry[]; error?: string };
+	const skills = result.skills ?? [];
+	const entries: MenuEntry[] = skills.map((skill) => ({
+		label: skill.name,
+		detail: skill.prompt.slice(0, 60),
+		onPick: () => {
+			showView('home');
+			insertIntoComposer(skill.prompt);
+		},
+	}));
+
+	entries.push({
+		label: '＋ احفظ ما في المؤلِّف كمهارة',
+		detail: 'يحفظ النص الحالي لإعادة استخدامه',
+		onPick: async () => {
+			const prompt = composer.value.trim();
+			if (!prompt) {
+				showView('home');
+				composer.focus();
+				return;
+			}
+			const name = window.prompt('اسم المهارة:', prompt.slice(0, 30));
+			if (!name?.trim()) return;
+			await window.idexal.skills.save({ name: name.trim(), prompt });
+		},
+	});
+	if (skills.length) {
+		entries.push({
+			label: '🗑 احذف مهارة…',
+			onPick: () =>
+				openMenu(
+					e.currentTarget as HTMLElement,
+					skills.map((skill) => ({
+						label: skill.name,
+						onPick: () => void window.idexal.skills.remove(skill.id),
+					})),
+					'احذف مهارة',
+				),
+		});
+	}
+	openMenu(e.currentTarget as HTMLElement, entries, 'المهارات');
+});
+
+// Automations is not built. It stays in the rail because the layout is
+// deliberate, but it says so plainly instead of swallowing the click —
+// a button that looks live and does nothing is the worse of the two.
+$('nav-automations').addEventListener('click', (e) => {
+	openMenu(
+		e.currentTarget as HTMLElement,
+		[
+			{
+				label: 'لم تُبنَ بعد',
+				detail: 'جدولة المهام وتشغيلها تلقائياً — مُدرجة في خارطة الطريق',
+				onPick: () => {},
+			},
+			{
+				label: 'الممكن الآن: شغّل المهمة من الطرفية',
+				detail: 'idexal agent "<مهمة>" — وجدولتها بمجدول نظام التشغيل',
+				onPick: () => {
+					showView('workspace');
+					selectDock('terminal');
+				},
+			},
+		],
+		'الأتمتة',
+	);
+});
+
 // ───────────────────────── composer wiring ─────────────────────────
 
 const composer = $<HTMLTextAreaElement>('composer-input');
@@ -786,18 +905,9 @@ $('nav-search').addEventListener('click', (e) => {
 	);
 });
 
-// Automations and Skills are declared surfaces in the design docs but have
-// no engine behind them yet; say so rather than opening an empty panel.
-for (const [id, name] of [
-	['nav-automations', 'الأتمتة'],
-	['nav-skills', 'المهارات'],
-] as const) {
-	$(id).addEventListener('click', (e) => {
-		openMenu(e.currentTarget as HTMLElement, [
-			{ label: 'غير مفعّل بعد', detail: `${name} مخطّط لها ولم تُبنَ في النواة حتى الآن`, onPick: () => {} },
-		], name);
-	});
-}
+// Skills used to share this rail's "not built yet" placeholder; it now has
+// a real implementation above, and Automations keeps its own honest notice
+// there. A second listener here would fire after it and replace the menu.
 
 document.addEventListener('keydown', (e) => {
 	if (!(e.ctrlKey || e.metaKey)) return;

@@ -39,6 +39,15 @@ contextBridge.exposeInMainWorld('idexal', {
 		list: (relative: string) => ipcRenderer.invoke('workspace:list', relative),
 		read: (relative: string) => ipcRenderer.invoke('workspace:read', relative),
 		write: (relative: string, content: string) => ipcRenderer.invoke('workspace:write', relative, content),
+		pickFiles: () => ipcRenderer.invoke('workspace:pick-files'),
+	},
+
+	/** Saved prompts. Stored as JSON beside the user's config so they can be
+	 *  read, edited and backed up without the app. */
+	skills: {
+		list: () => ipcRenderer.invoke('skills:list'),
+		save: (skill: { id?: string; name: string; prompt: string }) => ipcRenderer.invoke('skills:save', skill),
+		remove: (id: string) => ipcRenderer.invoke('skills:delete', id),
 	},
 
 	terminal: {

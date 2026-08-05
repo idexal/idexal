@@ -8,6 +8,7 @@ import { registerSettingsHandlers } from './settings';
 import { registerSessionHandlers } from './sessions';
 import { registerUsageHandlers } from './usage';
 import { registerDebugHandlers, disposeDebug } from './debug';
+import { registerSkillHandlers } from './skills';
 import { resolveCoreBinary } from './core';
 
 function createWindow(): void {
@@ -133,6 +134,7 @@ app.whenReady().then(() => {
 	registerSessionHandlers();
 	registerUsageHandlers();
 	registerDebugHandlers();
+	registerSkillHandlers();
 	createWindow();
 });
 

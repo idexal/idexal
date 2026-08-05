@@ -108,6 +108,31 @@ export function registerWorkspaceHandlers(): void {
 		workspaceRoot ? { root: workspaceRoot, name: path.basename(workspaceRoot) } : null,
 	);
 
+	/**
+	 * Pick files to reference in a prompt. Returns workspace-relative paths,
+	 * never absolute ones: the agent runs with the workspace as its root, so
+	 * an absolute path from another drive would simply fail its path check.
+	 * Anything chosen outside the workspace is dropped for the same reason.
+	 */
+	ipcMain.handle('workspace:pick-files', async () => {
+		if (!workspaceRoot) return { ok: false, error: 'no workspace is open' };
+		const win = BrowserWindow.getFocusedWindow();
+		const options = {
+			defaultPath: workspaceRoot,
+			properties: ['openFile', 'multiSelections'] as const,
+		};
+		const result = win
+			? await dialog.showOpenDialog(win, { ...options, properties: [...options.properties] })
+			: await dialog.showOpenDialog({ ...options, properties: [...options.properties] });
+		if (result.canceled) return { ok: true, files: [] };
+
+		const root = path.resolve(workspaceRoot);
+		const files = result.filePaths
+			.filter((p) => path.resolve(p).startsWith(root + path.sep))
+			.map((p) => path.relative(root, p).split(path.sep).join('/'));
+		return { ok: true, files, skipped: result.filePaths.length - files.length };
+	});
+
 	ipcMain.handle('workspace:list', async (_e, relative: string) => {
 		try {
 			return { ok: true, entries: await readDirectory(relative || '.') };
