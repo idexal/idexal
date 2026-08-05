@@ -171,6 +171,7 @@
               <button class="dock-tab active" data-dock="terminal"><span data-icon="terminal" data-icon-size="13"></span> الطرفية</button>
               <button class="dock-tab" data-dock="diff"><span data-icon="diff" data-icon-size="13"></span> الفروق</button>
               <button class="dock-tab" data-dock="undo"><span data-icon="undo" data-icon-size="13"></span> التراجع <span id="undo-count" class="dock-badge hidden">0</span></button>
+              <button class="dock-tab" data-dock="debug"><span data-icon="bug" data-icon-size="13"></span> التصحيح</button>
               <span class="spacer"></span>
               <button id="dock-toggle" class="mini-btn">▾</button>
             </div>
@@ -188,6 +189,36 @@
                   <button id="undo-clear" class="mini-btn danger">مسح اللقطات</button>
                 </div>
                 <div id="undo-list"></div>
+              </div>
+              <div class="dock-panel" data-dock="debug">
+                <div id="debug-head">
+                  <button id="debug-run" class="mini-btn">▶ صحّح الملف المفتوح</button>
+                  <button id="debug-continue" class="mini-btn" disabled>متابعة</button>
+                  <button id="debug-over" class="mini-btn" disabled>تخطّي</button>
+                  <button id="debug-into" class="mini-btn" disabled>دخول</button>
+                  <button id="debug-out" class="mini-btn" disabled>خروج</button>
+                  <button id="debug-stop" class="mini-btn danger" disabled>إيقاف</button>
+                  <span class="spacer"></span>
+                  <span id="debug-state" class="undo-note">انقر هامش المحرِّر لوضع نقطة توقف.</span>
+                </div>
+                <div id="debug-body">
+                  <div class="debug-col">
+                    <div class="debug-col-head">نقاط التوقف</div>
+                    <div id="debug-breakpoints"></div>
+                  </div>
+                  <div class="debug-col">
+                    <div class="debug-col-head">مكدّس الاستدعاء</div>
+                    <div id="debug-stack"></div>
+                  </div>
+                  <div class="debug-col">
+                    <div class="debug-col-head">المتغيّرات</div>
+                    <div id="debug-vars"></div>
+                  </div>
+                  <div class="debug-col wide">
+                    <div class="debug-col-head">المخرجات</div>
+                    <pre id="debug-output" dir="ltr"></pre>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

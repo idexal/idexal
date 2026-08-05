@@ -79,6 +79,19 @@ declare global {
 			usage: {
 				load: () => Promise<{ ok: boolean; data?: unknown; error?: string }>;
 			};
+			debug: {
+				start: (
+					file: string,
+					breakpoints: Array<{ file: string; line: number }>,
+					on: (event: string, payload: unknown) => void,
+				) => { done: Promise<unknown>; stop: () => void };
+				cont: () => Promise<unknown>;
+				stepOver: () => Promise<unknown>;
+				stepInto: () => Promise<unknown>;
+				stepOut: () => Promise<unknown>;
+				setBreakpoint: (file: string, line: number) => Promise<unknown>;
+				stop: () => Promise<unknown>;
+			};
 			undo: {
 				list: () => Promise<{ ok: boolean; data?: unknown; error?: string }>;
 				restore: (relative?: string) => Promise<{ ok: boolean; data?: unknown; error?: string }>;
@@ -835,8 +848,22 @@ window.addEventListener('monaco-ready', () => {
 		fontSize: 13,
 		minimap: { enabled: true },
 		scrollBeyondLastLine: false,
+		// The margin exists so breakpoints have somewhere to live and
+		// somewhere to be clicked. `lineDecorationsWidth` must be set
+		// explicitly: without a width the decorations margin is laid out at
+		// zero, Monaco renders no `.lines-decorations` element at all, and a
+		// breakpoint decoration that exists on the model draws nothing.
+		glyphMargin: true,
+		lineDecorationsWidth: 14,
 	});
 	editor.addCommand(api.KeyMod.CtrlCmd | api.KeyCode.KeyS, () => void saveActive());
+	// Clicking the gutter toggles a breakpoint on that line, the way every
+	// debugger does it.
+	editor.onMouseDown((e) => {
+		if (e.target.type !== api.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
+		const line = e.target.position?.lineNumber;
+		if (line && activeTab) void toggleBreakpoint(activeTab, line);
+	});
 	void refreshWorkspaceChrome();
 });
 
@@ -910,6 +937,8 @@ async function openFile(filePath: string): Promise<void> {
 	});
 	openTabs.set(filePath, tab);
 	activateTab(filePath);
+	// Breakpoints outlive the tab they were set in, so restore their markers.
+	renderBreakpointGutter(filePath);
 	showView('workspace');
 }
 
@@ -938,6 +967,213 @@ async function reloadOpenTabs(): Promise<void> {
 	}
 	renderTabs();
 }
+
+// ───────────────────────── debugger ─────────────────────────
+//
+// Breakpoints live here, not in the main process, because they belong to the
+// editor: the user sets them by clicking the gutter whether or not anything
+// is running, and they must survive between sessions.
+
+interface DebugStackFrame { name: string; url: string; line: number }
+interface DebugVariable { scope: string; name: string; value: string }
+
+/** file → set of 1-based lines. */
+const breakpoints = new Map<string, Set<number>>();
+let debugRunning = false;
+let debugSession: { stop: () => void } | null = null;
+/** Monaco decoration ids per file, so a toggle can remove exactly its own. */
+const bpDecorations = new Map<string, string[]>();
+
+function breakpointList(): Array<{ file: string; line: number }> {
+	const out: Array<{ file: string; line: number }> = [];
+	for (const [file, lines] of breakpoints) for (const line of lines) out.push({ file, line });
+	return out;
+}
+
+function renderBreakpointGutter(file: string): void {
+	const tab = openTabs.get(file);
+	if (!tab || !monacoApi) return;
+	const lines = [...(breakpoints.get(file) ?? [])];
+	// `linesDecorationsClassName`, not `glyphMarginClassName`: the glyph
+	// margin widgets never rendered here — the container stayed empty even
+	// for a decoration applied straight through the editor API — while the
+	// lines-decorations margin draws reliably. The click target is still the
+	// glyph margin, which is why that option stays on.
+	const decorations = lines.map((line) => ({
+		range: new monacoApi!.Range(line, 1, line, 1),
+		options: { isWholeLine: false, linesDecorationsClassName: 'bp-glyph' },
+	}));
+	bpDecorations.set(file, tab.model.deltaDecorations(bpDecorations.get(file) ?? [], decorations));
+}
+
+async function toggleBreakpoint(file: string, line: number): Promise<void> {
+	const lines = breakpoints.get(file) ?? new Set<number>();
+	if (lines.has(line)) lines.delete(line);
+	else lines.add(line);
+	if (lines.size) breakpoints.set(file, lines);
+	else breakpoints.delete(file);
+	renderBreakpointGutter(file);
+	renderBreakpointList();
+	// A live session takes new breakpoints immediately; otherwise they are
+	// handed over when the next run starts.
+	if (debugRunning && lines.has(line)) await window.idexal.debug.setBreakpoint(file, line);
+}
+
+function renderBreakpointList(): void {
+	const host = $('debug-breakpoints');
+	host.innerHTML = '';
+	const all = breakpointList();
+	if (all.length === 0) {
+		const empty = document.createElement('div');
+		empty.className = 'sb-empty';
+		empty.textContent = 'لا نقاط توقف — انقر هامش المحرِّر.';
+		host.appendChild(empty);
+		return;
+	}
+	for (const bp of all.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line)) {
+		const row = document.createElement('div');
+		row.className = 'dbg-row';
+		const name = document.createElement('span');
+		name.className = 'dbg-fn';
+		name.textContent = `${bp.file}:${bp.line}`;
+		const remove = document.createElement('button');
+		remove.className = 'mini-btn';
+		remove.textContent = '×';
+		remove.title = 'إزالة';
+		remove.addEventListener('click', () => void toggleBreakpoint(bp.file, bp.line));
+		row.append(name, remove);
+		host.appendChild(row);
+	}
+}
+
+function setDebugButtons(paused: boolean): void {
+	for (const id of ['debug-continue', 'debug-over', 'debug-into', 'debug-out']) {
+		$<HTMLButtonElement>(id).disabled = !paused;
+	}
+	$<HTMLButtonElement>('debug-stop').disabled = !debugRunning;
+	$<HTMLButtonElement>('debug-run').disabled = debugRunning;
+}
+
+function debugSay(text: string): void {
+	const out = $('debug-output');
+	out.appendChild(document.createTextNode(text.endsWith('\n') ? text : text + '\n'));
+	out.scrollTop = out.scrollHeight;
+}
+
+function renderStack(stack: DebugStackFrame[]): void {
+	const host = $('debug-stack');
+	host.innerHTML = '';
+	for (const frame of stack) {
+		const row = document.createElement('div');
+		row.className = 'dbg-row';
+		const name = document.createElement('span');
+		name.className = 'dbg-fn';
+		name.textContent = frame.name;
+		const where = document.createElement('span');
+		where.className = 'dbg-where';
+		// Only the file name: the absolute path is noise in a narrow column.
+		where.textContent = `${frame.url.split('/').pop() ?? ''}:${frame.line}`;
+		row.append(name, where);
+		host.appendChild(row);
+	}
+}
+
+function renderVariables(vars: DebugVariable[]): void {
+	const host = $('debug-vars');
+	host.innerHTML = '';
+	for (const v of vars) {
+		const row = document.createElement('div');
+		row.className = 'dbg-row';
+		const name = document.createElement('span');
+		name.className = 'dbg-name';
+		name.textContent = v.name;
+		const value = document.createElement('span');
+		value.className = 'dbg-value';
+		// Functions arrive as their whole source; one line is all that fits.
+		value.textContent = v.value.split('\n')[0].slice(0, 120);
+		value.title = v.value;
+		row.append(name, value);
+		host.appendChild(row);
+	}
+}
+
+/** Move the editor to the paused line so the user sees where they are. */
+function revealPaused(frame: DebugStackFrame | undefined): void {
+	if (!frame || !editor) return;
+	const name = frame.url.split('/').pop();
+	const match = [...openTabs.keys()].find((p) => p.split('/').pop() === name);
+	if (!match) return;
+	if (activeTab !== match) activateTab(match);
+	editor.revealLineInCenter(frame.line);
+	editor.setPosition({ lineNumber: frame.line, column: 1 });
+}
+
+function onDebugEvent(name: string, payload: unknown): void {
+	const p = (payload ?? {}) as Record<string, unknown>;
+	switch (name) {
+		case 'started':
+			debugRunning = true;
+			$('debug-state').textContent = 'يعمل…';
+			setDebugButtons(false);
+			break;
+		case 'breakpoint':
+			debugSay(
+				p.bound
+					? `● نقطة توقف مثبّتة: ${p.file}:${p.line}`
+					: `○ تعذّر تثبيت نقطة التوقف ${p.file}:${p.line}`,
+			);
+			break;
+		case 'paused': {
+			const stack = (p.stack ?? []) as DebugStackFrame[];
+			$('debug-state').textContent = `متوقف — ${String(p.reason ?? '')}`;
+			renderStack(stack);
+			renderVariables((p.variables ?? []) as DebugVariable[]);
+			revealPaused(stack[0]);
+			setDebugButtons(true);
+			break;
+		}
+		case 'resumed':
+			$('debug-state').textContent = 'يعمل…';
+			setDebugButtons(false);
+			break;
+		case 'output':
+			debugSay(String(p.text ?? ''));
+			break;
+		case 'terminated':
+			debugRunning = false;
+			$('debug-state').textContent = `انتهى (${String(p.reason ?? '')}${p.code !== null && p.code !== undefined ? ` · رمز ${p.code}` : ''})`;
+			renderStack([]);
+			renderVariables([]);
+			setDebugButtons(false);
+			debugSession?.stop();
+			debugSession = null;
+			break;
+	}
+}
+
+$('debug-run').addEventListener('click', async () => {
+	if (debugRunning || !activeTab) {
+		if (!activeTab) debugSay('افتح ملفاً أولاً.');
+		return;
+	}
+	$('debug-output').textContent = '';
+	debugSay(`▶ ${activeTab}`);
+	const session = window.idexal.debug.start(activeTab, breakpointList(), onDebugEvent);
+	debugSession = session;
+	const result = (await session.done) as { ok: boolean; error?: string };
+	if (!result.ok) {
+		debugSay(`⚠ ${result.error ?? 'تعذّر بدء التصحيح'}`);
+		debugRunning = false;
+		session.stop();
+		debugSession = null;
+		setDebugButtons(false);
+	}
+});
+$('debug-continue').addEventListener('click', () => void window.idexal.debug.cont());
+$('debug-over').addEventListener('click', () => void window.idexal.debug.stepOver());
+$('debug-into').addEventListener('click', () => void window.idexal.debug.stepInto());
+$('debug-out').addEventListener('click', () => void window.idexal.debug.stepOut());
+$('debug-stop').addEventListener('click', () => void window.idexal.debug.stop());
 
 // ───────────────────────── checkpoints / undo ─────────────────────────
 //

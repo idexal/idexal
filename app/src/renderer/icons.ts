@@ -33,6 +33,7 @@ const PATHS: Record<string, string> = {
 	dot: '<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/>',
 	logo: '<path d="M4 18 11 4l3 7h6l-7 9-2.5-6.5H4z"/>',
 	undo: '<path d="M4 9h11a5 5 0 0 1 0 10h-6"/><path d="M8 5 4 9l4 4"/>',
+	bug: '<rect x="7.5" y="7" width="9" height="12" rx="4.5"/><path d="M9 5.5 10.5 7M15 5.5 13.5 7M7.5 11H4M20 11h-3.5M7.5 15.5H4.5M19.5 15.5h-3M12 11v6"/>',
 	// Several agents fanning out from one task — the multi-agent chip.
 	agents: '<circle cx="5" cy="6" r="2.2"/><circle cx="5" cy="18" r="2.2"/><circle cx="18" cy="12" r="2.2"/><path d="M7.2 6.9 15.8 11M7.2 17.1 15.8 13"/>',
 };

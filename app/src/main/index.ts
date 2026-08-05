@@ -7,6 +7,7 @@ import { registerTerminalHandlers, disposeTerminals } from './terminal';
 import { registerSettingsHandlers } from './settings';
 import { registerSessionHandlers } from './sessions';
 import { registerUsageHandlers } from './usage';
+import { registerDebugHandlers, disposeDebug } from './debug';
 import { resolveCoreBinary } from './core';
 
 function createWindow(): void {
@@ -128,11 +129,13 @@ app.whenReady().then(() => {
 	registerSettingsHandlers();
 	registerSessionHandlers();
 	registerUsageHandlers();
+	registerDebugHandlers();
 	createWindow();
 });
 
 app.on('window-all-closed', () => {
 	disposeTerminals();
+	disposeDebug();
 	if (process.platform !== 'darwin') app.quit();
 });
 

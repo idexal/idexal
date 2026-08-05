@@ -72,6 +72,36 @@ contextBridge.exposeInMainWorld('idexal', {
 	},
 
 	/**
+	 * Debugger. `start` returns once the program is attached and running;
+	 * everything after that arrives on the event channels, because a
+	 * debugger is a stream of pauses, not a request/response.
+	 */
+	debug: {
+		start(
+			file: string,
+			breakpoints: Array<{ file: string; line: number }>,
+			on: (event: string, payload: unknown) => void,
+		) {
+			const names = ['started', 'paused', 'resumed', 'output', 'terminated', 'breakpoint'];
+			const listeners = names.map((name) => {
+				const listener = (_: unknown, payload: unknown) => on(name, payload);
+				ipcRenderer.on(`debug:${name}`, listener);
+				return { name, listener };
+			});
+			const stop = () => {
+				for (const { name, listener } of listeners) ipcRenderer.removeListener(`debug:${name}`, listener);
+			};
+			return { done: ipcRenderer.invoke('debug:start', file, breakpoints), stop };
+		},
+		cont: () => ipcRenderer.invoke('debug:continue'),
+		stepOver: () => ipcRenderer.invoke('debug:step-over'),
+		stepInto: () => ipcRenderer.invoke('debug:step-into'),
+		stepOut: () => ipcRenderer.invoke('debug:step-out'),
+		setBreakpoint: (file: string, line: number) => ipcRenderer.invoke('debug:set-breakpoint', file, line),
+		stop: () => ipcRenderer.invoke('debug:stop'),
+	},
+
+	/**
 	 * Checkpoints: a snapshot is taken before every write the agent makes.
 	 * `restore` consumes the snapshot it restores, so calling it repeatedly
 	 * walks back through history one step at a time — it is not a single

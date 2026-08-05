@@ -284,7 +284,15 @@ kbd {
 .tab .close { color: var(--ink-faint); font-size: 14px; line-height: 1; }
 .tab .close:hover { color: var(--danger); }
 .ws-editor-wrap { flex: 1; min-height: 0; display: flex; }
-#monaco-container { flex: 1; min-width: 0; }
+/* The page is RTL; Monaco is not, and it positions its own layers with
+   absolute coordinates that an RTL container mirrors. Measured: a rendered
+   line sat at x = 16,776,637 — the text existed in the DOM with the right
+   content and colour, and was drawn sixteen million pixels off-screen, so
+   the editor looked empty. Everything Monaco places in a margin (line
+   numbers, decorations, breakpoint glyphs) went with it. Code is LTR
+   regardless of interface language, so pinning the direction here is right
+   on its own terms, not only as a workaround. */
+#monaco-container { flex: 1; min-width: 0; direction: ltr; }
 #preview-wrap { width: 45%; flex: none; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
 #preview-bar { display: flex; gap: 6px; align-items: center; padding: 6px 8px; background: var(--bg-side); border-bottom: 1px solid var(--line); }
 #preview-url { flex: 1; background: var(--bg-input); border: 1px solid var(--line); color: var(--ink); border-radius: 6px; padding: 4px 8px; font-family: var(--mono); font-size: 11px; }
@@ -309,6 +317,22 @@ kbd {
 #terminal-output .xterm-viewport { background: transparent !important; }
 #terminal-output .xterm-viewport::-webkit-scrollbar { width: 9px; }
 #terminal-output .xterm-viewport::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 5px; }
+/* ── debugger ── */
+/* The breakpoint dot has to read as "armed" at a glance in a dark gutter. */
+.bp-glyph::before { content: ''; display: block; width: 9px; height: 9px; border-radius: 50%; background: var(--danger); margin: 5px 0 0 4px; }
+#debug-head { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
+#debug-body { flex: 1; display: flex; min-height: 0; }
+.debug-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; border-inline-start: 1px solid var(--line-soft); }
+.debug-col:first-child { border-inline-start: none; }
+.debug-col.wide { flex: 1.4 1 0; }
+.debug-col-head { padding: 6px 10px; font-size: 11px; color: var(--ink-faint); border-bottom: 1px solid var(--line-soft); }
+#debug-stack, #debug-vars, #debug-breakpoints { flex: 1; overflow-y: auto; }
+.dbg-row { display: flex; gap: 8px; padding: 4px 10px; font-size: 11.5px; font-family: var(--mono); direction: ltr; text-align: left; }
+.dbg-row:hover { background: var(--bg-hover); }
+.dbg-fn, .dbg-name { color: var(--ink); flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dbg-where, .dbg-value { color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#debug-output { flex: 1; margin: 0; overflow: auto; padding: 6px 10px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); white-space: pre-wrap; word-break: break-word; }
+
 /* ── undo / checkpoints ── */
 .dock-badge {
   background: var(--accent); color: #fff; border-radius: 9px;

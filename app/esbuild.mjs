@@ -22,7 +22,9 @@ const builds = [
 		// node-pty must stay external: it loads a prebuilt .node and forks
 		// helper scripts by path relative to its own directory, neither of
 		// which survives being inlined into the bundle.
-		external: ['electron', '@lydell/node-pty'],
+		// ws stays external too: it has optional native accelerators it
+		// requires inside try/catch, which a bundler cannot express.
+		external: ['electron', '@lydell/node-pty', 'ws'],
 	}),
 	esbuild.context({
 		...common,

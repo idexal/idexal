@@ -10,3 +10,4 @@ Thumbs.db
 
 # Subagent worktrees — transient, never part of the project.
 .claude/
+.freebuff/
