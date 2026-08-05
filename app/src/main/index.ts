@@ -21,6 +21,9 @@ function createWindow(): void {
 		minHeight: 560,
 		backgroundColor: '#0c0e17',
 		title: 'Idexal',
+		// A packaged build takes its icon from the executable, but a build run
+		// from source would otherwise show Electron's default in the taskbar.
+		icon: path.join(__dirname, '..', '..', 'build', 'icon.png'),
 		autoHideMenuBar: true,
 		webPreferences: {
 			preload: path.join(__dirname, '..', 'preload', 'index.js'),

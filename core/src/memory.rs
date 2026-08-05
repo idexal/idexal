@@ -10,7 +10,7 @@
 // table so adding it won't require a migration of existing rows.
 
 use rusqlite::{params, Connection};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,18 +54,103 @@ pub struct Memory {
     conn: Connection,
 }
 
+/// Which project a memory belongs to.
+///
+/// This used to be the *current directory's* name, which quietly made the
+/// store useless: an agent working in `idexal/core` filed its memories
+/// under "core", and the same user at the repository root searched for
+/// "idexal" and found none of them. Every subdirectory and every scratch
+/// folder became its own island.
+///
+/// The repository root is the identity a developer actually means by "this
+/// project", so walk up for `.git` first. Only when there is no repository
+/// at all does the directory's own name stand in.
+pub fn project_for(cwd: &Path) -> Option<String> {
+    let mut dir = Some(cwd);
+    while let Some(d) = dir {
+        if d.join(".git").exists() {
+            return d.file_name().map(|n| n.to_string_lossy().to_string());
+        }
+        dir = d.parent();
+    }
+    cwd.file_name().map(|n| n.to_string_lossy().to_string())
+}
+
 fn now_secs() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
 }
 
-/// Tokenize for the lexical index: lowercase, split on anything that isn't
-/// alphanumeric, drop 1-char noise. Unicode-aware so Arabic content is
-/// indexed as words rather than one blob.
-fn tokenize(text: &str) -> Vec<String> {
+/// Fold the spellings of a word that Arabic writes several ways.
+///
+/// Without this, recall is exact-match only and the store's claim to
+/// support Arabic is hollow: `الإعدادات` and `الاعدادات` are the same word
+/// to a reader and two unrelated tokens to a string comparison. Diacritics
+/// are optional in ordinary writing, alef carries four forms, and final
+/// ة/ه and ى/ي are written interchangeably.
+fn normalize(text: &str) -> String {
     text.to_lowercase()
+        .chars()
+        .filter(|c| {
+            // Tashkeel (fatha…sukun, dagger alef) and tatweel are
+            // decoration; they change nothing about which word this is.
+            !matches!(*c, '\u{064B}'..='\u{0652}' | '\u{0670}' | '\u{0640}')
+        })
+        .map(|c| match c {
+            'أ' | 'إ' | 'آ' | 'ٱ' => 'ا',
+            'ة' => 'ه',
+            'ى' => 'ي',
+            'ؤ' => 'و',
+            'ئ' => 'ي',
+            other => other,
+        })
+        .collect()
+}
+
+/// Arabic attaches the article and conjunctions to the front of a word and
+/// inflects the back, so `المزودين` and `مزود` share no characters at either
+/// end. Longest affix first, and never cut below a 3-character stem —
+/// shorter than that stops being the same word.
+const PREFIXES: [&str; 10] = ["وبال", "فبال", "بال", "كال", "فال", "وال", "لل", "ال", "و", "ب"];
+const SUFFIXES: [&str; 11] = ["اتها", "ياته", "ات", "ان", "ين", "ون", "ية", "ها", "هم", "هن", "نا"];
+const MIN_STEM: usize = 3;
+
+fn stem(token: &str) -> String {
+    let mut s = token.to_string();
+    for prefix in PREFIXES {
+        if s.starts_with(prefix) && s.chars().count() - prefix.chars().count() >= MIN_STEM {
+            s = s[prefix.len()..].to_string();
+            break;
+        }
+    }
+    for suffix in SUFFIXES {
+        if s.ends_with(suffix) && s.chars().count() - suffix.chars().count() >= MIN_STEM {
+            s.truncate(s.len() - suffix.len());
+            break;
+        }
+    }
+    // English plurals, the one inflection worth the same treatment.
+    if s.len() > MIN_STEM + 1 && s.ends_with('s') && !s.ends_with("ss") {
+        s.pop();
+    }
+    s
+}
+
+/// One word reduced to the form both the index and a query agree on.
+/// Idempotent, which is what lets it be applied to keywords that were
+/// written before it existed.
+fn fold(token: &str) -> String {
+    stem(&normalize(token))
+}
+
+/// Tokenize for the lexical index: normalize spelling, split on anything
+/// that isn't alphanumeric, drop 1-char noise, then reduce each word to its
+/// stem so an inflected query still finds what was stored.
+fn tokenize(text: &str) -> Vec<String> {
+    normalize(text)
         .split(|c: char| !c.is_alphanumeric())
         .filter(|t| t.chars().count() > 1)
-        .map(|t| t.to_string())
+        .map(fold)
+        .filter(|t| !t.is_empty())
         .collect()
 }
 
@@ -172,11 +257,24 @@ impl Memory {
         let mut scored: Vec<(f64, MemoryRecord)> = Vec::new();
         for row in rows.flatten() {
             let (id, kind, content, proj, keywords, created_at) = row;
-            let stored: Vec<&str> = keywords.split_whitespace().collect();
+            // Stored keywords are re-folded on read rather than trusted as
+            // written. Rows indexed before normalization and stemming
+            // existed hold raw words, and comparing a folded query against
+            // them would quietly lose every memory the user already had.
+            // fold() is idempotent, so new rows are unaffected.
+            // Split on whitespace *and* commas: the previous Node store
+            // joined keywords with commas, so a whitespace-only split saw
+            // "always,use,tabs" as one token that matched nothing. Every
+            // memory carried over from that store was unreachable.
+            let stored: Vec<String> = keywords
+                .split(|c: char| c.is_whitespace() || c == ',')
+                .filter(|t| !t.is_empty())
+                .map(fold)
+                .collect();
             if stored.is_empty() {
                 continue;
             }
-            let overlap = query_tokens.iter().filter(|t| stored.contains(&t.as_str())).count();
+            let overlap = query_tokens.iter().filter(|t| stored.contains(t)).count();
             if overlap == 0 {
                 continue;
             }
@@ -213,6 +311,36 @@ impl Memory {
 
     /// Render recalled memories as a system-prompt block. Returns None when
     /// nothing is relevant, so the prompt isn't padded with an empty header.
+    /// Move every memory from one project label to another.
+    ///
+    /// Memories written before `project_for` looked for the repository root
+    /// carry whatever folder was current at the time — `core`, `src`, a
+    /// scratch directory. Which of those belong to which project is not
+    /// something the store can infer, and guessing would silently merge
+    /// unrelated work. So it is an explicit command the user runs, not a
+    /// migration that happens to their data behind their back.
+    pub fn rescope(&self, from: &str, to: &str) -> Result<usize, String> {
+        let changed = self
+            .conn
+            .execute("UPDATE memories SET project = ?2 WHERE project = ?1", params![from, to])
+            .map_err(|e| format!("rescope failed: {e}"))?;
+        Ok(changed)
+    }
+
+    /// Every project label in the store, with how many memories each holds —
+    /// so a user can see where their memories actually went before moving
+    /// any of them.
+    pub fn projects(&self) -> Result<Vec<(Option<String>, i64)>, String> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT project, COUNT(*) FROM memories GROUP BY project ORDER BY COUNT(*) DESC")
+            .map_err(|e| format!("projects prepare failed: {e}"))?;
+        let rows = stmt
+            .query_map([], |r| Ok((r.get::<_, Option<String>>(0)?, r.get::<_, i64>(1)?)))
+            .map_err(|e| format!("projects query failed: {e}"))?;
+        Ok(rows.flatten().collect())
+    }
+
     pub fn context_block(&self, query: &str, project: Option<&str>, limit: usize) -> Option<String> {
         let records = self.recall(query, project, limit).ok()?;
         if records.is_empty() {
@@ -232,6 +360,138 @@ mod tests {
 
     fn temp_db(tag: &str) -> PathBuf {
         std::env::temp_dir().join(format!("idexal-mem-{}-{}.db", tag, std::process::id()))
+    }
+
+    #[test]
+    fn a_subdirectory_belongs_to_the_same_project_as_its_repository_root() {
+        // The bug this replaces: the project was the *current directory's*
+        // name, so an agent working in `idexal/core` filed memories under
+        // "core" while the user at the root searched "idexal" and found
+        // nothing. Measured on a real store — every memory was stranded
+        // under whichever folder happened to be current.
+        let root = std::env::temp_dir().join(format!("idexal-proj-{}", std::process::id()));
+        let nested = root.join("core").join("src");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::create_dir_all(root.join(".git")).unwrap();
+
+        let expected = root.file_name().unwrap().to_string_lossy().to_string();
+        assert_eq!(project_for(&root).as_deref(), Some(expected.as_str()));
+        assert_eq!(
+            project_for(&nested).as_deref(),
+            Some(expected.as_str()),
+            "a subdirectory must resolve to the repository, not to itself"
+        );
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_folder_outside_any_repository_still_gets_a_name() {
+        // No .git anywhere up the tree: fall back to the folder itself
+        // rather than returning nothing and scoping memories to "global".
+        let solo = std::env::temp_dir().join(format!("idexal-solo-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&solo);
+        std::fs::create_dir_all(&solo).unwrap();
+        assert_eq!(project_for(&solo), solo.file_name().map(|n| n.to_string_lossy().to_string()));
+        let _ = std::fs::remove_dir_all(&solo);
+    }
+
+    #[test]
+    fn comma_separated_keywords_from_the_previous_store_still_match() {
+        // The Node implementation joined keywords with commas. Splitting on
+        // whitespace alone turned "always,use,tabs" into one token that
+        // matched nothing, so every memory carried over from it was
+        // unreachable — confirmed on the real database.
+        let path = temp_db("comma-keywords");
+        let _ = std::fs::remove_file(&path);
+        let m = Memory::open(Some(path.clone())).unwrap();
+        m.conn
+            .execute(
+                "INSERT INTO memories (type, content, project, keywords, created_at, last_accessed_at)
+                 VALUES ('fact', 'Always use tabs.', NULL, 'always,use,tabs', ?1, ?1)",
+                params![now_secs()],
+            )
+            .unwrap();
+
+        let hits = m.recall("tabs", None, 5).unwrap();
+        assert!(!hits.is_empty(), "comma-joined keywords must still be searchable");
+        assert_eq!(hits[0].content, "Always use tabs.");
+
+        drop(m);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn arabic_spelling_variants_fold_to_the_same_token() {
+        // Diacritics are optional and alef has four written forms, so the
+        // same word arrives spelled several ways depending on who typed it.
+        assert_eq!(fold("الإعدادات"), fold("الاعدادات"));
+        assert_eq!(fold("مُزَوِّد"), fold("مزود"));
+        assert_eq!(fold("مكتبة"), fold("مكتبه"));
+        assert_eq!(fold("مصطفى"), fold("مصطفي"));
+    }
+
+    #[test]
+    fn arabic_prefixes_and_suffixes_are_stripped_to_a_shared_stem() {
+        // The article and conjunctions attach to the word, so an inflected
+        // query and a bare stored word share no characters at either end.
+        let stem_of = |w: &str| fold(w);
+        assert_eq!(stem_of("المزودين"), stem_of("مزود"));
+        assert_eq!(stem_of("والملفات"), stem_of("ملف"));
+        assert_eq!(stem_of("بالذاكرة"), stem_of("ذاكره"));
+    }
+
+    #[test]
+    fn stemming_never_eats_a_short_word() {
+        // Over-stemming is worse than none: it collides unrelated words.
+        // Nothing may be cut below three characters.
+        for word in ["ولد", "بيت", "الف", "علم"] {
+            assert!(fold(word).chars().count() >= 3, "{word} -> {}", fold(word));
+        }
+        // And an English word that merely ends in the same letters is safe.
+        assert_eq!(fold("class"), "class", "ss is not a plural");
+    }
+
+    #[test]
+    fn an_inflected_arabic_query_finds_what_was_stored_plainly() {
+        // The whole point, end to end: the user writes a sentence, later
+        // asks about it in a different grammatical form, and still finds it.
+        let path = temp_db("arabic-recall");
+        let _ = std::fs::remove_file(&path);
+        let m = Memory::open(Some(path.clone())).unwrap();
+        m.remember(MemoryKind::Decision, "قررنا استخدام مزود محلي للحفاظ على الخصوصية", None)
+            .unwrap();
+
+        let hits = m.recall("ما رأيك في المزودين المحليين؟", None, 5).unwrap();
+        assert!(!hits.is_empty(), "an inflected query must still recall the decision");
+        assert!(hits[0].content.contains("مزود محلي"));
+
+        drop(m);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn memories_written_before_stemming_existed_are_still_found() {
+        // Keywords already in the user's database were indexed raw. Recall
+        // folds them on read, so upgrading must not orphan them.
+        let path = temp_db("legacy-keywords");
+        let _ = std::fs::remove_file(&path);
+        let m = Memory::open(Some(path.clone())).unwrap();
+        // Written the way the old tokenizer would have: unnormalized, unstemmed.
+        m.conn
+            .execute(
+                "INSERT INTO memories (type, content, project, keywords, created_at, last_accessed_at)
+                 VALUES ('fact', 'المشروع يستخدم الإعدادات المحلية', NULL, 'المشروع يستخدم الإعدادات المحلية', ?1, ?1)",
+                params![now_secs()],
+            )
+            .unwrap();
+
+        let hits = m.recall("اعدادات", None, 5).unwrap();
+        assert!(!hits.is_empty(), "a pre-existing memory must survive the upgrade");
+
+        drop(m);
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]
@@ -270,8 +530,13 @@ mod tests {
         // Regression guard: a naive ASCII-only tokenizer would index Arabic
         // text as a single unsplittable blob, making recall impossible for
         // the project's primary language.
+        //
+        // The expected token changed from `البناء` to `بناء` when stemming
+        // was added — deliberately. What this test protects is that Arabic
+        // is split into words at all; which normalized form a word settles
+        // on is the stemmer's business, and is covered by its own tests.
         let tokens = tokenize("أمر البناء هو cargo build");
-        assert!(tokens.contains(&"البناء".to_string()), "Arabic words must tokenize: {tokens:?}");
+        assert!(tokens.contains(&"بناء".to_string()), "Arabic words must tokenize: {tokens:?}");
         assert!(tokens.contains(&"cargo".to_string()));
 
         let path = temp_db("arabic");

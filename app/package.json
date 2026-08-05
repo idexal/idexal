@@ -11,7 +11,8 @@
     "start": "npm run build && electron .",
     "dev": "node esbuild.mjs --watch",
     "package": "npm run build && electron-builder --config electron-builder.yml",
-    "package:dir": "npm run build && electron-builder --config electron-builder.yml --dir"
+    "package:dir": "npm run build && electron-builder --config electron-builder.yml --dir",
+    "icon": "python build/make-icon.py"
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",

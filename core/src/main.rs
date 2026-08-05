@@ -226,7 +226,7 @@ async fn stream_task(task: &str, read_only: bool, session_id: Option<&str>, pin:
         on_tool_result: &mut on_tool_result,
     };
 
-    let project = cwd.file_name().map(|n| n.to_string_lossy().to_string());
+    let project = memory::project_for(&cwd);
     let memory_context = memory.as_ref().and_then(|m| m.context_block(task, project.as_deref(), 5));
 
     // Replay the conversation so a follow-up continues it instead of
@@ -265,7 +265,7 @@ async fn stream_task(task: &str, read_only: bool, session_id: Option<&str>, pin:
             // on success: storing failed attempts would poison recall with
             // noise the agent should not learn from.
             if let Some(m) = &memory {
-                let project = cwd.file_name().map(|n| n.to_string_lossy().to_string());
+                let project = memory::project_for(&cwd);
                 let summary = outcome.text.chars().take(500).collect::<String>();
                 if !summary.trim().is_empty() {
                     let _ = m.remember(
@@ -363,7 +363,7 @@ async fn orchestrate_task(task: &str, session_id: Option<String>, pin: Pin) {
         Ok(outcome) => {
             if let Some(path) = &memory_path {
                 if let Ok(m) = memory::Memory::open(Some(path.clone())) {
-                    let project = cwd.file_name().map(|n| n.to_string_lossy().to_string());
+                    let project = memory::project_for(&cwd);
                     let summary: String = outcome.summary.chars().take(500).collect();
                     if !summary.trim().is_empty() {
                         let _ = m.remember(
@@ -396,18 +396,44 @@ fn memory_command(args: &[String]) {
             process::exit(1);
         }
     };
-    let project = env::current_dir()
-        .ok()
-        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()));
+    let project = env::current_dir().ok().and_then(|p| memory::project_for(&p));
 
     match args.first().map(String::as_str) {
-        Some("stats") | None => match store.count() {
-            Ok(n) => println!("{}", serde_json::json!({ "memories": n })),
-            Err(e) => {
+        Some("stats") | None => match (store.count(), store.projects()) {
+            // The project breakdown is part of "stats" because a count on
+            // its own hides the thing most likely to be wrong: memories
+            // filed under a scope you never search from.
+            (Ok(n), Ok(projects)) => println!(
+                "{}",
+                serde_json::json!({
+                    "memories": n,
+                    "currentProject": project,
+                    "projects": projects
+                        .iter()
+                        .map(|(p, c)| serde_json::json!({ "project": p, "memories": c }))
+                        .collect::<Vec<_>>(),
+                })
+            ),
+            (Err(e), _) | (_, Err(e)) => {
                 eprintln!("{e}");
                 process::exit(1);
             }
         },
+        Some("rescope") => {
+            let (from, to) = (args.get(1).cloned(), args.get(2).cloned());
+            let (Some(from), Some(to)) = (from, to) else {
+                eprintln!("Usage: idexal-core memory rescope <from-project> <to-project>");
+                eprintln!("  Run `idexal-core memory stats` to see the labels in use.");
+                process::exit(2);
+            };
+            match store.rescope(&from, &to) {
+                Ok(n) => println!("{}", serde_json::json!({ "moved": n, "from": from, "to": to })),
+                Err(e) => {
+                    eprintln!("{e}");
+                    process::exit(1);
+                }
+            }
+        }
         Some("recall") => {
             let query = args.get(1).cloned().unwrap_or_default();
             if query.is_empty() {

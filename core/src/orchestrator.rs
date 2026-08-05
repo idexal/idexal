@@ -40,10 +40,6 @@ fn recall_block(path: &Option<PathBuf>, query: &str, project: Option<&str>) -> O
     store.context_block(query, project, 5)
 }
 
-fn project_name(cwd: &std::path::Path) -> Option<String> {
-    cwd.file_name().map(|n| n.to_string_lossy().to_string())
-}
-
 /// Build one agent's registry: the shared provider config, narrowed by the
 /// run's pin, with a usage ledger attached.
 ///
@@ -219,7 +215,7 @@ pub async fn run(
     // about the world, not about the agent that happened to discover it.
     let health = new_shared_health();
     let mut registry = agent_registry(cfg, &task_id, &pin, &health).map_err(|e| vec![e])?;
-    let project = project_name(&cwd);
+    let project = crate::memory::project_for(&cwd);
     let plan_memory = recall_block(&memory_path, task, project.as_deref());
 
     let plan_text = {
