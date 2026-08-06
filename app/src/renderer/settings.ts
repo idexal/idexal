@@ -596,11 +596,147 @@ async function loadUsage(): Promise<void> {
 
 $('usage-refresh').addEventListener('click', () => void loadUsage());
 
-// Left-nav sections (Providers / Agent / Appearance / Usage / Memory / About).
+// ───────────────────────── automations ─────────────────────────
+
+interface Automation {
+	id: string;
+	name: string;
+	prompt: string;
+	everyMinutes: number;
+	enabled: boolean;
+	lastRun: number;
+	lastResult?: string;
+}
+
+const liveRuns = new Set<string>();
+
+function relativeTime(at: number): string {
+	if (!at) return 'لم تعمل بعد';
+	const mins = Math.round((Date.now() - at) / 60_000);
+	if (mins < 1) return 'قبل لحظات';
+	if (mins < 60) return `قبل ${mins} د`;
+	const hours = Math.round(mins / 60);
+	return hours < 24 ? `قبل ${hours} س` : `قبل ${Math.round(hours / 24)} ي`;
+}
+
+function automationCard(a: Automation): HTMLElement {
+	const card = el('div', 's-card');
+
+	const head = el('div', 's-card-head');
+	const name = document.createElement('input');
+	name.className = 's-id';
+	name.value = a.name;
+	name.placeholder = 'اسم الأتمتة';
+
+	const every = document.createElement('input');
+	every.type = 'number';
+	every.min = '5';
+	every.value = String(a.everyMinutes);
+	every.className = 's-prio';
+	every.title = 'كل كم دقيقة (الحد الأدنى ٥)';
+	every.setAttribute('dir', 'ltr');
+
+	const toggle = document.createElement('label');
+	toggle.className = 'check';
+	const enabled = document.createElement('input');
+	enabled.type = 'checkbox';
+	enabled.checked = a.enabled;
+	toggle.append(enabled, document.createTextNode(' مفعّلة'));
+
+	const state = el('span', 's-badge', liveRuns.has(a.id) ? 'تعمل الآن' : relativeTime(a.lastRun));
+	state.classList.toggle('ok', liveRuns.has(a.id));
+
+	head.append(name, every, toggle, state);
+
+	const prompt = document.createElement('textarea');
+	prompt.rows = 2;
+	prompt.value = a.prompt;
+	prompt.placeholder = 'ما الذي يفعله الوكيل عند كل تشغيل؟';
+	prompt.className = 'autom-prompt';
+
+	const foot = el('div', 's-card-head');
+	const save = el('button', 'mini-btn', 'حفظ');
+	save.addEventListener('click', async () => {
+		await window.idexal.automations.save({
+			id: a.id,
+			name: name.value,
+			prompt: prompt.value,
+			everyMinutes: Number(every.value),
+			enabled: enabled.checked,
+		});
+		await loadAutomations();
+	});
+	const run = el('button', 'mini-btn', '▶ شغّل الآن');
+	run.addEventListener('click', async () => {
+		await window.idexal.automations.runNow(a.id);
+	});
+	const remove = el('button', 'mini-btn danger', 'حذف');
+	remove.addEventListener('click', async () => {
+		if (!confirm(`حذف الأتمتة «${a.name}»؟`)) return;
+		await window.idexal.automations.remove(a.id);
+		await loadAutomations();
+	});
+	foot.append(save, run, remove);
+
+	card.append(head, prompt, foot);
+	if (a.lastResult) {
+		// The outcome of the last run, because a scheduled job whose result
+		// is invisible cannot be told apart from one that never ran.
+		const last = el('p', 'set-note', `آخر نتيجة: ${a.lastResult}`);
+		card.appendChild(last);
+	}
+	return card;
+}
+
+async function loadAutomations(): Promise<void> {
+	const host = $('autom-list');
+	const res = (await window.idexal.automations.list()) as {
+		ok: boolean;
+		automations?: Automation[];
+		running?: string[];
+		error?: string;
+	};
+	host.innerHTML = '';
+	if (!res.ok) {
+		host.appendChild(el('p', 'set-note bad', res.error ?? 'تعذّرت القراءة'));
+		return;
+	}
+	for (const id of res.running ?? []) liveRuns.add(id);
+	const list = res.automations ?? [];
+	if (list.length === 0) {
+		host.appendChild(el('p', 'set-note', 'لا أتمتة بعد — أنشئ واحدة لتعمل على جدول.'));
+		return;
+	}
+	for (const a of list) host.appendChild(automationCard(a));
+}
+
+$('autom-add').addEventListener('click', async () => {
+	await window.idexal.automations.save({
+		name: 'أتمتة جديدة',
+		prompt: 'لخّص ما تغيّر في Git منذ آخر مرة، واذكر ما يحتاج انتباهاً.',
+		everyMinutes: 60,
+		enabled: false,
+	});
+	await loadAutomations();
+});
+
+window.idexal.automations.watch((event, payload) => {
+	const p = (payload ?? {}) as { id?: string };
+	if (!p.id) return;
+	if (event === 'started') liveRuns.add(p.id);
+	else liveRuns.delete(p.id);
+	// Only redraw while the section is actually on screen.
+	if (document.querySelector('.set-sec[data-setsec="automations"]')?.classList.contains('active')) {
+		void loadAutomations();
+	}
+});
+
+// Left-nav sections (Providers / Agent / Appearance / Automations / Usage / Memory / About).
 const SECTION_TITLES: Record<string, string> = {
 	providers: 'المزوّدون والنماذج',
 	agent: 'سلوك الوكيل',
 	appearance: 'المظهر',
+	automations: 'الأتمتة',
 	usage: 'الاستهلاك',
 	memory: 'الذاكرة',
 	about: 'عن Idexal',
@@ -617,6 +753,7 @@ for (const item of document.querySelectorAll<HTMLElement>('.set-nav-item')) {
 		// is opened rather than once at startup — but only the first time,
 		// so switching tabs is not three process spawns each visit.
 		if (which === 'usage' && !usageLoaded) void loadUsage();
+		if (which === 'automations') void loadAutomations();
 	});
 }
 

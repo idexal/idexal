@@ -236,6 +236,7 @@
       <button class="set-nav-item" data-setnav="agent">سلوك الوكيل</button>
       <button class="set-nav-item" data-setnav="appearance">المظهر</button>
       <div class="set-group">البيانات</div>
+      <button class="set-nav-item" data-setnav="automations">الأتمتة</button>
       <button class="set-nav-item" data-setnav="usage">الاستهلاك</button>
       <button class="set-nav-item" data-setnav="memory">الذاكرة</button>
       <button class="set-nav-item" data-setnav="about">عن Idexal</button>
@@ -268,6 +269,14 @@
         <section class="set-sec" data-setsec="appearance">
           <div class="settings-section-head"><span>المظهر</span></div>
           <p class="set-note">السمة الداكنة هي الافتراضية حالياً. سمات إضافية قادمة.</p>
+        </section>
+        <section class="set-sec" data-setsec="automations">
+          <div class="settings-section-head">
+            <span>الأتمتة <em>— مهام تعمل على جدول</em></span>
+            <button id="autom-add" class="mini-btn"><span data-icon="plus" data-icon-size="13"></span> أتمتة جديدة</button>
+          </div>
+          <p class="set-note">تعمل فقط و<strong>Idexal مفتوح</strong>. لجدولة تنجو من إغلاق البرنامج استخدم مجدول نظامك مع <code dir="ltr">idexal agent "&lt;مهمة&gt;"</code>.</p>
+          <div id="autom-list"></div>
         </section>
         <section class="set-sec" data-setsec="usage">
           <div class="settings-section-head">

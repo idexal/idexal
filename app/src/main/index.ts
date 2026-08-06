@@ -9,6 +9,7 @@ import { registerSessionHandlers } from './sessions';
 import { registerUsageHandlers } from './usage';
 import { registerDebugHandlers, disposeDebug } from './debug';
 import { registerSkillHandlers } from './skills';
+import { registerAutomationHandlers, disposeAutomations } from './automations';
 import { resolveCoreBinary } from './core';
 
 function createWindow(): void {
@@ -135,12 +136,14 @@ app.whenReady().then(() => {
 	registerUsageHandlers();
 	registerDebugHandlers();
 	registerSkillHandlers();
+	registerAutomationHandlers();
 	createWindow();
 });
 
 app.on('window-all-closed', () => {
 	disposeTerminals();
 	disposeDebug();
+	disposeAutomations();
 	if (process.platform !== 'darwin') app.quit();
 });
 

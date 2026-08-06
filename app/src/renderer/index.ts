@@ -50,6 +50,13 @@ declare global {
 				write: (rel: string, content: string) => Promise<{ ok: boolean; error?: string }>;
 				pickFiles: () => Promise<{ ok: boolean; files?: string[]; skipped?: number; error?: string }>;
 			};
+			automations: {
+				list: () => Promise<{ ok: boolean; automations?: unknown[]; running?: string[]; error?: string }>;
+				save: (a: unknown) => Promise<{ ok: boolean; error?: string }>;
+				remove: (id: string) => Promise<{ ok: boolean; error?: string }>;
+				runNow: (id: string) => Promise<{ ok: boolean; error?: string }>;
+				watch: (on: (event: string, payload: unknown) => void) => () => void;
+			};
 			skills: {
 				list: () => Promise<{ ok: boolean; skills?: Array<{ id: string; name: string; prompt: string }>; error?: string }>;
 				save: (skill: { id?: string; name: string; prompt: string }) => Promise<{ ok: boolean; error?: string }>;
@@ -799,29 +806,11 @@ $('nav-skills').addEventListener('click', async (e) => {
 	openMenu(e.currentTarget as HTMLElement, entries, 'المهارات');
 });
 
-// Automations is not built. It stays in the rail because the layout is
-// deliberate, but it says so plainly instead of swallowing the click —
-// a button that looks live and does nothing is the worse of the two.
-$('nav-automations').addEventListener('click', (e) => {
-	openMenu(
-		e.currentTarget as HTMLElement,
-		[
-			{
-				label: 'لم تُبنَ بعد',
-				detail: 'جدولة المهام وتشغيلها تلقائياً — مُدرجة في خارطة الطريق',
-				onPick: () => {},
-			},
-			{
-				label: 'الممكن الآن: شغّل المهمة من الطرفية',
-				detail: 'idexal agent "<مهمة>" — وجدولتها بمجدول نظام التشغيل',
-				onPick: () => {
-					showView('workspace');
-					selectDock('terminal');
-				},
-			},
-		],
-		'الأتمتة',
-	);
+// The rail opens the automations page in settings, which is where the
+// scheduler's own state lives.
+$('nav-automations').addEventListener('click', () => {
+	window.__idexalOpenSettings?.();
+	document.querySelector<HTMLElement>('.set-nav-item[data-setnav="automations"]')?.click();
 });
 
 // ───────────────────────── composer wiring ─────────────────────────

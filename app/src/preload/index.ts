@@ -42,6 +42,30 @@ contextBridge.exposeInMainWorld('idexal', {
 		pickFiles: () => ipcRenderer.invoke('workspace:pick-files'),
 	},
 
+	/**
+	 * Scheduled tasks. They fire only while Idexal is open — a scheduler
+	 * that outlives the app has to be the operating system's, and the CLI
+	 * exists for that.
+	 */
+	automations: {
+		list: () => ipcRenderer.invoke('automations:list'),
+		save: (a: unknown) => ipcRenderer.invoke('automations:save', a),
+		remove: (id: string) => ipcRenderer.invoke('automations:delete', id),
+		runNow: (id: string) => ipcRenderer.invoke('automations:run-now', id),
+		watch(on: (event: string, payload: unknown) => void) {
+			const names = ['started', 'finished', 'skipped'];
+			const listeners = names.map((name) => {
+				const listener = (_: unknown, payload: unknown) => on(name, payload);
+				ipcRenderer.on(`automations:${name}`, listener);
+				return { name, listener };
+			});
+			void ipcRenderer.invoke('automations:watch');
+			return () => {
+				for (const { name, listener } of listeners) ipcRenderer.removeListener(`automations:${name}`, listener);
+			};
+		},
+	},
+
 	/** Saved prompts. Stored as JSON beside the user's config so they can be
 	 *  read, edited and backed up without the app. */
 	skills: {

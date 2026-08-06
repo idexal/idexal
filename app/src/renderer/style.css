@@ -520,3 +520,11 @@ kbd {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #2b2c35; border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: #3a3b47; }
+
+/* ── automations ── */
+.autom-prompt {
+  width: 100%; background: var(--bg-input); border: 1px solid var(--line);
+  color: var(--ink); border-radius: 8px; padding: 7px 9px; margin: 8px 0;
+  font-family: var(--sans); font-size: 12.5px; line-height: 1.7; resize: vertical;
+}
+.autom-prompt:focus { outline: none; border-color: #35405e; }
