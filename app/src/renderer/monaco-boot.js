@@ -25,11 +25,17 @@
 	// `worker-src blob:`). A blob has no useful base URL of its own, so it
 	// cannot resolve `vs/...` — the shim below tells it where it lives
 	// before handing control to Monaco's real worker entry point.
+	// `baseUrl` is the directory that CONTAINS `vs`, not `vs` itself. Setting
+	// it to the vs folder made every module inside the worker resolve to
+	// `vs/vs/...`, which 404s — the worker was created and then died without
+	// a word, so language services never came up.
+	var appBase = new URL('./', window.location.href).href;
+
 	window.MonacoEnvironment = {
 		getWorkerUrl: function () {
 			var shim =
-				'self.MonacoEnvironment = { baseUrl: ' + JSON.stringify(vsBase) + ' };\n' +
-				'importScripts(' + JSON.stringify(vsBase + 'base/worker/workerMain.js') + ');';
+				'self.MonacoEnvironment = { baseUrl: ' + JSON.stringify(appBase) + ' };\n' +
+				'importScripts(' + JSON.stringify(appBase + 'vs/base/worker/workerMain.js') + ');';
 			return URL.createObjectURL(new Blob([shim], { type: 'text/javascript' }));
 		},
 	};
