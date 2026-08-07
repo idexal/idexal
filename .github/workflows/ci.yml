@@ -1,0 +1,98 @@
+name: CI
+
+# Runs on every push and pull request. The point is not ceremony: this is
+# the only place Idexal is exercised on macOS and Linux at all. Everything
+# so far was verified on one Windows machine, so the POSIX branches of the
+# core — `sh -c` in run_command, signal-based process killing, path
+# handling — have never actually executed. Here they do.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A new push supersedes an in-flight run of the same branch; nobody needs
+  # the results of a commit that has already been replaced.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: core (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Do not cancel the other platforms when one fails: a Linux-only
+      # failure is exactly the information this matrix exists to produce.
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            core/target
+          key: cargo-${{ matrix.os }}-${{ hashFiles('core/Cargo.lock') }}
+          restore-keys: cargo-${{ matrix.os }}-
+
+      # Warnings are failures here rather than noise scrolled past. The tree
+      # has been kept at zero warnings by hand; this is what keeps it there.
+      - name: Clippy-free build
+        working-directory: core
+        run: cargo build --all-targets
+        env:
+          RUSTFLAGS: -D warnings
+
+      - name: Test
+        working-directory: core
+        run: cargo test
+
+  app:
+    name: app (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # `npm ci` installs exactly the lockfile, which is what makes a CI
+      # result mean anything about the tree as committed.
+      - name: Install
+        working-directory: app
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: app
+        run: npm run typecheck
+
+      - name: Bundle
+        working-directory: app
+        run: npm run bundle
+
+      # The renderer's entry points must actually be produced; a bundler that
+      # silently emits nothing would otherwise pass.
+      - name: Check build output exists
+        shell: bash
+        working-directory: app
+        run: |
+          for f in dist/main/index.js dist/preload/index.js dist/renderer/index.js \
+                   dist/renderer/settings.js dist/renderer/index.html dist/renderer/monaco-boot.js; do
+            test -s "$f" || { echo "missing or empty: $f"; exit 1; }
+          done
+          echo "all bundle outputs present"

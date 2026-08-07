@@ -1,0 +1,108 @@
+name: Release
+
+# Builds installers for all three platforms and attaches them to a GitHub
+# Release. This exists because macOS and Linux packages cannot be produced
+# on the machine Idexal is developed on — an .icns needs macOS tooling and
+# an AppImage needs Linux. GitHub's runners have both.
+#
+# Trigger: push a tag, e.g.
+#   git tag v0.1.0 && git push origin v0.1.0
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to build (without the leading v)
+        required: true
+
+permissions:
+  # Needed to create the release and upload the installers to it.
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # The engine is shipped inside the app as an extra resource, and it
+      # must be the release build: a debug binary is several times slower
+      # and much larger.
+      - name: Build the engine
+        working-directory: core
+        run: cargo build --release
+
+      - name: Install app dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Generate the icon
+        working-directory: app
+        run: pip install pillow && python build/make-icon.py
+
+      - name: Build and package
+        working-directory: app
+        run: npm run package
+        env:
+          # electron-builder would otherwise try to publish by itself; the
+          # upload is a separate, explicit step below.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Collect installers
+        shell: bash
+        working-directory: app
+        run: |
+          mkdir -p out
+          # Only the artifacts a user installs — not the unpacked trees,
+          # blockmaps or the uninstaller stub electron-builder leaves behind.
+          find release -maxdepth 1 -type f \
+            \( -name '*.exe' -o -name '*.dmg' -o -name '*.AppImage' \) \
+            ! -name '*__uninstaller*' -exec cp {} out/ \;
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: idexal-${{ matrix.os }}
+          path: app/out/*
+          if-no-files-found: error
+
+  publish:
+    name: Attach to the release
+    needs: build
+    runs-on: ubuntu-latest
+    # Only a tag push produces a release; a manual run just leaves the
+    # artifacts attached to the workflow run.
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*
+          draft: true
+          # Draft, deliberately: nothing built here is code-signed, so a
+          # human should look at the artifacts before anyone downloads them.
+          body: |
+            حزم Idexal ${{ github.ref_name }}.
+
+            **غير موقّعة رقمياً** — سيعرض ويندوز تحذير SmartScreen، وmacOS
+            سيمنع التشغيل حتى تسمح به من إعدادات الأمان. التوقيع يحتاج شهادة
+            مطوّر باسم المشروع.
