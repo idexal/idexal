@@ -40,28 +40,66 @@ fn truncate_output(s: String) -> String {
     }
 }
 
-/// Resolve `rel` against `cwd` and verify the result stays inside `cwd`.
-/// Returns `None` if it escapes.
-pub fn resolve_inside_root(cwd: &Path, rel: &str) -> Option<PathBuf> {
-    let root = dunce_canonicalize_best_effort(cwd);
-    let candidate = root.join(rel);
-    let abs = dunce_canonicalize_best_effort(&candidate);
-    let sep_prefixed = {
-        let mut r = root.clone();
-        r.push(""); // ensures a trailing separator when displayed/compared
-        r
-    };
-    if abs == root || abs.starts_with(&sep_prefixed) {
-        Some(candidate)
-    } else {
-        None
+/// Resolve `.` and `..` textually, without asking the filesystem.
+///
+/// This is the part that has to work for paths that do not exist yet — a
+/// file `write_file` is about to create. `fs::canonicalize` cannot help
+/// there: it fails on a missing path, and the previous fallback kept the
+/// literal `root/../outside.txt`, which still *starts with* the root and
+/// so passed the containment check. On Windows that happened to be caught
+/// for unrelated reasons; on Linux and macOS it was not, and the escape
+/// went through. Found by running the tests on those platforms in CI.
+fn lexical_normalize(p: &Path) -> PathBuf {
+    use std::path::Component;
+    let mut out = PathBuf::new();
+    for component in p.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                // Never pop past the prefix/root: `/..` is `/`, and letting
+                // it unwind further would walk out of the filesystem root.
+                if matches!(out.components().next_back(), Some(Component::Normal(_))) {
+                    out.pop();
+                }
+            }
+            other => out.push(other.as_os_str()),
+        }
     }
+    out
 }
 
-/// `fs::canonicalize` requires the path to exist; fall back to a plain
-/// `absolute`-style join for paths that don't exist yet (e.g. a file the
-/// agent is about to create with write_file).
-fn dunce_canonicalize_best_effort(p: &Path) -> PathBuf {
+/// Resolve `rel` against `cwd` and verify the result stays inside `cwd`.
+/// Returns `None` if it escapes.
+///
+/// Two checks, because they catch different escapes: the lexical one stops
+/// `../` for targets that do not exist, and the canonical one stops a
+/// symlink inside the workspace that points out of it — which no amount of
+/// string handling can see.
+pub fn resolve_inside_root(cwd: &Path, rel: &str) -> Option<PathBuf> {
+    let root = lexical_normalize(&canonicalize_best_effort(cwd));
+    let candidate = root.join(rel);
+
+    if !contains(&root, &lexical_normalize(&candidate)) {
+        return None;
+    }
+    // Only meaningful once the path exists; a missing file is already
+    // covered by the lexical check above.
+    if candidate.exists() && !contains(&root, &canonicalize_best_effort(&candidate)) {
+        return None;
+    }
+    Some(candidate)
+}
+
+/// Containment on whole path components, not on the string: a sibling
+/// directory like `../proj-evil` must not pass merely because its name
+/// starts with `proj`.
+fn contains(root: &Path, path: &Path) -> bool {
+    path == root || path.starts_with(root)
+}
+
+/// `fs::canonicalize` requires the path to exist; fall back to the path as
+/// given for anything that does not.
+fn canonicalize_best_effort(p: &Path) -> PathBuf {
     fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf())
 }
 
@@ -681,6 +719,39 @@ mod tests {
         let r = edit_file(&dir, "a.rs", "println!(\"old\")", "println!(\"new\")");
         assert!(r.ok, "{}", r.output);
         assert!(fs::read_to_string(dir.join("a.rs")).unwrap().contains("\"new\""));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+
+    #[test]
+    fn a_write_cannot_create_a_file_outside_the_workspace() {
+        // The strongest form of the containment claim, and the one that was
+        // actually false on Linux and macOS: the target does not exist, so
+        // canonicalization could not resolve it and the literal
+        // `root/../escaped.txt` still started with the root. Checked by the
+        // filesystem, not by the returned message.
+        let dir = scratch("escape-write");
+        let outside = dir.parent().unwrap().join("idexal-escaped-probe.txt");
+        let _ = fs::remove_file(&outside);
+
+        let r = write_file(&dir, "../idexal-escaped-probe.txt", "must never be written");
+        assert!(!r.ok, "the write must be refused: {}", r.output);
+        assert!(!outside.exists(), "a file was created outside the workspace at {outside:?}");
+
+        let _ = fs::remove_file(&outside);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn nested_parent_traversal_is_blocked_too() {
+        // One `..` is the obvious case; several buried mid-path are the
+        // ones a naive check misses.
+        let dir = scratch("escape-nested");
+        assert!(resolve_inside_root(&dir, "a/b/../../../outside.txt").is_none());
+        assert!(resolve_inside_root(&dir, "./../outside.txt").is_none());
+        // And a legitimate path that merely *contains* `..` inside its own
+        // subtree must still be allowed, or the guard breaks normal work.
+        assert!(resolve_inside_root(&dir, "a/b/../c.txt").is_some());
         fs::remove_dir_all(&dir).ok();
     }
 
