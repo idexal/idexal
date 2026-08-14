@@ -55,13 +55,21 @@ jobs:
         working-directory: app
         run: pip install pillow && python build/make-icon.py
 
-      - name: Build and package
+      # `--publish never` and no GH_TOKEN: with a token present,
+      # electron-builder resolves a publish configuration of its own and
+      # fails when it cannot find one ("Cannot detect repository by
+      # .git/config"). Uploading is the explicit step below, not a side
+      # effect of packaging.
+      # Typecheck and bundle first: calling electron-builder directly skips
+      # what `npm run package` used to do for us, and it would happily
+      # package a stale or missing dist/.
+      - name: Build the app
         working-directory: app
-        run: npm run package
-        env:
-          # electron-builder would otherwise try to publish by itself; the
-          # upload is a separate, explicit step below.
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build
+
+      - name: Package
+        working-directory: app
+        run: npx electron-builder --config electron-builder.yml --publish never
 
       - name: Collect installers
         shell: bash
