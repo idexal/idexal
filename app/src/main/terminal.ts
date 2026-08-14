@@ -28,8 +28,10 @@ try {
 }
 
 type Session =
-	| { kind: 'pty'; proc: import('@lydell/node-pty').IPty; sender: WebContents }
-	| { kind: 'pipe'; child: ChildProcess; sender: WebContents };
+	| { kind: 'pty'; id: string; proc: import('@lydell/node-pty').IPty; sender: WebContents }
+	// The id is carried on the session because the piped path has to send
+	// its own echo back on `terminal:data:<id>`.
+	| { kind: 'pipe'; id: string; child: ChildProcess; sender: WebContents };
 
 const sessions = new Map<string, Session>();
 
@@ -66,6 +68,50 @@ function killSession(session: Session): void {
 	}
 }
 
+/**
+ * Send a keystroke to a piped shell, doing by hand the two things a real
+ * terminal would have done for us.
+ *
+ * A pipe has no line discipline and no echo, and neither absence is
+ * cosmetic. Verified by running with the native binary moved aside: the
+ * user typed a whole command and saw nothing, and pressing Enter did
+ * nothing at all — xterm sends a lone CR, which a piped shell does not
+ * treat as the end of a line, so the command was never submitted. The
+ * fallback existed but had never been exercised.
+ */
+function writeToPipe(session: Extract<Session, { kind: 'pipe' }>, data: string): boolean {
+	const stdin = session.child.stdin;
+	// Returning false rather than swallowing it: the write handler used to
+	// answer `ok: true` whether or not anything had been written, which is
+	// the same class of lie as a background command reporting success it
+	// never had.
+	if (!stdin || stdin.destroyed) return false;
+	const echo = (text: string) => {
+		if (!session.sender.isDestroyed()) session.sender.send(`terminal:data:${session.id}`, text);
+	};
+
+	for (const ch of data) {
+		if (ch === '\r' || ch === '\n') {
+			// CRLF for the shell, CRLF for the display: xterm needs the CR to
+			// return the cursor to column one.
+			stdin.write('\r\n');
+			echo('\r\n');
+		} else if (ch === '\x7f' || ch === '\b') {
+			// Nothing has reached the shell yet — the line is still buffered
+			// here on its way — so a backspace only has to undo the echo.
+			echo('\b \b');
+		} else if (ch === '\x03') {
+			// Ctrl-C cannot interrupt a piped child the way a terminal would;
+			// say so instead of silently doing nothing.
+			echo('^C\r\n[لا يمكن مقاطعة الأمر بدون PTY]\r\n');
+		} else {
+			stdin.write(ch);
+			echo(ch);
+		}
+	}
+	return true;
+}
+
 export function registerTerminalHandlers(): void {
 	ipcMain.handle('terminal:start', (event, id: string, cols?: number, rows?: number) => {
 		const cwd = getWorkspaceRoot() ?? process.cwd();
@@ -99,7 +145,7 @@ export function registerTerminalHandlers(): void {
 			});
 			proc.onData(send);
 			proc.onExit(({ exitCode }) => finish(exitCode));
-			sessions.set(id, { kind: 'pty', proc, sender });
+			sessions.set(id, { kind: 'pty', id, proc, sender });
 			return { ok: true, cwd, pty: true };
 		}
 
@@ -107,15 +153,26 @@ export function registerTerminalHandlers(): void {
 		child.stdout?.on('data', (chunk: Buffer) => send(chunk.toString()));
 		child.stderr?.on('data', (chunk: Buffer) => send(chunk.toString()));
 		child.on('exit', finish);
-		sessions.set(id, { kind: 'pipe', child, sender });
+		// Reading from a pipe, cmd.exe echoes every command it is given, and
+		// the fallback must echo keystrokes itself because a pipe has no
+		// terminal echo — so each line appeared twice. Turning cmd's echo off
+		// leaves ours as the only one, while `/Q` would also have taken the
+		// banner and the prompt and left a blank screen that reads as broken.
+		if (process.platform === 'win32') child.stdin?.write('@echo off' + String.fromCharCode(13, 10));
+		sessions.set(id, { kind: 'pipe', id, child, sender });
 		return { ok: true, cwd, pty: false };
 	});
 
 	ipcMain.handle('terminal:write', (_e, id: string, data: string) => {
 		const session = sessions.get(id);
 		if (!session) return { ok: false, error: 'no such terminal session' };
-		if (session.kind === 'pty') session.proc.write(data);
-		else session.child.stdin?.write(data);
+		if (session.kind === 'pty') {
+			// A PTY does its own echo and line discipline; anything we added
+			// here would be doubled.
+			session.proc.write(data);
+			return { ok: true };
+		}
+		writeToPipe(session, data);
 		return { ok: true };
 	});
 
