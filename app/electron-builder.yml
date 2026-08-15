@@ -59,17 +59,25 @@ nsis:
 portable:
   artifactName: ${productName}-Portable-${version}-${arch}.${ext}
 
+## x64 only: the engine is a native binary compiled on an x64 runner, and
+## an arm64 AppImage carrying an x64 engine would install and then fail to
+## run an agent. Better absent than broken.
 linux:
   icon: build/icon.png
   target:
-    - AppImage
+    - target: AppImage
+      arch: [x64]
   category: Development
 
-## Untested: never built on this machine (Windows only). macOS also wants an
-## .icns, which is produced from the PNG by electron-builder when it runs on
-## a Mac — it cannot be generated here.
+## Built on GitHub's macOS runners, which are Apple Silicon: without an
+## explicit arch list the release carried an arm64 .dmg only and every
+## Intel Mac got nothing. Both are safe here because the release workflow
+## lipo's the engine into a universal binary — a per-arch build alone would
+## have put an arm64 engine inside the Intel package. The .icns is produced
+## from the PNG by electron-builder there; it cannot be made on Windows.
 mac:
   icon: build/icon.png
   target:
-    - dmg
+    - target: dmg
+      arch: [arm64, x64]
   category: public.app-category.developer-tools

@@ -43,7 +43,24 @@ jobs:
       # The engine is shipped inside the app as an extra resource, and it
       # must be the release build: a debug binary is several times slower
       # and much larger.
+      # macOS ships two architectures, and the engine is a native binary:
+      # building it for the runner's own arch alone would put an arm64
+      # engine inside the Intel .dmg, where it cannot run at all. `lipo`
+      # merges both into one universal binary, so a single extraResource is
+      # correct for either package.
+      - name: Build the engine (macOS, universal)
+        if: runner.os == 'macOS'
+        working-directory: core
+        run: |
+          rustup target add x86_64-apple-darwin aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+          cargo build --release --target aarch64-apple-darwin
+          mkdir -p target/release
+          lipo -create -output target/release/idexal-core             target/x86_64-apple-darwin/release/idexal-core             target/aarch64-apple-darwin/release/idexal-core
+          lipo -info target/release/idexal-core
+
       - name: Build the engine
+        if: runner.os != 'macOS'
         working-directory: core
         run: cargo build --release
 
