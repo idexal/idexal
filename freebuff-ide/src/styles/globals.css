@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --ide-bg: #0d1117;
+    --ide-surface: #161b22;
+    --ide-border: #30363d;
+    --ide-text: #c9d1d9;
+    --ide-text-muted: #8b949e;
+    --ide-accent: #58a6ff;
+    --ide-accent-hover: #79c0ff;
+    --ide-success: #3fb950;
+    --ide-warning: #d29922;
+    --ide-error: #f85149;
+  }
+}
+
+@layer components {
+  .ide-panel {
+    @apply bg-ide-surface border border-ide-border rounded-lg;
+  }
+  
+  .ide-button {
+    @apply px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200;
+    @apply bg-ide-surface border border-ide-border text-ide-text;
+    @apply hover:bg-ide-border hover:text-ide-accent;
+    @apply active:scale-95;
+  }
+  
+  .ide-button-primary {
+    @apply ide-button;
+    @apply bg-ide-accent text-white border-transparent;
+    @apply hover:bg-ide-accent-hover;
+  }
+  
+  .ide-input {
+    @apply w-full px-3 py-2 rounded-md text-sm;
+    @apply bg-ide-bg border border-ide-border text-ide-text;
+    @apply focus:outline-none focus:ring-2 focus:ring-ide-accent focus:border-transparent;
+    @apply placeholder:text-ide-text-muted;
+  }
+  
+  .ide-scrollbar {
+    @apply scrollbar-thin scrollbar-track-ide-surface scrollbar-thumb-ide-border;
+    @apply hover:scrollbar-thumb-ide-text-muted;
+  }
+  
+  .ide-glow {
+    @apply shadow-lg shadow-ide-accent/10;
+  }
+  
+  .agent-thinking {
+    @apply animate-pulse text-ide-accent;
+  }
+  
+  .agent-active {
+    @apply text-ide-success;
+  }
+  
+  .agent-error {
+    @apply text-ide-error;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-ide-accent to-purple-500 bg-clip-text text-transparent;
+  }
+  
+  .border-glow {
+    @apply border-ide-accent shadow-lg shadow-ide-accent/20;
+  }
+  
+  .noise-bg {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.02;
+  }
+}
+
+/* Custom animations */
+@keyframes typing {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.typing-indicator span {
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Monaco Editor overrides */
+.monaco-editor {
+  border-radius: 0 !important;
+}
+
+.monaco-editor .margin {
+  background-color: #0d1117 !important;
+}
+
+/* Terminal styles */
+.terminal-container {
+  background-color: #0d1117;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.terminal-container .xterm {
+  padding: 8px;
+}
+
+/* Chat message animations */
+.chat-message {
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Agent status indicators */
+.agent-status {
+  position: relative;
+}
+
+.agent-status::before {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: pulse 2s infinite;
+}
+
+.agent-status.active::before {
+  background-color: #3fb950;
+}
+
+.agent-status.error::before {
+  background-color: #f85149;
+  animation: none;
+}
+
+/* File tree animations */
+.file-tree-item {
+  transition: all 0.15s ease-out;
+}
+
+.file-tree-item:hover {
+  background-color: rgba(88, 166, 255, 0.1);
+}
+
+.file-tree-item.active {
+  background-color: rgba(88, 166, 255, 0.2);
+  border-right: 2px solid #58a6ff;
+}
