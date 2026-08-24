@@ -25,9 +25,15 @@ export interface AgentContext {
 
 class ProjectContextService {
   private analysis: ProjectAnalysis | null = null
+  private rootPath: string = '/mock/project'
 
   async analyzeProject(rootPath: string): Promise<ProjectAnalysis> {
-    const structure = await fileSystemService.readDir(rootPath)
+    this.rootPath = rootPath
+    const result = await fileSystemService.readDir(rootPath)
+    if (!result.success || !result.tree) {
+      throw new Error(result.error || 'Failed to read directory')
+    }
+    const structure = result.tree
     const languages = new Map<string, number>()
     const keyFiles: string[] = []
     let totalFiles = 0
@@ -66,8 +72,7 @@ class ProjectContextService {
 
   async getProjectSummary(): Promise<string> {
     if (!this.analysis) {
-      const rootPath = fileSystemService.getOpenFolderPath() || '/mock/project'
-      await this.analyzeProject(rootPath)
+      await this.analyzeProject(this.rootPath)
     }
 
     if (!this.analysis) return 'No project loaded'
@@ -77,16 +82,12 @@ class ProjectContextService {
 
     const langStats = langEntries.map(([lang, count]) => `${lang}: ${count} files`).join(', ')
 
-    return `Project: ${this.analysis.name}
-Files: ${this.analysis.totalFiles}
-Languages: ${langStats}
-Key files: ${this.analysis.keyFiles.slice(0, 8).join(', ')}`
+    return `Project: ${this.analysis.name}\nFiles: ${this.analysis.totalFiles}\nLanguages: ${langStats}\nKey files: ${this.analysis.keyFiles.slice(0, 8).join(', ')}`
   }
 
   async getAgentContext(query: string): Promise<AgentContext> {
     if (!this.analysis) {
-      const rootPath = fileSystemService.getOpenFolderPath() || '/mock/project'
-      await this.analyzeProject(rootPath)
+      await this.analyzeProject(this.rootPath)
     }
 
     if (!this.analysis) {
@@ -114,13 +115,13 @@ Key files: ${this.analysis.keyFiles.slice(0, 8).join(', ')}`
         if (node.type === 'file') {
           let score = 0
           const name = node.name.toLowerCase()
-          const path = node.path.toLowerCase()
+          const nodePath = node.path.toLowerCase()
           const words = queryLower.split(/\s+/)
 
           if (words.some(w => name.includes(w))) score += 10
-          if (words.some(w => path.includes(w))) score += 5
+          if (words.some(w => nodePath.includes(w))) score += 5
           if (this.isKeyFile(node.name)) score += 3
-          if (path.includes('/src/') || path.includes('/components/')) score += 2
+          if (nodePath.includes('/src/') || nodePath.includes('/components/')) score += 2
 
           if (score > 0) scored.push({ path: node.path, score })
         }

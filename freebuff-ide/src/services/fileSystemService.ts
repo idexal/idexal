@@ -1,331 +1,320 @@
-/**
- * File System Service - Works with both Electron IPC and browser fallback
- */
-
 export interface FileEntry {
   name: string
   path: string
   type: 'file' | 'directory'
+  extension?: string
   children?: FileEntry[]
 }
 
-export interface FileOperationResult {
+export type { FileEntry as FileTreeItem }
+
+export interface FileResult {
   success: boolean
   content?: string
+  error?: string
+  filePath?: string
+  size?: number
+  modified?: string
+}
+
+export interface DirResult {
+  success: boolean
+  tree?: FileEntry[]
+  error?: string
+}
+
+export interface SearchResult {
+  success: boolean
+  results?: Array<{ path: string; name: string; extension: string }>
   error?: string
 }
 
 // Check if running in Electron
-const isElectron = typeof window !== 'undefined' && !!(window as any).electronAPI?.isElectron
+const isElectron = !!(window as any).electronAPI?.isElectron
+const electronAPI = isElectron ? (window as any).electronAPI : null
 
-// Mock file tree for browser development
-const MOCK_PROJECT_TREE: FileEntry[] = [
+// ============================================================
+// MOCK DATA (fallback for browser mode)
+// ============================================================
+
+const MOCK_TREE: FileEntry[] = [
   {
-    name: 'src', type: 'directory', path: 'src',
+    name: 'src',
+    path: '/mock/project/src',
+    type: 'directory',
     children: [
       {
-        name: 'components', type: 'directory', path: 'src/components',
+        name: 'components',
+        path: '/mock/project/src/components',
+        type: 'directory',
         children: [
-          {
-            name: 'AI', type: 'directory', path: 'src/components/AI',
-            children: [
-              { name: 'ChatPanel.tsx', type: 'file', path: 'src/components/AI/ChatPanel.tsx' },
-              { name: 'MarkdownRenderer.tsx', type: 'file', path: 'src/components/AI/MarkdownRenderer.tsx' },
-              { name: 'StreamingMessage.tsx', type: 'file', path: 'src/components/AI/StreamingMessage.tsx' },
-            ],
-          },
-          {
-            name: 'Editor', type: 'directory', path: 'src/components/Editor',
-            children: [
-              { name: 'EditorArea.tsx', type: 'file', path: 'src/components/Editor/EditorArea.tsx' },
-              { name: 'MonacoEditor.tsx', type: 'file', path: 'src/components/Editor/MonacoEditor.tsx' },
-              { name: 'TabBar.tsx', type: 'file', path: 'src/components/Editor/TabBar.tsx' },
-            ],
-          },
-          {
-            name: 'Layout', type: 'directory', path: 'src/components/Layout',
-            children: [
-              { name: 'CommandPalette.tsx', type: 'file', path: 'src/components/Layout/CommandPalette.tsx' },
-              { name: 'Sidebar.tsx', type: 'file', path: 'src/components/Layout/Sidebar.tsx' },
-              { name: 'StatusBar.tsx', type: 'file', path: 'src/components/Layout/StatusBar.tsx' },
-              { name: 'TitleBar.tsx', type: 'file', path: 'src/components/Layout/TitleBar.tsx' },
-            ],
-          },
-          {
-            name: 'Terminal', type: 'directory', path: 'src/components/Terminal',
-            children: [
-              { name: 'TerminalPanel.tsx', type: 'file', path: 'src/components/Terminal/TerminalPanel.tsx' },
-            ],
-          },
+          { name: 'Button.tsx', path: '/mock/project/src/components/Button.tsx', type: 'file', extension: '.tsx' },
+          { name: 'Modal.tsx', path: '/mock/project/src/components/Modal.tsx', type: 'file', extension: '.tsx' },
         ],
       },
       {
-        name: 'hooks', type: 'directory', path: 'src/hooks',
+        name: 'hooks',
+        path: '/mock/project/src/hooks',
+        type: 'directory',
         children: [
-          { name: 'useAgent.ts', type: 'file', path: 'src/hooks/useAgent.ts' },
-          { name: 'useTerminal.ts', type: 'file', path: 'src/hooks/useTerminal.ts' },
+          { name: 'useAuth.ts', path: '/mock/project/src/hooks/useAuth.ts', type: 'file', extension: '.ts' },
+          { name: 'useTheme.ts', path: '/mock/project/src/hooks/useTheme.ts', type: 'file', extension: '.ts' },
         ],
       },
       {
-        name: 'services', type: 'directory', path: 'src/services',
+        name: 'services',
+        path: '/mock/project/src/services',
+        type: 'directory',
         children: [
-          { name: 'aiService.ts', type: 'file', path: 'src/services/aiService.ts' },
-          { name: 'fileSystemService.ts', type: 'file', path: 'src/services/fileSystemService.ts' },
-          { name: 'gitService.ts', type: 'file', path: 'src/services/gitService.ts' },
-          { name: 'themeService.ts', type: 'file', path: 'src/services/themeService.ts' },
+          { name: 'api.ts', path: '/mock/project/src/services/api.ts', type: 'file', extension: '.ts' },
+          { name: 'auth.ts', path: '/mock/project/src/services/auth.ts', type: 'file', extension: '.ts' },
         ],
       },
       {
-        name: 'stores', type: 'directory', path: 'src/stores',
+        name: 'stores',
+        path: '/mock/project/src/stores',
+        type: 'directory',
         children: [
-          { name: 'editorStore.ts', type: 'file', path: 'src/stores/editorStore.ts' },
-          { name: 'agentStore.ts', type: 'file', path: 'src/stores/agentStore.ts' },
-          { name: 'memoryStore.ts', type: 'file', path: 'src/stores/memoryStore.ts' },
-          { name: 'settingsStore.ts', type: 'file', path: 'src/stores/settingsStore.ts' },
+          { name: 'appStore.ts', path: '/mock/project/src/stores/appStore.ts', type: 'file', extension: '.ts' },
+          { name: 'userStore.ts', path: '/mock/project/src/stores/userStore.ts', type: 'file', extension: '.ts' },
         ],
       },
-      { name: 'App.tsx', type: 'file', path: 'src/App.tsx' },
-      { name: 'main.tsx', type: 'file', path: 'src/main.tsx' },
-      { name: 'styles', type: 'directory', path: 'src/styles', children: [
-        { name: 'globals.css', type: 'file', path: 'src/styles/globals.css' },
-      ]},
+      { name: 'App.tsx', path: '/mock/project/src/App.tsx', type: 'file', extension: '.tsx' },
+      { name: 'main.tsx', path: '/mock/project/src/main.tsx', type: 'file', extension: '.tsx' },
+      { name: 'index.css', path: '/mock/project/src/index.css', type: 'file', extension: '.css' },
     ],
   },
   {
-    name: 'rust-engine', type: 'directory', path: 'rust-engine',
+    name: 'public',
+    path: '/mock/project/public',
+    type: 'directory',
     children: [
-      { name: 'Cargo.toml', type: 'file', path: 'rust-engine/Cargo.toml' },
-      {
-        name: 'src', type: 'directory', path: 'rust-engine/src',
-        children: [
-          { name: 'lib.rs', type: 'file', path: 'rust-engine/src/lib.rs' },
-          { name: 'agent.rs', type: 'file', path: 'rust-engine/src/agent.rs' },
-          { name: 'memory.rs', type: 'file', path: 'rust-engine/src/memory.rs' },
-        ],
-      },
+      { name: 'index.html', path: '/mock/project/public/index.html', type: 'file', extension: '.html' },
     ],
   },
-  {
-    name: 'electron', type: 'directory', path: 'electron',
-    children: [
-      { name: 'main.ts', type: 'file', path: 'electron/src/main.ts' },
-      { name: 'preload.ts', type: 'file', path: 'electron/src/preload.ts' },
-    ],
-  },
-  { name: 'package.json', type: 'file', path: 'package.json' },
-  { name: 'tsconfig.json', type: 'file', path: 'tsconfig.json' },
-  { name: 'vite.config.ts', type: 'file', path: 'vite.config.ts' },
-  { name: 'README.md', type: 'file', path: 'README.md' },
+  { name: 'package.json', path: '/mock/project/package.json', type: 'file', extension: '.json' },
+  { name: 'tsconfig.json', path: '/mock/project/tsconfig.json', type: 'file', extension: '.json' },
+  { name: 'vite.config.ts', path: '/mock/project/vite.config.ts', type: 'file', extension: '.ts' },
+  { name: 'README.md', path: '/mock/project/README.md', type: 'file', extension: '.md' },
 ]
 
-// Language detection
-const LANGUAGE_MAP: Record<string, string> = {
-  ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
-  rs: 'rust', py: 'python', go: 'go', java: 'java', cpp: 'cpp',
-  c: 'c', h: 'c', cs: 'csharp', rb: 'ruby', php: 'php',
-  swift: 'swift', kt: 'kotlin', scala: 'scala',
-  json: 'json', yaml: 'yaml', yml: 'yaml', toml: 'toml',
-  md: 'markdown', html: 'html', css: 'css', scss: 'scss',
-  xml: 'xml', sql: 'sql', sh: 'shell', bash: 'shell',
-  dockerfile: 'dockerfile', makefile: 'makefile',
+const MOCK_FILES: Record<string, string> = {
+  '/mock/project/src/App.tsx': `import React from 'react'
+import { Button } from './components/Button'
+
+export function App() {
+  const [count, setCount] = React.useState(0)
+
+  return (
+    <div className="app">
+      <h1>Idexal IDE</h1>
+      <p>AI-Powered Multi-Agent Development Environment</p>
+      <Button onClick={() => setCount(c => c + 1)}>
+        Count: {count}
+      </Button>
+    </div>
+  )
+}`,
+  '/mock/project/src/main.tsx': `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { App } from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)`,
+  '/mock/project/package.json': `{
+  "name": "idexal-ide",
+  "version": "1.0.0"
+}`,
+  '/mock/project/README.md': `# Idexal IDE\nAI-Powered Multi-Agent Development Environment`,
 }
+
+// ============================================================
+// PUBLIC API
+// ============================================================
 
 export function detectLanguage(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
-  const basename = filePath.split('/').pop()?.toLowerCase() || ''
-
-  if (basename === 'dockerfile') return 'dockerfile'
-  if (basename === 'makefile') return 'makefile'
-  return LANGUAGE_MAP[ext] || 'plaintext'
+  const langMap: Record<string, string> = {
+    ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
+    py: 'python', rs: 'rust', go: 'go', java: 'java', rb: 'ruby',
+    json: 'json', yaml: 'yaml', yml: 'yaml', toml: 'toml',
+    html: 'html', css: 'css', scss: 'scss', less: 'less',
+    md: 'markdown', sql: 'sql', sh: 'shell', bash: 'shell',
+    dockerfile: 'dockerfile', xml: 'xml', graphql: 'graphql',
+  }
+  if (filePath.toLowerCase().includes('dockerfile')) return 'dockerfile'
+  return langMap[ext] || 'plaintext'
 }
 
-// Normalize path for cross-platform
-function normalizePath(p: string): string {
-  return p.replace(/\\/g, '/')
-}
-
-// Get the Electron API
-function getElectronAPI() {
-  return isElectron ? (window as any).electronAPI : null
-}
-
-class FileSystemService {
-  private fileCache: Map<string, string> = new Map()
-  private openFolderPath: string | null = null
-
-  // Open folder dialog
-  async openFolder(): Promise<string | null> {
-    const api = getElectronAPI()
-    if (api) {
-      const result = await api.openFolder()
-      if (result.success) {
-        this.openFolderPath = result.folderPath
-        this.clearCache()
-        return result.folderPath
-      }
-      return null
+export const fileSystemService = {
+  async readFile(filePath: string): Promise<FileResult> {
+    if (isElectron && electronAPI) {
+      return electronAPI.readFile(filePath)
     }
-
-    // Browser fallback - use mock
-    this.openFolderPath = '/mock/project'
-    return this.openFolderPath
-  }
-
-  // Open file dialog
-  async openFile(): Promise<{ filePath: string; content: string } | null> {
-    const api = getElectronAPI()
-    if (api) {
-      const result = await api.openFile()
-      if (result.success) {
-        this.fileCache.set(normalizePath(result.filePath), result.content)
-        return { filePath: result.filePath, content: result.content }
-      }
-      return null
+    const content = MOCK_FILES[filePath]
+    if (content !== undefined) {
+      return { success: true, content }
     }
+    return { success: false, error: `File not found: ${filePath}` }
+  },
 
-    return null
-  }
-
-  // Read file
-  async readFile(filePath: string): Promise<FileOperationResult> {
-    const normalizedPath = normalizePath(filePath)
-
-    // Check cache
-    if (this.fileCache.has(normalizedPath)) {
-      return { success: true, content: this.fileCache.get(normalizedPath) }
+  async writeFile(filePath: string, content: string): Promise<{ success: boolean; error?: string }> {
+    if (isElectron && electronAPI) {
+      return electronAPI.writeFileSync(filePath, content)
     }
-
-    const api = getElectronAPI()
-    if (api) {
-      const result = await api.readFile(filePath)
-      if (result.success) {
-        this.fileCache.set(normalizedPath, result.content)
-      }
-      return result
-    }
-
-    // Browser fallback - return mock content
-    const mockContent = this.getMockContent(filePath)
-    this.fileCache.set(normalizedPath, mockContent)
-    return { success: true, content: mockContent }
-  }
-
-  // Write file
-  async writeFile(filePath: string, content: string): Promise<FileOperationResult> {
-    const api = getElectronAPI()
-    if (api) {
-      const result = await api.writeFile(filePath, content)
-      if (result.success) {
-        this.fileCache.set(normalizePath(filePath), content)
-      }
-      return result
-    }
-
-    // Browser fallback
-    this.fileCache.set(normalizePath(filePath), content)
+    MOCK_FILES[filePath] = content
     return { success: true }
-  }
+  },
 
-  // Read directory
-  async readDir(dirPath: string): Promise<FileEntry[]> {
-    const api = getElectronAPI()
-    if (api) {
-      const result = await api.readDir(dirPath)
-      if (result.success) {
-        return result.tree
-      }
-      return []
+  async readDir(dirPath: string, maxDepth: number = 3): Promise<DirResult> {
+    if (isElectron && electronAPI) {
+      return electronAPI.readDir(dirPath, maxDepth)
     }
+    return { success: true, tree: MOCK_TREE }
+  },
 
-    // Browser fallback
-    if (dirPath === '/mock/project' || !dirPath) {
-      return MOCK_PROJECT_TREE
+  async fileExists(filePath: string): Promise<boolean> {
+    if (isElectron && electronAPI) {
+      return electronAPI.fileExists(filePath)
     }
-    return []
-  }
+    return MOCK_FILES[filePath] !== undefined
+  },
 
-  // Save file dialog
-  async saveFile(content: string): Promise<string | null> {
-    const api = getElectronAPI()
-    if (api) {
-      const result = await api.saveFile(content)
-      if (result.success) {
-        this.fileCache.set(normalizePath(result.path), content)
-        return result.path
-      }
-      return null
+  async openFile(): Promise<FileResult> {
+    if (isElectron && electronAPI) {
+      return electronAPI.openFile()
     }
+    return { success: false, error: 'File dialog not available in browser' }
+  },
 
-    return null
-  }
+  async openFolder(): Promise<string | null> {
+    if (isElectron && electronAPI) {
+      const result = await electronAPI.openFolder()
+      return result.success ? result.folderPath : null
+    }
+    // In browser, return the mock root
+    return '/mock/project'
+  },
 
-  // Watch file
-  watchFile(filePath: string, callback: (eventType: string) => void): void {
-    const api = getElectronAPI()
-    if (api) {
-      api.watchFile(filePath)
-      api.onFileChanged((eventType: string, changedPath: string) => {
-        if (normalizePath(changedPath) === normalizePath(filePath)) {
-          // Invalidate cache
-          this.fileCache.delete(normalizePath(filePath))
-          callback(eventType)
+  async deleteFile(filePath: string): Promise<{ success: boolean; error?: string }> {
+    if (isElectron && electronAPI) {
+      return electronAPI.deleteFile(filePath)
+    }
+    delete MOCK_FILES[filePath]
+    return { success: true }
+  },
+
+  async rename(oldPath: string, newPath: string): Promise<{ success: boolean; error?: string }> {
+    if (isElectron && electronAPI) {
+      return electronAPI.rename(oldPath, newPath)
+    }
+    return { success: false, error: 'Rename not available in browser' }
+  },
+
+  async createDirectory(dirPath: string): Promise<{ success: boolean; error?: string }> {
+    if (isElectron && electronAPI) {
+      return electronAPI.createDirectory(dirPath)
+    }
+    return { success: false, error: 'Directory creation not available in browser' }
+  },
+
+  async searchFiles(dirPath: string, query: string): Promise<SearchResult> {
+    if (isElectron && electronAPI) {
+      return electronAPI.searchFiles(dirPath, query)
+    }
+    const results: Array<{ path: string; name: string; extension: string }> = []
+    const lowerQuery = query.toLowerCase()
+    const searchTree = (items: FileEntry[]) => {
+      for (const item of items) {
+        if (item.name.toLowerCase().includes(lowerQuery)) {
+          results.push({ path: item.path, name: item.name, extension: item.extension || '' })
         }
-      })
-    }
-  }
-
-  // Clear cache
-  clearCache(): void {
-    this.fileCache.clear()
-  }
-
-  // Get all files recursively (for QuickOpen)
-  async getAllFiles(dirPath?: string): Promise<{ name: string; path: string; language: string }[]> {
-    const tree = await this.readDir(dirPath || this.openFolderPath || '/mock/project')
-    const files: { name: string; path: string; language: string }[] = []
-
-    const flatten = (entries: FileEntry[]) => {
-      for (const entry of entries) {
-        if (entry.type === 'file') {
-          files.push({
-            name: entry.name,
-            path: entry.path,
-            language: detectLanguage(entry.path),
-          })
-        } else if (entry.children) {
-          flatten(entry.children)
-        }
+        if (item.children) searchTree(item.children)
       }
     }
+    searchTree(MOCK_TREE)
+    return { success: true, results }
+  },
 
-    flatten(tree)
+  getAllFiles(tree: FileEntry[]): FileEntry[] {
+    const files: FileEntry[] = []
+    const traverse = (items: FileEntry[]) => {
+      for (const item of items) {
+        if (item.type === 'file') files.push(item)
+        if (item.children) traverse(item.children)
+      }
+    }
+    traverse(tree)
     return files
-  }
+  },
 
-  // Get mock content for browser preview
-  private getMockContent(filePath: string): string {
-    const filename = filePath.split('/').pop() || ''
-    const ext = filename.split('.').pop() || ''
+  // Git operations
+  async gitStatus(cwd?: string) {
+    if (isElectron && electronAPI) return electronAPI.gitStatus(cwd)
+    return { success: false, error: 'Git not available in browser' }
+  },
+  async gitLog(cwd?: string, maxCount?: number) {
+    if (isElectron && electronAPI) return electronAPI.gitLog(cwd, maxCount)
+    return { success: false, error: 'Git not available in browser' }
+  },
+  async gitDiff(cwd?: string, file?: string) {
+    if (isElectron && electronAPI) return electronAPI.gitDiff(cwd, file)
+    return { success: false, error: 'Git not available in browser' }
+  },
+  async gitAdd(files: string[], cwd?: string) {
+    if (isElectron && electronAPI) return electronAPI.gitAdd(files, cwd)
+    return { success: false, error: 'Git not available in browser' }
+  },
+  async gitCommit(message: string, cwd?: string) {
+    if (isElectron && electronAPI) return electronAPI.gitCommit(message, cwd)
+    return { success: false, error: 'Git not available in browser' }
+  },
+  async gitBranches(cwd?: string) {
+    if (isElectron && electronAPI) return electronAPI.gitBranches(cwd)
+    return { success: false, error: 'Git not available in browser' }
+  },
+  async gitCheckout(branch: string, cwd?: string) {
+    if (isElectron && electronAPI) return electronAPI.gitCheckout(branch, cwd)
+    return { success: false, error: 'Git not available in browser' }
+  },
 
-    const mockContents: Record<string, string> = {
-      'App.tsx': `import React, { useState } from 'react'\n\nexport default function App() {\n  const [count, setCount] = useState(0)\n  return (\n    <div>\n      <h1>Hello Idexal</h1>\n      <button onClick={() => setCount(c => c + 1)}>\n        Count: {count}\n      </button>\n    </div>\n  )\n}`,
-      'package.json': JSON.stringify({ name: 'idexal-ide', version: '1.0.0', description: 'AI-Powered IDE' }, null, 2),
-      'README.md': `# Idexal IDE\n\nAI-Powered Multi-Agent Development Environment`,
-    }
+  // Command execution
+  async execCommand(command: string, cwd?: string, timeout?: number) {
+    if (isElectron && electronAPI) return electronAPI.execCommand(command, cwd, timeout)
+    return { success: false, error: 'Command execution not available in browser' }
+  },
 
-    return mockContents[filename] || `// ${filename}\n// File content placeholder`
-  }
+  // Clipboard
+  async clipboardRead(): Promise<string> {
+    if (isElectron && electronAPI) return electronAPI.clipboardRead()
+    return navigator.clipboard.readText()
+  },
+  async clipboardWrite(text: string): Promise<void> {
+    if (isElectron && electronAPI) return electronAPI.clipboardWrite(text)
+    return navigator.clipboard.writeText(text)
+  },
 
-  // Get open folder path
-  getOpenFolderPath(): string | null {
-    return this.openFolderPath
-  }
+  // Terminal
+  async terminalCreate(cwd?: string) {
+    if (isElectron && electronAPI) return electronAPI.terminalCreate(cwd)
+    return { success: false, error: 'Terminal not available in browser' }
+  },
+  async terminalWrite(id: string, data: string) {
+    if (isElectron && electronAPI) return electronAPI.terminalWrite(id, data)
+    return { success: false, error: 'Terminal not available in browser' }
+  },
+  async terminalKill(id: string) {
+    if (isElectron && electronAPI) return electronAPI.terminalKill(id)
+    return { success: false, error: 'Terminal not available in browser' }
+  },
 
-  // Check if Electron is available
-  isElectron(): boolean {
-    return isElectron
-  }
+  // System info
+  async getSystemInfo() {
+    if (isElectron && electronAPI) return electronAPI.getSystemInfo()
+    return { platform: navigator.platform, arch: 'unknown', nodeVersion: 'N/A', homedir: '~', cpus: navigator.hardwareConcurrency || 1, totalMemory: 0, freeMemory: 0 }
+  },
 }
-
-export const fileSystemService = new FileSystemService()
-export default fileSystemService

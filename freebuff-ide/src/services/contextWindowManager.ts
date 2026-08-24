@@ -9,12 +9,6 @@ export interface ContextMessage {
   priority: 'high' | 'medium' | 'low'
 }
 
-export interface ContextBudget {
-  totalTokens: number
-  usedTokens: number
-  availableTokens: number
-}
-
 class ContextWindowManager {
   private maxTokens: number = 128000 // GPT-4 default
   private reservedTokens: number = 4096 // For response
@@ -124,50 +118,6 @@ class ContextWindowManager {
     usedTokens += userTokens
 
     return messages
-  }
-
-  /**
-   * Get context budget info
-   */
-  getBudget(messages: ContextMessage[]): ContextBudget {
-    const usedTokens = messages.reduce((sum, m) => sum + (m.tokenCount || 0), 0)
-    return {
-      totalTokens: this.maxTokens,
-      usedTokens,
-      availableTokens: this.maxTokens - usedTokens,
-    }
-  }
-
-  /**
-   * Trim messages to fit within budget
-   */
-  trimToBudget(messages: ContextMessage[], maxTokens?: number): ContextMessage[] {
-    const limit = maxTokens || this.maxTokens - this.reservedTokens
-    const result: ContextMessage[] = []
-    let usedTokens = 0
-
-    // Always keep high priority messages
-    const highPriority = messages.filter(m => m.priority === 'high')
-    const others = messages.filter(m => m.priority !== 'high')
-
-    for (const msg of highPriority) {
-      const tokens = msg.tokenCount || this.estimateTokens(msg.content)
-      if (usedTokens + tokens < limit) {
-        result.push(msg)
-        usedTokens += tokens
-      }
-    }
-
-    // Add others by priority
-    for (const msg of others) {
-      const tokens = msg.tokenCount || this.estimateTokens(msg.content)
-      if (usedTokens + tokens < limit) {
-        result.push(msg)
-        usedTokens += tokens
-      }
-    }
-
-    return result
   }
 
   /**

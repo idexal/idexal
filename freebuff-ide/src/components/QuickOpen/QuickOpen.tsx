@@ -39,14 +39,17 @@ export default function QuickOpen({ onClose }: QuickOpenProps) {
 
   // Load files on mount
   useEffect(() => {
-    fileSystemService.getAllFiles().then((allFiles) => {
-      setFiles(allFiles.map((f, i) => ({
-        id: `f${i}`,
-        name: f.name,
-        path: f.path,
-        type: 'file' as const,
-        language: f.language,
-      })))
+    fileSystemService.readDir('/mock/project').then((result) => {
+      if (result.success && result.tree) {
+        const allFiles = fileSystemService.getAllFiles(result.tree)
+        setFiles(allFiles.map((f: any, i: number) => ({
+          id: `f${i}`,
+          name: f.name,
+          path: f.path,
+          type: 'file' as const,
+          language: f.extension ? f.extension.replace('.', '') : undefined,
+        })))
+      }
     })
   }, [])
 

@@ -4,7 +4,7 @@ import {
   Folder, FolderOpen, Boxes, Brain, X, FolderUp,
   PanelLeftClose
 } from 'lucide-react'
-import { fileSystemService, FileEntry, detectLanguage } from '../../services/fileSystemService'
+import { fileSystemService, type FileEntry, detectLanguage } from '../../services/fileSystemService'
 import { useEditorStore } from '../../stores/editorStore'
 
 interface SidebarProps {
@@ -103,8 +103,10 @@ export default function Sidebar({ onClose, activeTab: propActiveTab, onTabChange
       }
       if (dirPath) {
         setFolderPath(dirPath)
-        const tree = await fileSystemService.readDir(dirPath)
-        setFileTree(tree)
+        const result = await fileSystemService.readDir(dirPath)
+        if (result.success && result.tree) {
+          setFileTree(result.tree)
+        }
       }
     } catch (error) {
       console.error('Failed to load files:', error)

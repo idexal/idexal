@@ -5,6 +5,7 @@ import {
   X, Key, Monitor, Palette, Code, Brain, Download, Upload, Trash2,
   Keyboard, Info, Check
 } from 'lucide-react'
+import AIProviderSettings from './AIProviderSettings'
 
 interface SettingsPanelProps {
   onClose: () => void
@@ -25,6 +26,17 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
     { id: 'data' as SettingsTab, icon: Download, label: 'Data' },
     { id: 'about' as SettingsTab, icon: Info, label: 'About' },
   ]
+
+  // If AI tab is active, show the full AI Provider Settings panel
+  if (activeTab === 'ai') {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="w-full max-w-5xl h-[85vh] bg-ide-surface border border-ide-border rounded-lg shadow-2xl overflow-hidden">
+          <AIProviderSettings onClose={onClose} />
+        </div>
+      </div>
+    )
+  }
 
   const handleExport = () => {
     exportImportService.downloadExport()
@@ -81,7 +93,6 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
 
         {/* Content */}
         <div className="p-6 overflow-auto max-h-[60vh]">
-          {activeTab === 'ai' && <AISettings />}
           {activeTab === 'editor' && <EditorSettings />}
           {activeTab === 'appearance' && <AppearanceSettings />}
           {activeTab === 'data' && (

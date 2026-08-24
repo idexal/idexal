@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { gitService, GitFile, GitBranch, GitCommit, GitDiff } from '../../services/gitService'
+import { gitService, GitFileChange, GitBranch, GitCommit, GitDiff, GitStatus } from '../../services/gitService'
 import {
   GitBranch as GitBranchIcon, GitCommit as GitCommitIcon, RefreshCw,
   Plus, Minus, Check, X, ChevronDown, ChevronRight, Upload, Download,
@@ -14,7 +14,7 @@ type GitView = 'changes' | 'branches' | 'history'
 
 export default function GitPanel({ onClose }: GitPanelProps) {
   const [view, setView] = useState<GitView>('changes')
-  const [files, setFiles] = useState<GitFile[]>([])
+  const [status, setStatus] = useState<GitStatus | null>(null)
   const [branches, setBranches] = useState<GitBranch[]>([])
   const [commits, setCommits] = useState<GitCommit[]>([])
   const [commitMessage, setCommitMessage] = useState('')
@@ -25,12 +25,12 @@ export default function GitPanel({ onClose }: GitPanelProps) {
   }, [])
 
   const loadGitData = async () => {
-    const [f, b, c] = await Promise.all([
+    const [s, b, c] = await Promise.all([
       gitService.getStatus(),
       gitService.getBranches(),
       gitService.getLog(),
     ])
-    setFiles(f)
+    setStatus(s)
     setBranches(b)
     setCommits(c)
   }
@@ -42,7 +42,7 @@ export default function GitPanel({ onClose }: GitPanelProps) {
     setExpandedFiles(next)
   }
 
-  const getStatusIcon = (status: GitFile['status']) => {
+  const getStatusIcon = (status: GitFileChange['status']) => {
     switch (status) {
       case 'added': return <span className="text-ide-success font-bold">A</span>
       case 'modified': return <span className="text-ide-warning font-bold">M</span>
@@ -52,14 +52,7 @@ export default function GitPanel({ onClose }: GitPanelProps) {
     }
   }
 
-  const getStatusColor = (status: GitFile['status']) => {
-    switch (status) {
-      case 'added': return 'text-ide-success'
-      case 'modified': return 'text-ide-warning'
-      case 'deleted': return 'text-ide-error'
-      default: return 'text-ide-text-muted'
-    }
-  }
+  const allFiles = status ? [...status.staged, ...status.unstaged, ...status.untracked.map(f => ({ path: f, status: 'added' as const, staged: false }))] : []
 
   return (
     <div className="h-full flex flex-col bg-ide-surface">
@@ -68,6 +61,11 @@ export default function GitPanel({ onClose }: GitPanelProps) {
         <div className="flex items-center gap-2">
           <GitBranchIcon className="w-4 h-4 text-ide-accent" />
           <span className="text-sm font-medium">Source Control</span>
+          {status && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-ide-bg text-ide-text-muted">
+              {status.currentBranch}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <button onClick={loadGitData} className="p-1.5 rounded hover:bg-ide-border" title="Refresh">
@@ -87,18 +85,18 @@ export default function GitPanel({ onClose }: GitPanelProps) {
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
             placeholder="Commit message..."
-            className="flex-1 ide-input text-sm"
+            className="flex-1 px-3 py-1.5 bg-ide-bg border border-ide-border rounded text-sm text-ide-text focus:outline-none focus:ring-1 focus:ring-ide-accent"
           />
           <button
-            onClick={() => {
+            onClick={async () => {
               if (commitMessage.trim()) {
-                gitService.commit(commitMessage)
+                await gitService.commit(commitMessage)
                 setCommitMessage('')
                 loadGitData()
               }
             }}
             disabled={!commitMessage.trim()}
-            className="ide-button-primary text-sm"
+            className="px-3 py-1.5 rounded bg-ide-accent text-white text-sm hover:bg-ide-accent/80 disabled:opacity-40"
           >
             <GitCommitIcon className="w-4 h-4" />
           </button>
@@ -124,12 +122,14 @@ export default function GitPanel({ onClose }: GitPanelProps) {
       <div className="flex-1 overflow-auto">
         {view === 'changes' && (
           <div className="p-2">
-            {files.length === 0 ? (
+            {allFiles.length === 0 ? (
               <div className="p-8 text-center text-ide-text-muted text-sm">
-                No changes detected
+                <GitBranchIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No changes detected</p>
+                <p className="text-[10px] mt-1">{status?.currentBranch || 'main'}</p>
               </div>
             ) : (
-              files.map((file) => (
+              allFiles.map((file) => (
                 <div key={file.path} className="mb-1">
                   <div
                     className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-ide-border/50 cursor-pointer"
@@ -141,11 +141,12 @@ export default function GitPanel({ onClose }: GitPanelProps) {
                     }
                     {getStatusIcon(file.status)}
                     <span className="text-sm flex-1 truncate">{file.path}</span>
+                    {file.staged && <span className="text-[9px] px-1 rounded bg-green-500/10 text-green-400">staged</span>}
                     <div className="flex items-center gap-1">
-                      <button className="p-1 rounded hover:bg-ide-border" title="Stage">
+                      <button className="p-1 rounded hover:bg-ide-border" title="Stage" onClick={(e) => { e.stopPropagation(); gitService.stageFiles([file.path]) }}>
                         <Check className="w-3.5 h-3.5 text-ide-success" />
                       </button>
-                      <button className="p-1 rounded hover:bg-ide-border" title="Discard">
+                      <button className="p-1 rounded hover:bg-ide-border" title="Discard" onClick={(e) => { e.stopPropagation(); gitService.discardFile(file.path) }}>
                         <Trash2 className="w-3.5 h-3.5 text-ide-error" />
                       </button>
                     </div>
@@ -163,7 +164,7 @@ export default function GitPanel({ onClose }: GitPanelProps) {
           <div className="p-3 space-y-2">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-ide-text-muted uppercase">Branches</span>
-              <button className="flex items-center gap-1 text-xs text-ide-accent hover:text-ide-accent-hover">
+              <button className="flex items-center gap-1 text-xs text-ide-accent hover:text-ide-accent/80">
                 <Plus className="w-3.5 h-3.5" /> New Branch
               </button>
             </div>
@@ -179,15 +180,21 @@ export default function GitPanel({ onClose }: GitPanelProps) {
                 <GitBranchIcon className={`w-4 h-4 ${branch.current ? 'text-ide-accent' : 'text-ide-text-muted'}`} />
                 <div className="flex-1">
                   <div className="text-sm font-medium">{branch.name}</div>
-                  {branch.lastCommit && (
-                    <div className="text-xs text-ide-text-muted">{branch.lastCommit}</div>
+                  {(branch.ahead !== undefined || branch.behind !== undefined) && (
+                    <div className="text-[10px] text-ide-text-muted">
+                      {branch.ahead && branch.ahead > 0 && <span className="text-green-400">↑{branch.ahead} </span>}
+                      {branch.behind && branch.behind > 0 && <span className="text-yellow-400">↓{branch.behind}</span>}
+                    </div>
                   )}
                 </div>
                 {branch.current && (
                   <span className="text-xs text-ide-accent bg-ide-accent/10 px-2 py-0.5 rounded">current</span>
                 )}
                 {!branch.current && (
-                  <button className="text-xs text-ide-text-muted hover:text-ide-accent">
+                  <button
+                    onClick={() => gitService.switchBranch(branch.name)}
+                    className="text-xs text-ide-text-muted hover:text-ide-accent"
+                  >
                     <GitMerge className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -207,14 +214,7 @@ export default function GitPanel({ onClose }: GitPanelProps) {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-ide-text">{commit.message}</div>
                     <div className="text-xs text-ide-text-muted mt-1">
-                      {commit.author} • {commit.date} • {commit.hash.substring(0, 7)}
-                    </div>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {commit.files.map((f) => (
-                        <span key={f} className="text-xs bg-ide-surface px-2 py-0.5 rounded text-ide-text-muted">
-                          {f}
-                        </span>
-                      ))}
+                      {commit.author} • {commit.date} • <span className="font-mono">{commit.shortHash}</span>
                     </div>
                   </div>
                 </div>
@@ -254,10 +254,10 @@ function DiffView({ filePath }: { filePath: string }) {
         <span className="text-ide-success">+{diff.additions}</span>
         <span className="text-ide-error">-{diff.deletions}</span>
       </div>
-      <div className="font-mono text-xs overflow-x-auto">
+      <div className="font-mono text-xs overflow-x-auto max-h-60">
         {diff.hunks.map((hunk, hi) => (
           <div key={hi}>
-            <div className="px-3 py-1 bg-ide-surface text-ide-text-muted border-b border-ide-border">
+            <div className="px-3 py-1 bg-ide-surface text-ide-text-muted border-b border-ide-border text-[10px]">
               @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
             </div>
             {hunk.lines.map((line, li) => (

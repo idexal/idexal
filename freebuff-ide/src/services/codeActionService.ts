@@ -29,7 +29,6 @@ export interface ParsedCodeBlock {
 }
 
 class CodeActionService {
-  private actionHistory: CodeAction[] = []
   private pendingActions: Map<string, CodeAction> = new Map()
 
   /**
@@ -104,7 +103,6 @@ class CodeActionService {
       }
 
       action.applied = true
-      this.actionHistory.push(action)
       this.pendingActions.delete(actionId)
       return true
     } catch (error) {
@@ -121,44 +119,10 @@ class CodeActionService {
   }
 
   /**
-   * Get action history
-   */
-  getHistory(): CodeAction[] {
-    return this.actionHistory
-  }
-
-  /**
    * Cancel a pending action
    */
   cancelAction(actionId: string): boolean {
     return this.pendingActions.delete(actionId)
-  }
-
-  /**
-   * Preview changes before applying
-   */
-  async previewAction(actionId: string): Promise<Map<string, { before: string; after: string }>> {
-    const action = this.pendingActions.get(actionId)
-    if (!action) return new Map()
-
-    const previews = new Map<string, { before: string; after: string }>()
-
-    for (const change of action.changes) {
-      let before = ''
-      try {
-        const result = await fileSystemService.readFile(change.filePath)
-        before = result.success ? (result.content || '') : '(new file)'
-      } catch (e) {
-        before = '(new file)'
-      }
-
-      previews.set(change.filePath, {
-        before,
-        after: change.content || '',
-      })
-    }
-
-    return previews
   }
 }
 

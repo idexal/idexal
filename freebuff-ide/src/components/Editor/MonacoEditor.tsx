@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react'
 import Editor, { OnMount, OnChange } from '@monaco-editor/react'
 import { useEditorStore, Tab } from '../../stores/editorStore'
+import { aiStreamingService } from '../../services/aiStreamingService'
 
 interface MonacoEditorProps {
   tab: Tab
@@ -89,6 +90,69 @@ export default function MonacoEditor({ tab }: MonacoEditorProps) {
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
       editor.getAction('editor.action.formatDocument')?.run()
     })
+
+    // AI Inline Completion Provider (ghost text)
+    monaco.languages.registerInlineComplementProvider({ language: '*' })
+    monaco.languages.registerInlineComplementProvider({ language: 'typescript' })
+    monaco.languages.registerInlineComplementProvider({ language: 'tsx' })
+    monaco.languages.registerInlineComplementProvider({ language: 'javascript' })
+    monaco.languages.registerInlineComplementProvider({ language: 'rust' })
+    monaco.languages.registerInlineComplementProvider({ language: 'python' })
+
+    const disposables: any[] = []
+    const languages = ['typescript', 'tsx', 'javascript', 'rust', 'python']
+    for (const lang of languages) {
+      disposables.push(
+        monaco.languages.registerInlineComplementProvider(lang, {
+          provideInlineCompletions: async (model: any, position: any) => {
+            // Get context: current line and surrounding lines
+            const currentLine = model.getLineContent(position.lineNumber)
+            const startLine = Math.max(1, position.lineNumber - 20)
+            const endLine = Math.min(model.getLineCount(), position.lineNumber + 5)
+            const surroundingCode = model.getValueInRange({
+              startLineNumber: startLine,
+              startColumn: 1,
+              endLineNumber: endLine,
+              endColumn: model.getLineMaxColumn(endLine),
+            })
+
+            // Build prompt for AI
+            const prompt = `Complete this code. Only output the completion text, no explanation.\n\nContext:\n\`\`\`${lang}\n${surroundingCode}\n\`\`\`\n\nComplete after: ${currentLine}`
+
+            try {
+              const response = await aiStreamingService.chat(
+                [{ role: 'user', content: prompt }],
+                { maxTokens: 150, temperature: 0.3 }
+              )
+
+              // Extract code from response
+              let completion = response.content.trim()
+              // Remove markdown code block markers
+              completion = completion.replace(/^```[\w]*\n?/, '').replace(/\n?```$/, '')
+              // Only take first line or up to semicolon
+              completion = completion.split('\n')[0]
+
+              if (!completion || completion.length < 2) return { items: [] }
+
+              return {
+                items: [{
+                  insertText: completion,
+                  range: {
+                    startLineNumber: position.lineNumber,
+                    startColumn: position.column,
+                    endLineNumber: position.lineNumber,
+                    endColumn: position.column,
+                  },
+                }],
+              }
+            } catch {
+              return { items: [] }
+            }
+          },
+          freeInlineCompletions: () => {},
+        })
+      )
+    }
   }
 
   const handleChange: OnChange = (value) => {
