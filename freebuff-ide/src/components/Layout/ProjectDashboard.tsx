@@ -3,7 +3,7 @@ import {
   Layout, Folder, FileText, GitBranch, Clock, Users, Activity,
   Zap, Code, Package, TestTube, Shield, Rocket, Settings,
   ChevronDown, ChevronRight, ArrowRight, Star, Eye, TrendingUp,
-  CheckCircle, AlertTriangle, XCircle, RefreshCw
+  CheckCircle, AlertTriangle, XCircle, RefreshCw, Terminal
 } from 'lucide-react'
 
 interface ProjectStat {
@@ -70,11 +70,8 @@ export default function ProjectDashboard({ onClose }: { onClose: () => void }) {
   const [activities] = useState(MOCK_ACTIVITIES)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // Simulate live updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      setRefreshKey(k => k + 1)
-    }, 30000)
+    const interval = setInterval(() => setRefreshKey(k => k + 1), 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -231,6 +228,3 @@ export default function ProjectDashboard({ onClose }: { onClose: () => void }) {
     </div>
   )
 }
-
-// Import for Terminal icon
-import { Terminal } from 'lucide-react'
