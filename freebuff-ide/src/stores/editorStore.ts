@@ -25,6 +25,8 @@ export interface EditorState {
   moveToSplit: (id: string) => void
 }
 
+let tabIdCounter = 0
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   tabs: [],
   activeTabId: null,
@@ -40,7 +42,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     
     const newTab: Tab = {
       ...tab,
-      id: `tab-${Date.now()}`,
+      id: `tab-${Date.now()}-${++tabIdCounter}`,
       modified: false,
     }
     

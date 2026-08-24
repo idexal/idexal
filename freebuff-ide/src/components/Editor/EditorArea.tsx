@@ -17,7 +17,7 @@ export default function EditorArea() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-ide-surface border border-ide-border flex items-center justify-center">
             <Code className="w-8 h-8 text-ide-accent" />
           </div>
-          <h2 className="text-xl font-semibold text-ide-text mb-2">Welcome to Freebuff IDE</h2>
+          <h2 className="text-xl font-semibold text-ide-text mb-2">Welcome to Idexal IDE</h2>
           <p className="text-sm text-ide-text-muted mb-6">
             AI-Powered Multi-Agent Development Environment
           </p>

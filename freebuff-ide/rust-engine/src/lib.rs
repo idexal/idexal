@@ -6,7 +6,7 @@ mod parser;
 
 use napi_derive::napi;
 
-/// Freebuff Engine - High-performance backend for Freebuff IDE
+/// Idexal Engine - High-performance backend for Idexal IDE
 /// 
 /// This module provides:
 /// - Multi-agent orchestration
@@ -23,8 +23,8 @@ pub use parser::*;
 #[napi]
 pub fn init_engine() -> String {
     env_logger::init();
-    log::info!("Freebuff Engine initialized");
-    "Freebuff Engine v0.1.0 initialized successfully".to_string()
+    log::info!("Idexal Engine initialized");
+    "Idexal Engine v0.1.0 initialized successfully".to_string()
 }
 
 /// Get engine version

@@ -1,4 +1,4 @@
-//! Memory system for Freebuff IDE
+//! Memory system for Idexal IDE
 //!
 //! This module provides:
 //! - Project memory (understands codebase structure)

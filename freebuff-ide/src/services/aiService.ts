@@ -58,7 +58,7 @@ class AIService {
 
   private loadConfig() {
     try {
-      const saved = localStorage.getItem('freebuff-ai-config')
+      const saved = localStorage.getItem('idexal-ai-config')
       if (saved) {
         const config = JSON.parse(saved)
         if (config.activeProvider) this.activeProvider = config.activeProvider
@@ -76,7 +76,7 @@ class AIService {
       activeProvider: this.activeProvider,
       providers: Object.fromEntries(this.providers),
     }
-    localStorage.setItem('freebuff-ai-config', JSON.stringify(config))
+    localStorage.setItem('idexal-ai-config', JSON.stringify(config))
   }
 
   setProvider(type: AIProviderType) {

@@ -2,23 +2,29 @@ import React, { useEffect, useState } from 'react'
 import { useAgentStore } from './stores/agentStore'
 import { useSettingsStore } from './stores/settingsStore'
 import TitleBar from './components/Layout/TitleBar'
-import Sidebar from './components/Layout/Sidebar'
+import Sidebar, { SidebarTab } from './components/Layout/Sidebar'
 import EditorArea from './components/Editor/EditorArea'
 import ChatPanel from './components/AI/ChatPanel'
 import TerminalPanel from './components/Terminal/TerminalPanel'
 import GitPanel from './components/Git/GitPanel'
+import DebugPanel from './components/Debug/DebugPanel'
+import SnippetPanel from './components/Snippets/SnippetPanel'
 import StatusBar from './components/Layout/StatusBar'
 import CommandPalette from './components/Layout/CommandPalette'
 import SettingsPanel from './components/Settings/SettingsPanel'
+import QuickOpen from './components/QuickOpen/QuickOpen'
+import { NotificationToast } from './components/Notifications/NotificationSystem'
 
-type RightPanel = 'chat' | 'terminal' | 'git' | null
+type RightPanel = 'chat' | 'terminal' | 'git' | 'debug' | 'snippets' | null
 
 function App() {
   const { initializeAgents } = useAgentStore()
   const { loadSettings } = useSettingsStore()
   const [showCommandPalette, setShowCommandPalette] = useState(false)
+  const [showQuickOpen, setShowQuickOpen] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('files')
   const [rightPanel, setRightPanel] = useState<RightPanel>('chat')
 
   useEffect(() => {
@@ -29,6 +35,11 @@ function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + P: Quick Open
+      if ((e.metaKey || e.ctrlKey) && e.key === 'p' && !e.shiftKey) {
+        e.preventDefault()
+        setShowQuickOpen(prev => !prev)
+      }
       // Cmd/Ctrl + K: Command Palette
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
@@ -54,10 +65,21 @@ function App() {
         e.preventDefault()
         setRightPanel(prev => prev === 'git' ? null : 'git')
       }
+      // Cmd/Ctrl + Shift + D: Toggle Debug
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'D') {
+        e.preventDefault()
+        setRightPanel(prev => prev === 'debug' ? null : 'debug')
+      }
       // Cmd/Ctrl + ,: Settings
       if ((e.metaKey || e.ctrlKey) && e.key === ',') {
         e.preventDefault()
         setShowSettings(prev => !prev)
+      }
+      // Escape: Close overlays
+      if (e.key === 'Escape') {
+        setShowCommandPalette(false)
+        setShowQuickOpen(false)
+        setShowSettings(false)
       }
     }
 
@@ -80,19 +102,23 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         {sidebarOpen && (
-          <Sidebar onClose={() => setSidebarOpen(false)} />
+          <Sidebar
+            onClose={() => setSidebarOpen(false)}
+            activeTab={sidebarTab}
+            onTabChange={setSidebarTab}
+          />
         )}
 
         {/* Editor Area */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden min-w-0">
           {/* Main Editor */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden min-w-0">
             <EditorArea />
           </div>
 
           {/* Right Panel */}
           {rightPanel && (
-            <div className="w-[400px] border-l border-ide-border overflow-hidden flex-shrink-0">
+            <div className="w-[420px] border-l border-ide-border overflow-hidden flex-shrink-0">
               {rightPanel === 'chat' && (
                 <ChatPanel
                   onClose={() => setRightPanel(null)}
@@ -104,6 +130,12 @@ function App() {
               )}
               {rightPanel === 'git' && (
                 <GitPanel onClose={() => setRightPanel(null)} />
+              )}
+              {rightPanel === 'debug' && (
+                <DebugPanel onClose={() => setRightPanel(null)} />
+              )}
+              {rightPanel === 'snippets' && (
+                <SnippetPanel />
               )}
             </div>
           )}
@@ -117,15 +149,19 @@ function App() {
         onOpenGit={() => setRightPanel('git')}
       />
 
-      {/* Command Palette */}
+      {/* Overlays */}
       {showCommandPalette && (
         <CommandPalette onClose={() => setShowCommandPalette(false)} />
       )}
-
-      {/* Settings */}
+      {showQuickOpen && (
+        <QuickOpen onClose={() => setShowQuickOpen(false)} />
+      )}
       {showSettings && (
         <SettingsPanel onClose={() => setShowSettings(false)} />
       )}
+
+      {/* Notifications */}
+      <NotificationToast />
     </div>
   )
 }

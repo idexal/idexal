@@ -1,4 +1,4 @@
-# 🚀 Freebuff IDE
+# 🚀 Idexal IDE
 
 **Professional Multi-Agent AI-Powered Development Environment**
 
@@ -114,7 +114,7 @@ cargo build --release
 ## 🏗️ Architecture
 
 ```
-freebuff-ide/
+idexal-ide/
 ├── electron/           # Electron main process
 ├── rust-engine/        # Rust backend engine
 │   ├── src/

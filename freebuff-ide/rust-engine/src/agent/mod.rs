@@ -1,4 +1,4 @@
-//! Multi-agent system for Freebuff IDE
+//! Multi-agent system for Idexal IDE
 //!
 //! This module implements a sophisticated multi-agent architecture where
 //! specialized agents collaborate to handle different aspects of software development.

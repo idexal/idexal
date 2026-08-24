@@ -1,153 +1,170 @@
-import { useCallback, useEffect } from 'react'
-import { useAgentStore, AgentType } from '../stores/agentStore'
+import { useCallback, useState } from 'react'
 import { useMemoryStore } from '../stores/memoryStore'
-import { AGENT_CONFIGS } from '../utils/agentUtils'
-import { aiService } from '../services/aiService'
-import { useSettingsStore } from '../stores/settingsStore'
+import { aiService, AIMessage } from '../services/aiService'
+
+interface AgentMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: number
+  agentType?: string
+  isStreaming?: boolean
+}
+
+const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
+  code: 'You are Idexal Code Agent, an expert software engineer. You write clean, efficient, well-documented code. When writing code, use proper formatting with markdown code blocks. Always explain your approach briefly before code. Be concise and actionable.',
+  review: 'You are Idexal Review Agent, an expert code reviewer. Analyze code for bugs, security issues, performance problems, and style violations. Provide specific, actionable feedback with line references when possible.',
+  debug: 'You are Idexal Debug Agent, an expert debugger. Help diagnose and fix code issues. Provide step-by-step debugging guidance, suggest breakpoints, and explain root causes.',
+  architect: 'You are Idexal Architect Agent, a software architect expert. Help design system architecture, plan features, and make technology decisions.',
+  test: 'You are Idexal Test Agent, a testing expert. Write comprehensive unit tests, integration tests, and e2e tests. Follow testing best practices and edge case coverage.',
+}
 
 export function useAgent() {
-  const {
-    agents,
-    activeAgentId,
-    messages,
-    isProcessing,
-    selectedAgentType,
-    initializeAgents,
-    setActiveAgent,
-    setSelectedAgentType,
-    updateAgentStatus,
-    updateAgentThinking,
-    setAgentResult,
-    setAgentError,
-    addMessage,
-    setProcessing,
-  } = useAgentStore()
+  const { addMemory } = useMemoryStore()
 
-  const { searchMemory, addMemory } = useMemoryStore()
-  const settings = useSettingsStore()
+  const [messages, setMessages] = useState<AgentMessage[]>([])
+  const [isStreaming, setIsStreaming] = useState(false)
 
-  const activeAgent = agents.find(a => a.id === activeAgentId)
+  const updateMessage = useCallback((id: string, updates: Partial<AgentMessage>) => {
+    setMessages(prev =>
+      prev.map(m => m.id === id ? { ...m, ...updates } : m)
+    )
+  }, [])
 
-  // Sync settings with AI service
-  useEffect(() => {
-    aiService.setProvider(settings.activeProvider)
-    if (settings.openaiApiKey) {
-      aiService.updateProvider('openai', { apiKey: settings.openaiApiKey, model: settings.openaiModel })
-    }
-    if (settings.anthropicApiKey) {
-      aiService.updateProvider('anthropic', { apiKey: settings.anthropicApiKey, model: settings.anthropicModel })
-    }
-    if (settings.localModelUrl) {
-      aiService.updateProvider('local', { baseUrl: settings.localModelUrl, model: settings.localModelName })
-    }
-  }, [settings])
-
-  const sendMessage = useCallback(async (content: string) => {
-    if (!activeAgent || isProcessing) return
+  const sendMessage = useCallback(async (content: string, agentType: string = 'code') => {
+    if (!content.trim()) return
 
     // Add user message
-    addMessage({ role: 'user', content, agentType: selectedAgentType })
+    const userMsg: AgentMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content,
+      timestamp: Date.now(),
+    }
+    setMessages(prev => [...prev, userMsg])
 
-    // Start processing
-    setProcessing(true)
-    updateAgentStatus(activeAgent.id, 'thinking')
+    // Start streaming
+    setIsStreaming(true)
+
+    const assistantId = `assistant-${Date.now()}`
+    const assistantMsg: AgentMessage = {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+      agentType,
+      isStreaming: true,
+    }
+    setMessages(prev => [...prev, assistantMsg])
 
     try {
-      // Search memory for relevant context
-      const memoryResults = searchMemory(content)
-      const context = memoryResults.map(m => `${m.key}: ${m.value}`).join('\n')
+      const systemPrompt = AGENT_SYSTEM_PROMPTS[agentType] || AGENT_SYSTEM_PROMPTS.code
 
-      // Build system prompt from agent config
-      const config = AGENT_CONFIGS[selectedAgentType]
-      let systemPrompt = config.systemPrompt
+      const aiMessages: AIMessage[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content },
+      ]
 
-      // Add project context if available
-      const projectContext = useMemoryStore.getState().projectContext
-      if (projectContext) {
-        systemPrompt += `\n\nProject: ${projectContext.name}\nLanguages: ${projectContext.languages.join(', ')}\nFrameworks: ${projectContext.frameworks.join(', ')}`
-      }
-
-      // Try real AI if configured
       if (aiService.isConfigured()) {
-        updateAgentThinking(activeAgent.id, 'Connecting to AI provider...')
-        const response = await aiService.agentChat(
-          selectedAgentType,
-          systemPrompt,
-          content,
-          context || undefined
-        )
+        try {
+          let fullContent = ''
+          for await (const chunk of aiService.chatStream(aiMessages)) {
+            fullContent += chunk
+            updateMessage(assistantId, { content: fullContent, isStreaming: true })
+          }
+          updateMessage(assistantId, { content: fullContent, isStreaming: false })
 
-        setAgentResult(activeAgent.id, response)
-        addMessage({ role: 'agent', content: response, agentType: selectedAgentType, metadata: { agentId: activeAgent.id } })
-
-        addMemory({ type: 'conversation', key: content.substring(0, 100), value: response, metadata: { agentType: selectedAgentType } })
+          addMemory({
+            type: 'conversation',
+            key: `agent-${agentType}`,
+            value: fullContent.slice(0, 500),
+          })
+        } catch {
+          const response = await aiService.chat(aiMessages)
+          updateMessage(assistantId, { content: response.content, isStreaming: false })
+        }
       } else {
-        // Simulate agent thinking
-        updateAgentThinking(activeAgent.id, 'Analyzing request...')
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        updateAgentThinking(activeAgent.id, 'Searching codebase...')
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        updateAgentThinking(activeAgent.id, 'Generating response...')
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        // Simulated response
-        const response = generateSimulatedResponse(selectedAgentType, content, context)
-        setAgentResult(activeAgent.id, response)
-
-        addMessage({ role: 'agent', content: response, agentType: selectedAgentType, metadata: { agentId: activeAgent.id } })
-        addMemory({ type: 'conversation', key: content.substring(0, 100), value: response, metadata: { agentType: selectedAgentType } })
+        const demoResponse = generateDemoResponse(agentType, content)
+        updateMessage(assistantId, { content: demoResponse, isStreaming: false })
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      setAgentError(activeAgent.id, errorMsg)
-      addMessage({ role: 'system', content: `Error: ${errorMsg}\n\nTip: Configure your AI provider in Settings (⌘,) to enable real AI responses.` })
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      updateMessage(assistantId, {
+        content: `⚠️ Error: ${errorMessage}\n\nPlease check your AI provider settings.`,
+        isStreaming: false,
+      })
     } finally {
-      setProcessing(false)
+      setIsStreaming(false)
     }
-  }, [activeAgent, isProcessing, selectedAgentType, addMessage, setProcessing,
-      updateAgentStatus, updateAgentThinking, setAgentResult, setAgentError,
-      searchMemory, addMemory])
+  }, [addMemory, updateMessage])
 
-  const selectAgent = useCallback((type: AgentType) => {
-    setSelectedAgentType(type)
-    const agent = agents.find(a => a.type === type)
-    if (agent) setActiveAgent(agent.id)
-  }, [agents, setSelectedAgentType, setActiveAgent])
+  const cancelStream = useCallback(() => {
+    setIsStreaming(false)
+  }, [])
+
+  const clearMessages = useCallback(() => {
+    setMessages([])
+  }, [])
 
   return {
-    agents,
-    activeAgent,
     messages,
-    isProcessing,
-    selectedAgentType,
     sendMessage,
-    selectAgent,
-    initializeAgents,
+    cancelStream,
+    clearMessages,
+    isStreaming,
   }
 }
 
-function generateSimulatedResponse(agentType: AgentType, userMessage: string, context: string): string {
-  const config = AGENT_CONFIGS[agentType]
+// Demo responses when no AI is configured
+function generateDemoResponse(agentType: string, userMessage: string): string {
+  const lower = userMessage.toLowerCase()
 
-  switch (agentType) {
-    case 'code':
-      return `I'll help you with that code task. Based on my analysis:\n\n\`\`\`typescript\n// Here's my suggested implementation:\nfunction processData(input: DataInput): ProcessedData {\n  const validated = validateInput(input)\n  const transformed = transformData(validated)\n  return {\n    ...transformed,\n    timestamp: Date.now(),\n    status: 'processed'\n  }\n}\n\`\`\`\n\nThis implementation follows best practices:\n- Input validation for safety\n- Clear separation of concerns\n- Type safety with TypeScript\n- Error handling built-in\n\nWould you like me to explain any part of this solution?`
+  if (agentType === 'code') {
+    if (lower.includes('component') || lower.includes('react')) {
+      return 'Here\'s a React component based on your request:\n\n```tsx\nimport React, { useState } from \'react\'\n\ninterface Props {\n  title: string\n  onAction?: () => void\n}\n\nexport function CustomComponent({ title, onAction }: Props) {\n  const [isActive, setIsActive] = useState(false)\n\n  return (\n    <div className={`p-4 rounded-lg border ${isActive ? \'border-ide-accent bg-ide-accent/10\' : \'border-ide-border\'}`}>\n      <h3 className="text-lg font-medium">{title}</h3>\n      <button\n        onClick={() => {\n          setIsActive(!isActive)\n          onAction?.()\n        }}\n        className="mt-2 px-3 py-1 text-sm bg-ide-accent text-white rounded"\n      >\n        {isActive ? \'Active\' : \'Activate\'}\n      </button>\n    </div>\n  )\n}\n```\n\nThis component:\n- Uses TypeScript for type safety\n- Includes `useState` for toggle behavior\n- Accepts `title` and optional `onAction` callback\n\n> **Tip**: Connect your AI provider in Settings to get real code generation from Claude or GPT-4.'
+    }
 
-    case 'review':
-      return `## Code Review Analysis\n\n### Overall Assessment\nThe code quality is good with some areas for improvement.\n\n### Issues Found:\n1. **Medium Priority**: Consider adding input validation\n2. **Low Priority**: Some variable names could be more descriptive\n\n### Security:\n✅ No obvious security vulnerabilities detected\n\n### Performance:\n⚠️ Consider using memoization for expensive calculations\n\n### Recommendations:\n- Add error boundaries\n- Include unit tests\n- Document public APIs`
+    if (lower.includes('function') || lower.includes('helper')) {
+      return 'Here\'s a utility function:\n\n```typescript\n/**\n * Debounce a function call\n * @param fn - Function to debounce\n * @param delay - Delay in milliseconds\n */\nexport function debounce<T extends (...args: any[]) => any>(\n  fn: T,\n  delay: number\n): (...args: Parameters<T>) => void {\n  let timeoutId: ReturnType<typeof setTimeout>\n  return (...args: Parameters<T>) => {\n    clearTimeout(timeoutId)\n    timeoutId = setTimeout(() => fn(...args), delay)\n  }\n}\n```\n\n**Usage:**\n```typescript\nconst debouncedSearch = debounce(async (query: string) => {\n  const results = await searchAPI(query)\n  setResults(results)\n}, 300)\n```'
+    }
 
-    case 'debug':
-      return `## Debug Analysis\n\n### Root Cause Identified\nThe issue appears to be related to:\n\n1. **Race condition** in the async handler\n2. **Missing null check** on line 42\n3. **Inconsistent state management**\n\n### Suggested Fix:\n\`\`\`typescript\nasync function handleData(data: unknown) {\n  if (!data) throw new Error('Data cannot be null')\n  const result = await processData(data)\n  return result\n}\n\`\`\`\n\n### Prevention:\n- Add TypeScript strict mode\n- Use ESLint rules for null checks`
+    return `I understand you want to: **${userMessage}**
 
-    case 'architect':
-      return `## Architecture Plan\n\n### Proposed Architecture:\n\`\`\`\n├── Core Layer (Business Logic)\n│   ├── Services\n│   ├── Models\n│   └── Validators\n├── Data Layer\n│   ├── Repositories\n│   └── DTOs\n└── Presentation Layer\n    ├── Controllers\n    └── Views\n\`\`\`\n\n### Design Patterns:\n- Repository Pattern for data access\n- Service Layer for business logic\n- Factory Pattern for object creation\n\n### Scalability:\n1. Implement caching layer\n2. Use message queue for async ops`
+Here's my approach:
 
-    case 'test':
-      return `## Test Strategy\n\n\`\`\`typescript\ndescribe('DataProcessor', () => {\n  it('should handle valid input correctly', () => {\n    const input = createTestData()\n    const result = processData(input)\n    expect(result).toBeDefined()\n    expect(result.status).toBe('processed')\n  })\n\n  it('should throw error for invalid input', () => {\n    expect(() => processData(null)).toThrow()\n  })\n})\n\`\`\`\n\n### Test Coverage Plan:\n1. Unit tests (80%)\n2. Integration tests (15%)\n3. E2E tests (5%)`
+\`\`\`typescript
+interface Config {
+  apiKey: string
+  baseUrl: string
+  timeout?: number
+}
 
-    default:
-      return `I've analyzed your request based on the ${config.name} capabilities.\n\n${context ? `Project context:\n${context}\n\n` : ''}I'm ready to help. Could you provide more details?`
+async function fetchData(config: Config): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), config.timeout || 30000)
+  try {
+    const response = await fetch(config.baseUrl, {
+      headers: { 'Authorization': \`Bearer \${config.apiKey}\` },
+      signal: controller.signal,
+    })
+    if (!response.ok) throw new Error(\`HTTP \${response.status}\`)
+    return response
+  } finally {
+    clearTimeout(timeout)
   }
+}
+\`\`\`
+
+> Configure your AI provider in Settings for intelligent code generation.`
+  }
+
+  if (agentType === 'review') {
+    return '## Code Review Analysis\n\n**Overall Assessment**: ⚠️ Needs attention\n\n### Issues Found:\n1. **Type Safety** - Consider adding explicit return types\n2. **Error Handling** - Missing try-catch blocks\n3. **Performance** - Potential re-render issues\n\n### Suggestions:\n- Add `React.memo()` for expensive components\n- Use `useCallback` for event handlers passed as props\n- Consider adding loading states for async operations\n\n### Positive Notes:\n✅ Good naming conventions\n✅ Proper file organization\n✅ Consistent formatting'
+  }
+
+  if (agentType === 'debug') {
+    return '## Debug Analysis\n\nBased on: "' + userMessage + '"\n\n### Possible Causes:\n1. **Race condition** - Async operations may complete out of order\n2. **Stale closure** - State not updating as expected\n3. **Null reference** - Object may be undefined before use\n\n### Debugging Steps:\n1. Add console.log() at key points\n2. Check React DevTools for state changes\n3. Verify all useEffect dependencies\n4. Use the debugger panel to set breakpoints\n\n### Quick Fix:\n```typescript\nconst data = response?.data ?? defaultValue\nconst value = obj?.nested?.property\n```'
+  }
+
+  return `I'm here to help! You asked about: "${userMessage}"\n\nNo AI provider is currently configured. To enable real AI responses:\n\n1. Click ⚙️ **Settings** in the title bar\n2. Select a provider (OpenAI, Anthropic, or Local)\n3. Enter your API key\n\nIn the meantime, I can help with:\n- 📝 Code structure and patterns\n- 🔍 Code review tips\n- 🐛 Debugging guidance\n- 🏗️ Architecture decisions`
 }

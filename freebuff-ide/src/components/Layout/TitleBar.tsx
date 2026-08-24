@@ -23,7 +23,7 @@ export default function TitleBar({
         {/* Logo */}
         <div className="flex items-center gap-2">
           <Cpu className="w-5 h-5 text-ide-accent" />
-          <span className="text-sm font-semibold text-gradient">Freebuff IDE</span>
+          <span className="text-sm font-semibold text-gradient">Idexal IDE</span>
         </div>
 
         {/* Menu Buttons */}

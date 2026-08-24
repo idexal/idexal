@@ -1,41 +1,51 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { useAgentStore } from '../../stores/agentStore'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useAgent } from '../../hooks/useAgent'
-import { AGENT_CONFIGS } from '../../utils/agentUtils'
-import AgentThinking from '../AgentThinking/AgentThinking'
-import { Send, X, Bot, User, Loader2, ChevronDown, Sparkles, Settings } from 'lucide-react'
+import { useSettingsStore } from '../../stores/settingsStore'
+import MarkdownRenderer from './MarkdownRenderer'
+import { codeActionService } from '../../services/codeActionService'
+import {
+  Send, X, Settings, Bot, Trash2, ChevronDown,
+  Code, Search, Bug, Boxes, FlaskConical, Copy, Check
+} from 'lucide-react'
 
 interface ChatPanelProps {
   onClose: () => void
-  onOpenSettings?: () => void
+  onOpenSettings: () => void
 }
 
+const AGENTS = [
+  { type: 'code', name: 'Code', icon: Code, color: 'text-blue-400' },
+  { type: 'review', name: 'Review', icon: Search, color: 'text-green-400' },
+  { type: 'debug', name: 'Debug', icon: Bug, color: 'text-yellow-400' },
+  { type: 'architect', name: 'Architect', icon: Boxes, color: 'text-purple-400' },
+  { type: 'test', name: 'Test', icon: FlaskConical, color: 'text-pink-400' },
+]
+
 export default function ChatPanel({ onClose, onOpenSettings }: ChatPanelProps) {
-  const {
-    messages,
-    isProcessing,
-    selectedAgentType,
-    selectAgent,
-  } = useAgent()
-  const { sendMessage } = useAgent()
   const [input, setInput] = useState('')
-  const [showAgentSelector, setShowAgentSelector] = useState(false)
+  const [selectedAgent, setSelectedAgent] = useState('code')
+  const [showAgentPicker, setShowAgentPicker] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const { messages, sendMessage, cancelStream, clearMessages, isStreaming } = useAgent()
+  const { activeProvider, openaiApiKey, anthropicApiKey } = useSettingsStore()
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
+  // Auto-scroll to bottom
   useEffect(() => {
-    scrollToBottom()
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSend = () => {
-    if (!input.trim() || isProcessing) return
-    sendMessage(input.trim())
+  // Focus input on mount
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  const handleSend = useCallback(() => {
+    if (!input.trim() || isStreaming) return
+    sendMessage(input, selectedAgent)
     setInput('')
-  }
+  }, [input, selectedAgent, sendMessage, isStreaming])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -44,68 +54,89 @@ export default function ChatPanel({ onClose, onOpenSettings }: ChatPanelProps) {
     }
   }
 
-  const currentConfig = AGENT_CONFIGS[selectedAgentType]
+  const handleApplyCode = useCallback(async (code: string, language: string) => {
+    const ext = language === 'typescript' ? 'ts' : language === 'tsx' ? 'tsx' : language
+    const filePath = `new-${Date.now()}.${ext}`
+    const action = codeActionService.createAction(
+      [{ language, filePath, content: code }],
+      `Apply ${language} code`
+    )
+    codeActionService.applyAction(action.id)
+  }, [])
+
+  const handleCopyMessage = useCallback(async (content: string, messageId: string) => {
+    await navigator.clipboard.writeText(content)
+    setCopiedId(messageId)
+    setTimeout(() => setCopiedId(null), 2000)
+  }, [])
+
+  const currentAgent = AGENTS.find(a => a.type === selectedAgent) || AGENTS[0]
+  const AgentIcon = currentAgent.icon
 
   return (
-    <div className="h-full flex flex-col bg-ide-chat">
+    <div className="h-full flex flex-col bg-ide-surface">
       {/* Header */}
-      <div className="h-12 px-4 flex items-center justify-between border-b border-ide-border">
+      <div className="h-12 px-4 flex items-center justify-between border-b border-ide-border flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Bot className="w-5 h-5 text-ide-accent" />
-          <span className="font-medium text-ide-text">AI Assistant</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {onOpenSettings && (
-            <button onClick={onOpenSettings} className="p-1.5 rounded hover:bg-ide-border text-ide-text-muted" title="AI Settings">
-              <Settings className="w-4 h-4" />
+          <Bot className="w-4 h-4 text-ide-accent" />
+          <span className="text-sm font-medium">AI Chat</span>
+
+          {/* Agent Selector */}
+          <div className="relative">
+            <button
+              onClick={() => setShowAgentPicker(!showAgentPicker)}
+              className={`flex items-center gap-1 px-2 py-1 text-xs rounded border transition-colors ${currentAgent.color} border-current/20 hover:bg-current/10`}
+            >
+              <AgentIcon className="w-3 h-3" />
+              <span>{currentAgent.name}</span>
+              <ChevronDown className="w-3 h-3" />
             </button>
-          )}
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-ide-border text-ide-text-muted">
+
+            {showAgentPicker && (
+              <div className="absolute top-full left-0 mt-1 w-40 bg-ide-surface border border-ide-border rounded-lg shadow-xl z-10 overflow-hidden">
+                {AGENTS.map((agent) => {
+                  const Icon = agent.icon
+                  return (
+                    <button
+                      key={agent.type}
+                      onClick={() => {
+                        setSelectedAgent(agent.type)
+                        setShowAgentPicker(false)
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                        selectedAgent === agent.type
+                          ? `${agent.color} bg-current/10`
+                          : 'text-ide-text hover:bg-ide-border/50'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{agent.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={clearMessages}
+            className="p-1.5 rounded hover:bg-ide-border text-ide-text-muted hover:text-ide-text"
+            title="Clear Messages"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onOpenSettings}
+            className="p-1.5 rounded hover:bg-ide-border text-ide-text-muted hover:text-ide-text"
+            title="Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-ide-border text-ide-text-muted hover:text-ide-text">
             <X className="w-4 h-4" />
           </button>
-        </div>
-      </div>
-
-      {/* Agent Selector */}
-      <div className="px-4 py-2 border-b border-ide-border">
-        <div className="relative">
-          <button
-            onClick={() => setShowAgentSelector(!showAgentSelector)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-ide-bg border border-ide-border hover:border-ide-accent transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{currentConfig.icon}</span>
-              <span className="text-sm font-medium" style={{ color: currentConfig.color }}>
-                {currentConfig.name}
-              </span>
-            </div>
-            <ChevronDown className={`w-4 h-4 text-ide-text-muted transition-transform ${showAgentSelector ? 'rotate-180' : ''}`} />
-          </button>
-
-          {showAgentSelector && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-ide-surface border border-ide-border rounded-lg shadow-lg z-10 overflow-hidden">
-              {Object.values(AGENT_CONFIGS).map((config) => (
-                <button
-                  key={config.type}
-                  onClick={() => {
-                    selectAgent(config.type)
-                    setShowAgentSelector(false)
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 hover:bg-ide-border/50 transition-colors ${
-                    selectedAgentType === config.type ? 'bg-ide-accent/10' : ''
-                  }`}
-                >
-                  <span className="text-lg">{config.icon}</span>
-                  <div className="text-left">
-                    <div className="text-sm font-medium" style={{ color: config.color }}>
-                      {config.name}
-                    </div>
-                    <div className="text-xs text-ide-text-muted">{config.description}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
@@ -113,121 +144,133 @@ export default function ChatPanel({ onClose, onOpenSettings }: ChatPanelProps) {
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center">
-            <div className="w-12 h-12 rounded-xl bg-ide-accent/10 flex items-center justify-center mb-3">
-              <Sparkles className="w-6 h-6 text-ide-accent" />
+            <div className="w-12 h-12 rounded-full bg-ide-accent/10 flex items-center justify-center mb-3">
+              <AgentIcon className={`w-6 h-6 ${currentAgent.color}`} />
             </div>
-            <h3 className="text-sm font-medium text-ide-text mb-1">How can I help?</h3>
-            <p className="text-xs text-ide-text-muted max-w-xs mb-4">
-              Ask me to write code, review your work, debug issues, or plan architecture.
+            <h3 className="text-sm font-medium text-ide-text mb-1">
+              {currentAgent.name} Agent
+            </h3>
+            <p className="text-xs text-ide-text-muted max-w-[250px]">
+              Ask me anything about your code. I can write, review, debug, or help with architecture.
             </p>
-
-            {/* Quick Actions */}
-            <div className="flex flex-wrap gap-2 justify-center max-w-sm">
-              {['Write a React component', 'Review this code', 'Fix the bug in auth', 'Plan microservices architecture', 'Write unit tests'].map((action) => (
+            {!((activeProvider === 'openai' && openaiApiKey) || (activeProvider === 'anthropic' && anthropicApiKey)) && (
+              <div className="mt-4 p-3 rounded-lg bg-ide-warning/10 border border-ide-warning/30 max-w-[280px]">
+                <p className="text-xs text-ide-warning">
+                  ⚠️ No AI provider configured. Responses will be demo only.
+                </p>
                 <button
-                  key={action}
-                  onClick={() => setInput(action)}
-                  className="px-3 py-1.5 text-xs bg-ide-surface border border-ide-border rounded-full hover:border-ide-accent transition-colors"
+                  onClick={onOpenSettings}
+                  className="mt-2 text-xs text-ide-accent hover:underline"
                 >
-                  {action}
+                  Configure AI Provider →
                 </button>
-              ))}
-            </div>
-
-            {/* Provider Status */}
-            <div className="mt-6 text-xs text-ide-text-muted">
-              {isProcessing ? (
-                <span className="text-ide-accent">Processing...</span>
-              ) : (
-                <span>Press Enter to send • Shift+Enter for new line</span>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         ) : (
-          messages.map((message) => (
+          messages.map((msg) => (
             <div
-              key={message.id}
-              className={`flex gap-3 chat-message ${
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              }`}
+              key={msg.id}
+              className={`group ${msg.role === 'user' ? 'flex justify-end' : ''}`}
             >
-              {message.role !== 'user' && (
-                <div className="w-8 h-8 rounded-lg bg-ide-accent/10 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-4 h-4 text-ide-accent" />
-                </div>
-              )}
+              <div className={`max-w-[90%] ${msg.role === 'user' ? 'text-right' : ''}`}>
+                {/* Agent label */}
+                {msg.role === 'assistant' && (
+                  <div className="flex items-center gap-1 mb-1">
+                    <Bot className="w-3 h-3 text-ide-accent" />
+                    <span className="text-[10px] text-ide-text-muted">
+                      {AGENTS.find(a => a.type === msg.agentType)?.name || 'Agent'}
+                    </span>
+                    {msg.isStreaming && (
+                      <span className="text-[10px] text-ide-accent animate-pulse">typing...</span>
+                    )}
+                  </div>
+                )}
 
-              <div
-                className={`max-w-[85%] rounded-lg px-4 py-3 ${
-                  message.role === 'user'
-                    ? 'bg-ide-accent text-white'
-                    : message.role === 'system'
-                    ? 'bg-ide-warning/10 border border-ide-warning/30 text-ide-warning'
-                    : 'bg-ide-bg border border-ide-border'
-                }`}
-              >
-                <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
-                {message.metadata?.agentType && (
-                  <div className="mt-2 text-xs text-ide-text-muted border-t border-ide-border pt-2">
-                    {(AGENT_CONFIGS as any)[message.metadata.agentType]?.icon} {(AGENT_CONFIGS as any)[message.metadata.agentType]?.name}
+                {/* Message content */}
+                <div
+                  className={`inline-block text-left rounded-lg px-3 py-2 ${
+                    msg.role === 'user'
+                      ? 'bg-ide-accent/20 text-ide-text'
+                      : 'bg-ide-bg border border-ide-border text-ide-text'
+                  }`}
+                >
+                  {msg.role === 'assistant' ? (
+                    <MarkdownRenderer
+                      content={msg.content}
+                      onApplyCode={handleApplyCode}
+                    />
+                  ) : (
+                    <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                {msg.role === 'assistant' && !msg.isStreaming && (
+                  <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleCopyMessage(msg.content, msg.id)}
+                      className="p-1 rounded hover:bg-ide-border text-ide-text-muted hover:text-ide-text"
+                      title="Copy"
+                    >
+                      {copiedId === msg.id ? (
+                        <Check className="w-3 h-3 text-ide-success" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
+                    </button>
                   </div>
                 )}
               </div>
-
-              {message.role === 'user' && (
-                <div className="w-8 h-8 rounded-lg bg-ide-surface flex items-center justify-center flex-shrink-0">
-                  <User className="w-4 h-4 text-ide-text-muted" />
-                </div>
-              )}
             </div>
           ))
         )}
-
-        {isProcessing && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-lg bg-ide-accent/10 flex items-center justify-center">
-              <Loader2 className="w-4 h-4 text-ide-accent animate-spin" />
-            </div>
-            <div className="bg-ide-bg border border-ide-border rounded-lg px-4 py-3">
-              <div className="flex items-center gap-2 text-sm text-ide-text-muted">
-                <span>Thinking</span>
-                <div className="typing-indicator flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-ide-accent rounded-full"></span>
-                  <span className="w-1.5 h-1.5 bg-ide-accent rounded-full"></span>
-                  <span className="w-1.5 h-1.5 bg-ide-accent rounded-full"></span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-ide-border">
-        <div className="relative">
+      <div className="p-3 border-t border-ide-border flex-shrink-0">
+        <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask anything... (Shift+Enter for new line)"
+            placeholder={`Ask ${currentAgent.name} Agent... (Shift+Enter for new line)`}
+            className="flex-1 resize-none bg-ide-bg border border-ide-border rounded-lg px-3 py-2 text-sm text-ide-text placeholder:text-ide-text-muted focus:outline-none focus:ring-1 focus:ring-ide-accent min-h-[40px] max-h-[120px]"
             rows={1}
-            className="w-full resize-none rounded-lg bg-ide-bg border border-ide-border px-4 py-3 pr-12 text-sm text-ide-text placeholder:text-ide-text-muted focus:outline-none focus:ring-2 focus:ring-ide-accent focus:border-transparent"
-            style={{ minHeight: '44px', maxHeight: '200px' }}
+            disabled={isStreaming}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement
+              target.style.height = 'auto'
+              target.style.height = Math.min(target.scrollHeight, 120) + 'px'
+            }}
           />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isProcessing}
-            className={`absolute right-2 bottom-2 p-2 rounded-md transition-colors ${
-              input.trim() && !isProcessing
-                ? 'bg-ide-accent text-white hover:bg-ide-accent-hover'
-                : 'bg-ide-surface text-ide-text-muted cursor-not-allowed'
-            }`}
-          >
-            <Send className="w-4 h-4" />
-          </button>
+          {isStreaming ? (
+            <button
+              onClick={cancelStream}
+              className="p-2 rounded-lg bg-ide-error text-white hover:bg-ide-error/80 transition-colors"
+              title="Stop"
+            >
+              <div className="w-3 h-3 bg-white rounded-sm" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={!input.trim()}
+              className="p-2 rounded-lg bg-ide-accent text-white hover:bg-ide-accent/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-1.5 px-1">
+          <span className="text-[10px] text-ide-text-muted">
+            {messages.length} messages
+          </span>
+          <span className="text-[10px] text-ide-text-muted">
+            ⏎ Send · ⇧⏎ New line
+          </span>
         </div>
       </div>
     </div>

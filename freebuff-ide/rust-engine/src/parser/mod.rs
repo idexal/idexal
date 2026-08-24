@@ -1,4 +1,4 @@
-//! Code parser module for Freebuff IDE
+//! Code parser module for Idexal IDE
 //!
 //! This module provides code parsing capabilities using Tree-sitter
 //! for accurate AST-based code analysis.

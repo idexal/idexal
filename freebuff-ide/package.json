@@ -1,5 +1,5 @@
 {
-  "name": "freebuff-ide",
+  "name": "idexal-ide",
   "version": "1.0.0",
   "description": "Professional Multi-Agent AI-Powered IDE",
   "main": "electron/dist/main.js",

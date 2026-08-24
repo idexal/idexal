@@ -82,7 +82,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   loadSettings: () => {
     try {
-      const saved = localStorage.getItem('freebuff-settings')
+      const saved = localStorage.getItem('idexal-settings')
       if (saved) {
         set({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) })
       }
@@ -111,6 +111,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       theme: state.theme,
       sidebarPosition: state.sidebarPosition,
     }
-    localStorage.setItem('freebuff-settings', JSON.stringify(settings))
+    localStorage.setItem('idexal-settings', JSON.stringify(settings))
   },
 }))

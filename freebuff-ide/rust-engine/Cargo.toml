@@ -1,9 +1,9 @@
 [package]
-name = "freebuff-engine"
+name = "idexal-engine"
 version = "0.1.0"
 edition = "2021"
-description = "High-performance backend engine for Freebuff IDE"
-authors = ["Freebuff Team"]
+description = "High-performance backend engine for Idexal IDE"
+authors = ["Idexal Team"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
