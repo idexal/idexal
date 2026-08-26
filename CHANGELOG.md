@@ -1,5 +1,11 @@
 # Changelog — Idexal (Ecosystem)
 
+## [2.5.0] — 2026-08-26
+
+### Changed
+- **IDE v2.5.0** released: Team Skill Packs (share/import/apply) + Agent Protocol v2 (typed envelope + Cancel); Windows installers attached
+- **CLI v2.5.0** released: `idexa index` workspace cache (--refresh/--json/--watch) + `mcp tools --stream/--timeout`; 29 tests, tarball + binary attached
+
 ## [2.4.0] — 2026-08-26
 
 ### Changed

@@ -10,37 +10,32 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 
 ## ✅ Done
 
-- **IDE v2.4.0** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
-  bundled skills (auto-load + inject + enable/disable + catalog browser + fetch-from-repo),
-  @file + @folder/ context, checkpoints on every apply + one-click Undo,
-  **Ctrl+K inline edit with streaming live preview** (token-by-token widget + Esc-cancel),
-  per-hunk partial apply, tab-autocomplete via local models (Ollama/LM Studio) +
-  **dedicated Autocomplete settings panel**, Terminal Agent panel live bridge,
-  **voice input in Chat (🎙️ Web Speech live transcript + Whisper-ready) + Sync panel in Settings → Data**,
-  0 TS errors, 90 tests, CI, Windows releases
-- **CLI v2.4.0** — autonomous `idexa do` with permission gate, checkpoints & undo,
-  atomic refactor, pre-commit AI review hook, headless `-p`, session continuity,
-  `watch`, NDJSON bridge events + completions, `models` local detection,
-  MCP client + tools invocation, **single-exec binary (3.8 MB) + `--files` scoped context + `idexa search <query>` workspace search**, npm-ready, 29 tests
+- **IDE v2.5.0** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
+  bundled skills (auto-load + inject + enable/disable + catalog browser + fetch-from-repo + **Team Packs** share/import/apply),
+  @file + @folder/ context, checkpoints on every apply + Undo, Ctrl+K streaming live preview,
+  per-hunk partial apply, tab-autocomplete + settings panel, Terminal Agent NDJSON bridge with **Protocol v2** (delegate/progress/request/result/cancel) + Cancel button, voice input + Sync panel,
+  0 TS, 90 tests, CI, Windows releases
+- **CLI v2.5.0** — autonomous `idexa do` with permission gate, checkpoints & undo, atomic refactor,
+  hook, headless `-p`, session continuity, `watch`, NDJSON bridge + completions, `models` local detection,
+  MCP client + tools invocation with **--stream + --timeout**, `search`, **single binary (3.8 MB) + --files + `idexa index --watch` workspace cache**, npm-ready, 29 tests
 - **Skills v1.1.0** — 118-skill library with auto-generated index
 - **Website v0.9.0** — published (development intentionally deferred)
 
-## 🔥 Now — Next release (v2.5.0)
-### IDE v2.5.0
-- [ ] Team skill packs
-- [ ] Agent-to-agent protocol (IDE ↔ CLI live)
+## 🔥 Now — Next release (v2.6.0)
+### IDE v2.6.0
+- [ ] Plugin store (install/enable + revenue share stub)
+- [ ] Multi-workspace tabs
 
-### CLI v2.5.0
-- [ ] `idexa index` pre-built workspace index for faster `do`
-- [ ] `idexa mcp tools --stream` NDJSON for long-running tools
+### CLI v2.6.0
+- [ ] `idexa plugins` registry improvements + `idexa ask` quick single-shot
+- [ ] `idexa do --index` auto-inject cached index summary
 
-## ⏭️ Next — v2.6.0 targets
-- Team skill packs · Agent-to-agent protocol · Plugin store
+## ⏭️ Next — v2.7.0 targets
+- Cloud sync (encrypted Gist) · On-device fine-tuned completion model
 
 ## 🧊 Later — differentiators
-- [ ] Cloud sync of sessions/settings across devices (local sync live; encrypted Gist backup next)
-- [ ] Team skill packs (share curated skills per org)
-- [ ] Agent-to-agent protocol (IDE ↔ CLI collaboration)
+- [ ] Cloud sync of sessions/settings across devices (local sync live)
+- [ ] Agent-to-agent protocol full callback (CLI → IDE open_file/show_diff)
 - [ ] Plugin store with revenue share
 - [ ] On-device fine-tuned completion model
 
