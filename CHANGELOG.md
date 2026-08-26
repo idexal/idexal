@@ -1,5 +1,16 @@
 # Changelog — Idexal (Ecosystem)
 
+## [1.9.0] — 2026-08-26
+
+### Changed
+- **IDE v1.9.0 "Skills Fetch"** released: install any skill from the
+  idexal-skills repo by id, instantly; Windows installers attached
+- **CLI v1.9.0 "MCP Client"** released: `mcp connect/list/remove` with
+  validated JSON-RPC stdio connections; 29 tests, tarball attached
+
+### Added
+- ROADMAP re-baselined: v2.0.0 = IDE "One Platform" + CLI "Registry"
+
 ## [1.8.0] — 2026-08-26
 
 ### Changed
