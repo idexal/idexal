@@ -1,5 +1,16 @@
 # Changelog — Idexal (Ecosystem)
 
+## [1.6.0] — 2026-08-26
+
+### Changed
+- **IDE v1.6.0 "Skills Marketplace"** released: enable/disable toggles with
+  persistence in the Skills browser; Windows installers attached
+- **CLI v1.6.0 "Polish"** released: resumable agent sessions
+  (`do --continue` / `--resume <id>`); 29 tests, npm tarball attached
+
+### Added
+- ROADMAP re-baselined: v1.7.0 = IDE "Inline" + CLI "Bridge"
+
 ## [1.5.0] — 2026-08-26
 
 ### Changed
