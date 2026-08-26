@@ -1,5 +1,16 @@
 # Changelog — Idexal (Ecosystem)
 
+## [1.4.0] — 2026-08-26
+
+### Changed
+- **IDE v1.4.0 "Agent Does + Undo"** released: checkpoints before every applied
+  action + one-click Undo button in chat; Windows installers attached
+- **CLI v1.4.0 "Reach"** released: `idexa watch` background agent (debounced,
+  ext-filtered, read-only default), 29 tests passing, npm tarball attached
+
+### Added
+- ROADMAP re-baselined: v1.5.0 = IDE "Diff Review" + CLI "Ship"
+
 ## [1.3.0] — 2026-08-26
 
 ### Changed
