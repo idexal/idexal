@@ -1,5 +1,11 @@
 # Changelog — Idexal (Ecosystem)
 
+## [2.7.1] — 2026-08-26 — HOTFIX: standalone binary + clean-install
+
+### Fixed
+- **CLI v2.7.1** hotfix: binaries/idexa-win-x64.exe was a JS text file with .exe extension — failed on clean Windows without Node. Now a real PE32+ via pkg (Node 18 embedded, 37.8MB). Verified: file PE32+ and timeout 12 --help passes. 29/29 tests.
+- **IDE v2.7.1** hotfix: electron-builder omitted electron-updater/electron-is-dev — app never opened on fresh machines (MODULE_NOT_FOUND). Fixed files + asarUnpack **.node/.dll/.exe + public/** + zip target (Idexal-IDE-2.7.1-Windows-x64.zip 128M fallback for SmartScreen). Verified: vite + 90/90 + Setup 95M + Portable 95M + Zip 128M + app.asar 26M; win-unpacked stays alive 12s.
+
 ## [2.7.0] — 2026-08-26
 
 ### Changed

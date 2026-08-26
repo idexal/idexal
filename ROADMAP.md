@@ -9,6 +9,8 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 ---
 
 ## ✅ Done
+- **IDE v2.7.1** — hotfix: clean-install packaging (asarUnpack + missing deps + zip) — app now opens on fresh Windows (MODULE_NOT_FOUND fixed), Setup 95M + Portable 95M + Zip 128M fallback + app.asar 26M, 90/90, live launch verified (win-unpacked stays 12s)
+- **CLI v2.7.1** — hotfix: real PE32+ binary via pkg (37.8MB, Node 18 embedded) — runs on clean Windows without Node (was JS text), 29/29, live --help/--version/ask --help verified
 - **IDE v2.7.0** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
   bundled skills (auto-load + inject + enable/disable + catalog browser + fetch-from-repo + Team Packs share/import/apply),
   @file + @folder/ context, checkpoints on every apply + Undo, Ctrl+K streaming live preview,
