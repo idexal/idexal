@@ -1,5 +1,13 @@
 # Changelog — Idexal (Ecosystem)
 
+## [2.3.0] — 2026-08-26
+
+### Changed
+- **IDE v2.3.0 "Streaming Inline Edit"** released: Ctrl+K now streams token-by-token
+  with live preview widget + Autocomplete settings panel; Windows installers attached
+- **CLI v2.3.0** released: single-exec binary (3.8 MB) + `--files` scoped context;
+  29 tests, tarball + binary attached
+
 ## [2.2.0] — 2026-08-26
 
 ### Changed
