@@ -1,5 +1,16 @@
 # Changelog — Idexal (Ecosystem)
 
+## [1.3.0] — 2026-08-26
+
+### Changed
+- **IDE v1.3.0 "@-Context"** released: @file references pull real file contents
+  into agent context; Windows Setup+Portable installers attached
+- **CLI v1.3.0 "Deep Workspace"** released: checkpoints & `idexa undo`,
+  29 tests passing, npm tarball attached
+
+### Added
+- ROADMAP re-baselined: v1.4.0 = IDE "Agent Does" + CLI "Reach"
+
 ## [1.2.0] — 2026-08-26
 
 ### Changed
