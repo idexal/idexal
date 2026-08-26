@@ -13,6 +13,8 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 - **CLI v2.7.1** — hotfix: real PE32+ binary via pkg (37.8MB, Node 18 embedded) — runs on clean Windows without Node (was JS text), 29/29, live --help/--version/ask --help verified
 - **IDE v2.8.0** — callbacks live (CLI `ide_open_file`/`ide_show_diff` → IDE `open-file`/`show-diff` IPC), on-device distilled n-gram ghost-text (Ollama → LM Studio → on-device fallback) + Settings On-Device panel (toggle + model `distilled-350M/1B/Xenova` + badge), vite 20s, 90/90
 - **CLI v2.8.0** — `do --watch` (chokidar 1200ms debounce, auto-index rebuild, live `⚡` cycles, `await Promise` keep-alive) + `ask --index --stream` combo, `plugins publish` real `npm publish --access public` with staging fallback, tools `ide_open_file`/`ide_show_diff`, PE 37.8MB + tgz 218K, 29/29
+- **IDE v2.9.0** — AES-GCM sync (PBKDF2 100k, 12-byte IV, hasLocalChanges/conflict), billing live (verify/purchase 70%, Stripe stub, My Plugins panel), Settings Billing card, vite 21s, 90/90
+- **CLI v2.9.0** — modelRouter auto (`ask`/`do --model auto` with router print), collab rooms (`create/join/list/leave` file-based `~/.idexa/collab`, live tail), PE 37.8MB + tgz 225K, 29/29
 - **IDE v2.7.0** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
   bundled skills (auto-load + inject + enable/disable + catalog browser + fetch-from-repo + Team Packs share/import/apply),
   @file + @folder/ context, checkpoints on every apply + Undo, Ctrl+K streaming live preview,
@@ -36,8 +38,11 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 - [x] `idexa do --watch` auto-rebuild index + `ask --index --stream` combo
 - [x] `idexa plugins publish` → real npm registry push (billing `npm publish --access public`)
 
-## 🔥 Now — Next release (v2.9.0)
+## ✅ Shipped — v2.9.0 (2026-08-26)
 - Plugin store billing live (Stripe payouts) + verification · Cloud sync AES-GCM + conflict merge · Multi-model router `ask --model auto`
+
+## 🔥 Now — Next release (v2.10.0)
+- Multi-workspace ghost-text ensemble + Yjs CRDT polish + Plugin payouts live (real Stripe webhook)
 
 ## ⏭️ Next — v2.9.0 targets
 - Collab Yjs polish · `idexa collab` multi-agent room

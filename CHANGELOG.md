@@ -1,5 +1,13 @@
 # Changelog — Idexal (Ecosystem)
 
+## [2.9.0] — 2026-08-26
+
+**IDE 2.9.0 “AES-GCM + Billing Live”** + **CLI 2.9.0 “Router + Collab”**
+
+- **IDE**: Cloud Sync now `AES-GCM (PBKDF2 100k, 256-bit, 12-byte IV)` with `idexal-sync-salt` + `xor:` fallback + `hasLocalChanges`/`conflict` flag + `hasLocalChanges` warning; `pluginStoreService` billing live (`verify`/`purchase` 70%, `stripePriceId`, `revenue`, `getBilling`/`getRevenueSummary`) + `billingService.ts` Stripe stub (`checkout` `cs_*`, `idexal-purchases`); Marketplace **My Plugins** panel (local store list with Verify/Buy, live refresh via storage event) + Settings → Data **Plugin Billing** card (Stripe connect/disconnect, summary)
+- **CLI**: `modelRouter.ts` deterministic router (`IDEXA gateway auto/best-coding` → `OPENAI gpt-4o/mini` → `Anthropic` → `local qwen` → fallback) used by `ask --model auto` and `do --model auto` (prints `router: provider → model (reason)`); `collab.ts` offline file rooms `~/.idexa/collab/<room>/` (`create --task`/`join` live tail via chokidar+stdin/`list`/`leave` NDJSON); registered as `idexa collab`
+- **Build**: CLI PE 37.8MB + tgz 225K (259 files), IDE Setup 95M + Portable 95M + Zip 128M + asar 26M; `vite 21s` + `90/90` + `29/29`; live launch `win-unpacked 12s EXIT 124` + `collab create/list` verified
+
 ## [2.8.0] — 2026-08-26
 
 **IDE 2.8.0 “Callbacks + On-Device”** + **CLI 2.8.0 “Watch + Real Publish”**
