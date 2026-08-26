@@ -1,5 +1,13 @@
 # Changelog — Idexal (Ecosystem)
 
+## [2.2.0] — 2026-08-26
+
+### Changed
+- **IDE v2.2.0 "Local Autocomplete"** released: ghost-text tab-completion via
+  Ollama/LM Studio, fully private; Windows installers attached
+- **CLI v2.2.0** released: `mcp tools` list + direct invocation; 29 tests,
+  tarball attached
+
 ## [2.1.0] — 2026-08-26
 
 ### Changed
