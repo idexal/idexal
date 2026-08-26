@@ -1,5 +1,11 @@
 # Changelog — Idexal (Ecosystem)
 
+## [2.7.0] — 2026-08-26
+
+### Changed
+- **IDE v2.7.0** released: cloud sync live (encrypted Gist, token input + Sync/Pull, XOR→AES-ready) + marketplace publish form (pluginStoreService staging, 70% share); Windows installers attached
+- **CLI v2.7.0** released: `idexa ask --stream` live streaming + `idexa plugins publish <path>` staging (manifest validation, --dry-run, 70% share); 29 tests, tarball (214K) + binary (3.9MB) attached
+
 ## [2.6.0] — 2026-08-26
 
 ### Changed

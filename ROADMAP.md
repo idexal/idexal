@@ -9,36 +9,36 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 ---
 
 ## ✅ Done
-- **IDE v2.6.0** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
+- **IDE v2.7.0** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
   bundled skills (auto-load + inject + enable/disable + catalog browser + fetch-from-repo + Team Packs share/import/apply),
   @file + @folder/ context, checkpoints on every apply + Undo, Ctrl+K streaming live preview,
   per-hunk partial apply, tab-autocomplete + settings panel, Terminal Agent NDJSON bridge with Protocol v2 (delegate/progress/request/result/cancel) + Cancel,
-  voice input + Sync panel, **multi-workspace tabs (pill bar, 8 recent, localStorage) + Plugin Store banner (70% revenue stub, Publish CTA)**,
-  0 TS, 90 tests, CI, Windows releases
-- **CLI v2.6.0** — autonomous `idexa do` with permission gate, checkpoints & undo, atomic refactor,
+  voice input + cloud sync live (Gist encrypted XOR→AES-ready, token input + Sync now/Pull & restore + gist URL), **plugin publish in marketplace (inline form → pluginStoreService staging, 70% share)**,
+  multi-workspace tabs, 0 TS, 90 tests, CI, Windows releases
+- **CLI v2.7.0** — autonomous `idexa do` with permission gate, checkpoints & undo, atomic refactor,
   hook, headless `-p`, session continuity, `watch`, NDJSON bridge + completions, `models` local detection,
-  MCP client + tools invocation with --stream + --timeout, `search`, single binary (3.9 MB) + --files + `idexa index --watch` workspace cache,
-  **`idexa ask` quick single-shot Q&A + `idexa do --index` auto-inject cached index summary**, npm-ready, 29 tests
+  MCP client + tools invocation with --stream + --timeout, `search`, single binary (3.9 MB) + --files + `idexa index --watch`,
+  `idexa ask` + `do --index`, **`ask --stream` live streaming + `plugins publish <path>` staging (70% share, --dry-run)**,
+  npm-ready, 29 tests
 - **Skills v1.1.0** — 118-skill library with auto-generated index
 - **Website v0.9.0** — published (development intentionally deferred)
 
-## 🔥 Now — Next release (v2.7.0)
-### IDE v2.7.0
-- [ ] Cloud sync live (encrypted Gist) — Settings→Data Sync now pushes to real Gist
-- [ ] Plugin publish API (billing + verification)
+## 🔥 Now — Next release (v2.8.0)
+### IDE v2.8.0
+- [ ] Agent-to-agent callbacks live (CLI → IDE open_file/show_diff via Protocol v2)
+- [ ] On-device fine-tuned completion model (distilled local ghost-text)
 
-### CLI v2.7.0
-- [ ] `idexa plugins publish` registry + `idexa ask --stream` live streaming
-- [ ] `idexa do --watch` auto-rebuild index integration
+### CLI v2.8.0
+- [ ] `idexa do --watch` auto-rebuild index + `ask --index --stream` combo
+- [ ] `idexa plugins publish` → real npm registry push (billing)
 
-## ⏭️ Next — v2.8.0 targets
-- On-device fine-tuned completion model · Agent-to-agent callbacks (CLI → IDE open_file/show_diff)
+## ⏭️ Next — v2.9.0 targets
+- Full plugin store billing + verification · Cloud sync AES-GCM + conflict merge
 
 ## 🧊 Later — differentiators
-- [ ] Cloud sync of sessions/settings across devices (local sync live)
-- [ ] Agent-to-agent protocol full callback (CLI → IDE open_file/show_diff)
-- [ ] Plugin store with revenue share (banner live in 2.6)
-- [ ] On-device fine-tuned completion model
+- [ ] Cloud sync conflict resolution across devices
+- [ ] Plugin store revenue payouts live
+- [ ] On-device model fine-tuning pipeline
 
 ## 🌐 Website (last priority)
 - [ ] Docs site generation from repo markdown
