@@ -1,5 +1,16 @@
 # Changelog — Idexal (Ecosystem)
 
+## [1.5.0] — 2026-08-26
+
+### Changed
+- **IDE v1.5.0 "Diff Review + @folder"** released: folder context expansion,
+  checkpoints on every Apply path; Windows installers attached
+- **CLI v1.5.0 "Ship"** released: atomic `idexa refactor` (all-or-nothing),
+  `idexa hook install` pre-commit AI review; 29 tests, npm tarball attached
+
+### Added
+- ROADMAP re-baselined: v1.6.0 = IDE "Marketplace" + CLI "Polish"
+
 ## [1.4.0] — 2026-08-26
 
 ### Changed
