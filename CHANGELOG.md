@@ -1,5 +1,11 @@
 # Changelog — Idexal (Ecosystem)
 
+## [2.4.0] — 2026-08-26
+
+### Changed
+- **IDE v2.4.0** released: 🎙️ voice input in Chat (Web Speech live transcript + Whisper-ready) + Sync panel in Settings → Data; Windows installers attached
+- **CLI v2.4.0** released: `idexa search <query>` workspace search (ripgrep + fallback) + binary refresh; 29 tests, tarball + binary attached
+
 ## [2.3.0] — 2026-08-26
 
 ### Changed
