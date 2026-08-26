@@ -1,5 +1,12 @@
 # Changelog — Idexal (Ecosystem)
 
+## [2.1.0] — 2026-08-26
+
+### Changed
+- **IDE v2.1.0 "Per-Hunk Apply"** released: partial diff apply via line
+  selection; Windows installers attached
+- **CLI v2.1.0** released: npm publish readiness verified; tarball attached
+
 ## [2.0.0] — 2026-08-26
 
 ### Changed

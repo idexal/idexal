@@ -10,29 +10,29 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 
 ## ✅ Done
 
-- **IDE v2.0.0 "One Platform"** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
-  bundled skills (auto-load + inject + enable/disable + **catalog browser + fetch-from-repo**),
-  @file + @folder/ context, checkpoints on every apply + one-click Undo, Ctrl+K inline edit,
-  Terminal Agent panel consuming the CLI bridge live,
-  0 TS errors, 90 tests, CI, Windows releases
-- **CLI v2.0.0 "Registry"** — autonomous `idexa do` with permission gate,
+- **IDE v2.1.0** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
+  bundled skills (auto-load + inject + enable/disable + catalog browser + fetch-from-repo),
+  @file + @folder/ context, checkpoints on every apply + one-click Undo,
+  Ctrl+K inline edit, **per-hunk partial apply in DiffViewer**,
+  Terminal Agent panel live bridge, 0 TS errors, 90 tests, CI, Windows releases
+- **CLI v2.1.0 "npm-ready"** — autonomous `idexa do` with permission gate,
   checkpoints & undo, atomic refactor, pre-commit AI review hook, headless `-p`,
-  session continuity, `watch` background agent, NDJSON bridge events + completions,
-  `models` local detection, MCP client **+ MCP tools in the agent loop**, npm-ready, 29 tests
+  session continuity, `watch`, NDJSON bridge + completions, `models`,
+  MCP client + MCP tools in the loop, npm publish verified, 29 tests
 - **Skills v1.1.0** — 118-skill library with auto-generated index
 - **Website v0.9.0** — published (development intentionally deferred)
 
-## 🔥 Now — Next release (v2.1.0)
+## 🔥 Now — Next release (v2.2.0)
 
-### IDE v2.1.0
-- [ ] Per-hunk apply in DiffViewer
+### IDE v2.2.0
 - [ ] Tab-autocomplete via local models
+- [ ] Inline edit streaming preview
 
-### CLI v2.1.0
-- [ ] npm publish under `idexa-cli`
-- [ ] Single-executable binaries (pkg/bun)
+### CLI v2.2.0
+- [ ] Single-executable binaries (pkg/bun) attached to releases
+- [ ] `idexa mcp tools <server>` — invoke a registered tool from the shell
 
-## ⏭️ Next — v2.2.0 targets
+## ⏭️ Next — v2.3.0 targets
 
 - Voice input (Whisper local) · Cloud sync of sessions/settings · Team skill packs
 
