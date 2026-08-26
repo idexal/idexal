@@ -1,5 +1,16 @@
 # Changelog — Idexal (Ecosystem)
 
+## [1.7.0] — 2026-08-26
+
+### Changed
+- **IDE v1.7.0 "Inline Edit"** released: Cursor-style Ctrl+K in-editor AI
+  editing with Accept/Reject bar; Windows installers attached
+- **CLI v1.7.0 "Bridge"** released: NDJSON event protocol (`--json-events`)
+  + shell completions; 29 tests, npm tarball attached
+
+### Added
+- ROADMAP re-baselined: v1.8.0 = IDE "Wire the Bridge" + CLI "Depth"
+
 ## [1.6.0] — 2026-08-26
 
 ### Changed

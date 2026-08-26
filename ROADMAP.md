@@ -10,34 +10,33 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 
 ## ✅ Done
 
-- **IDE v1.6.0** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
-  bundled skills (auto-load + inject + **enable/disable toggles w/ persistence**),
-  provider metadata, @file + @folder/ context, checkpoints on every apply + one-click Undo,
+- **IDE v1.7.0** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
+  bundled skills (auto-load + inject + enable/disable), @file + @folder/ context,
+  checkpoints on every apply + one-click Undo, **Ctrl+K inline edit**,
   0 TS errors, 90 tests, CI, Windows releases
-- **CLI v1.6.0 "Polish"** — autonomous `idexa do` with permission gate,
-  checkpoints & undo, atomic refactor, pre-commit AI review hook,
-  headless `-p`, session continuity (chat + agent), `watch` background agent,
-  gateway env config, 29 tests
+- **CLI v1.7.0 "Bridge"** — autonomous `idexa do` with permission gate,
+  checkpoints & undo, atomic refactor, pre-commit AI review hook, headless `-p`,
+  session continuity (chat + agent), `watch` background agent,
+  **NDJSON bridge events (`--json-events`) + shell completions**, 29 tests
 - **Skills v1.1.0** — 118-skill library with auto-generated index
 - **Website v0.9.0** — published (development intentionally deferred)
 
-## 🔥 Now — Next release (IDE v1.7.0 / CLI v1.7.0)
+## 🔥 Now — Next release (IDE v1.8.0 / CLI v1.8.0)
 
-### IDE v1.7.0 — "Inline"
-- [ ] Inline edit (Ctrl+K) like Cursor: select code → prompt → diff preview → accept/reject
-- [ ] Per-hunk apply in DiffViewer (apply selected changes only)
-- [ ] Tab-autocomplete via local models
+### IDE v1.8.0 — "Wire the Bridge"
+- [ ] Consume `idexa --json-events` inside a Terminal Agent panel (live progress UI)
+- [ ] Per-hunk apply in DiffViewer
+- [ ] Skills marketplace: fetch new skills directly from idexal-skills repo
 
-### CLI v1.7.0 — "Bridge"
-- [ ] Structured JSON streaming events for the IDE↔CLI bridge
-- [ ] Shell completions (bash/zsh/PowerShell)
+### CLI v1.8.0 — "Depth"
+- [ ] MCP client support (`idexa mcp connect`)
+- [ ] Local model auto-detect (Ollama/LM Studio)
 - [ ] npm publish under `idexa-cli`
 
-## ⏭️ Next — v1.8.0 targets
+## ⏭️ Next — v1.9.0 targets
 
-- MCP client in IDE & CLI (connect external tools)
-- Local model support polish (Ollama/LM Studio auto-detect)
-- Voice input (Whisper local)
+- Tab-autocomplete via local models · Voice input (Whisper local)
+- Cloud sync of sessions/settings
 
 ## 🧊 Later — differentiators
 
