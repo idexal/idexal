@@ -1,1 +1,0 @@
-// Resource implementations can go here if needed

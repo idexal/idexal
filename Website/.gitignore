@@ -1,7 +1,0 @@
-.env
-node_modules
-dist
-*.local
-next/
-prisma/dev.db
-*.db
