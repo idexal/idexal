@@ -55,3 +55,4 @@ playwright-report/
 .idexal/*.log
 .idexal/*.log.err
 .idexal/project-id
+.freebuff/
