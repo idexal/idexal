@@ -1,5 +1,16 @@
 # Changelog — Idexal (Ecosystem)
 
+## [1.2.0] — 2026-08-26
+
+### Changed
+- **IDE v1.2.0 "Agent Transparency"** released: provider metadata in chat,
+  bounded skill injection, Windows Setup+Portable installers attached
+- **CLI v1.2.0 "Agent Loop"** released: autonomous `idexa do` with permission gate,
+  headless `idexa -p`, session continuity (`--continue`/`--resume`), gateway env config
+
+### Added
+- ROADMAP.md re-baselined: v1.3.0 targets are IDE "Real Tool Loop" and CLI "Deep Workspace"
+
 ## [1.1.0] — 2026-08-26
 
 ### Changed

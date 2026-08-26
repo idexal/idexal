@@ -8,46 +8,39 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 
 ---
 
-## ✅ Done (v1.1.0 — current)
+## ✅ Done
 
-- [x] IDE: 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains
-- [x] IDE: bundled skills library — auto-load, browse, inject into agent prompts
-- [x] IDE: 0 TS errors · 90 unit tests · CI
-- [x] CLI: chat/generate/analyze/agent commands · MCP + plugins · 26 tests
-- [x] Skills: 118-skill library with auto-generated index
-- [x] 4 standalone repositories published + umbrella overview
+- **IDE v1.2.0** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
+  bundled skills (auto-load + inject), provider metadata in chat, 0 TS errors, 90 tests, CI,
+  Windows Setup+Portable releases attached
+- **CLI v1.2.0 "Agent Loop"** — `idexa do "<task>"` autonomous execution with
+  permission gate (y/n/always, --auto, --readonly), headless `idexa -p`,
+  session continuity (`--continue` / `--resume <id>`, auto-save),
+  any OpenAI-compatible gateway via env, npm tarball release
+- **Skills v1.1.0** — 118-skill library with auto-generated index
+- **Website v0.9.0** — published (development intentionally deferred)
 
-## 🔥 Now — Next release (IDE v1.2.0 / CLI v1.2.0)
+## 🔥 Now — Next release (IDE v1.3.0 / CLI v1.3.0)
 
-### IDE v1.2.0 — "Agent Mode"
-- [ ] Real tool-loop agents: read/write files, run terminal commands, edit code with diff preview
-- [ ] Agent checkpointing: snapshot workspace before edits, one-click rollback
+### IDE v1.3.0 — "Real Tool Loop"
+- [ ] IDE agents call the same tools as the CLI: read/write/edit files, run terminal commands
+- [ ] Diff-preview panel before the agent writes; one-click rollback checkpoints
 - [ ] @-context in chat (`@file`, `@folder`, `@symbol`, `@terminal`) feeding real file contents
 - [ ] Skills marketplace panel (browse/install from idexal-skills)
-- [ ] Windows/macOS/Linux installers published as GitHub Release v1.2.0
 
-### CLI v1.2.0 — "Claude Code parity"
-- [ ] Interactive REPL session with persistent context + `/slash` commands
-- [ ] Tool loop: shell exec, file patching, search — permission-gated
-- [ ] Session save/resume (`idexa session continue`)
-- [ ] Headless mode: `idexa -p "task"` for scripting/CI
-- [ ] npm publish → `npm i -g idexa-cli` actually works
-
-## ⏭️ Next — v1.3.0 targets
-
-### Both
-- [ ] MCP client in IDE & CLI (connect external tools)
-- [ ] Local model support polish (Ollama/LM Studio auto-detect)
-
-### IDE
-- [ ] Inline edit (Ctrl+K) like Cursor
-- [ ] Tab-autocomplete via local models
-- [ ] Multi-file diff review before agent applies changes
-- [ ] Voice input (Whisper local)
-
-### CLI
-- [ ] Background agents watching files
+### CLI v1.3.0 — "Deep Workspace"
+- [ ] Workspace checkpointing: snapshot before edits, `idexa undo`
+- [ ] Multi-file refactor tool with atomic apply/rollback
 - [ ] Git hooks integration (pre-commit AI review)
+- [ ] npm publish under `idexa-cli`
+
+## ⏭️ Next — v1.4.0 targets
+
+- MCP client in IDE & CLI (connect external tools)
+- Local model support polish (Ollama/LM Studio auto-detect)
+- IDE inline edit (Ctrl+K) like Cursor · tab-autocomplete via local models
+- Voice input (Whisper local)
+- Background agents watching files
 
 ## 🧊 Later — differentiators
 
