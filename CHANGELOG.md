@@ -1,5 +1,17 @@
 # Changelog — Idexal (Ecosystem)
 
+## [2.0.0] — 2026-08-26
+
+### Changed
+- **IDE v2.0.0 "One Platform"** released: skills catalog browser with
+  one-click install; Windows installers attached
+- **CLI v2.0.0 "Registry"** released: MCP tools surfaced to the agent loop;
+  npm registry metadata; 29 tests, tarball attached
+
+### Milestone
+The IDE and CLI now ship as ONE platform — same agent, same tools, same
+skills, connected by the NDJSON bridge.
+
 ## [1.9.0] — 2026-08-26
 
 ### Changed
