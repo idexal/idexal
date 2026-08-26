@@ -1,5 +1,11 @@
 # Changelog — Idexal (Ecosystem)
 
+## [2.6.0] — 2026-08-26
+
+### Changed
+- **IDE v2.6.0** released: multi-workspace tabs (pill bar, 8 recent, `workspaceTabsService`) + Plugin Store banner (70% revenue stub, Publish CTA); Windows installers attached
+- **CLI v2.6.0** released: `idexa ask` single-shot Q&A (--model/--json) + `idexa do --index` workspace-index auto-injection; 29 tests, tarball (212K) + binary (3.9MB) attached
+
 ## [2.5.0] — 2026-08-26
 
 ### Changed
