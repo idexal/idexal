@@ -1,5 +1,16 @@
 # Changelog — Idexal (Ecosystem)
 
+## [1.8.0] — 2026-08-26
+
+### Changed
+- **IDE v1.8.0 "Wire the Bridge"** released: Terminal Agent panel runs the
+  idexa CLI live with real-time progress; Windows installers attached
+- **CLI v1.8.0 "Depth"** released: `idexa models` local runtime detection
+  (Ollama/LM Studio) with `--use` switching; 29 tests, tarball attached
+
+### Added
+- The IDE↔CLI bridge is live — one platform, one agent, everywhere
+
 ## [1.7.0] — 2026-08-26
 
 ### Changed
