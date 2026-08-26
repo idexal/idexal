@@ -1,0 +1,66 @@
+{
+  "name": "idexa-cli",
+  "version": "1.0.0",
+  "description": "Idexa CLI - AI-Powered Development Assistant",
+  "main": "dist/index.js",
+  "bin": {
+    "idexa": "dist/index.js",
+    "idexa-cli": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "cli",
+    "ai",
+    "coding",
+    "ide",
+    "developer-tools"
+  ],
+  "author": "Zakariae Lahbabi <ide@idexal.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/idexal/idexa-cli"
+  },
+  "dependencies": {
+    "@xenova/transformers": "^2.17.2",
+    "axios": "^1.7.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.0",
+    "fs-extra": "^11.2.0",
+    "glob": "^10.4.0",
+    "ignore": "^5.3.0",
+    "inquirer": "^9.2.0",
+    "marked": "^12.0.0",
+    "openai": "^4.50.0",
+    "ora": "^8.0.0",
+    "terminal-kit": "^3.1.0",
+    "tree-kill": "^1.2.2",
+    "uuid": "^9.0.0",
+    "ws": "^8.17.0",
+    "yaml": "^2.4.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.0",
+    "@types/node": "^20.14.0",
+    "@types/uuid": "^9.0.0",
+    "@types/ws": "^8.5.0",
+    "eslint": "^8.57.0",
+    "ts-node": "^10.9.0",
+    "tsx": "^4.23.12",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

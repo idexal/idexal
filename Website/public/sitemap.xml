@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://idexal.com/</loc><priority>1.0</priority></url>
+  <url><loc>https://idexal.com/features</loc><priority>0.9</priority></url>
+  <url><loc>https://idexal.com/models</loc><priority>0.9</priority></url>
+  <url><loc>https://idexal.com/pricing</loc><priority>0.9</priority></url>
+  <url><loc>https://idexal.com/docs</loc><priority>0.8</priority></url>
+  <url><loc>https://idexal.com/blog</loc><priority>0.7</priority></url>
+  <url><loc>https://idexal.com/about</loc><priority>0.6</priority></url>
+  <url><loc>https://idexal.com/philosophy</loc><priority>0.5</priority></url>
+  <url><loc>https://idexal.com/security</loc><priority>0.5</priority></url>
+  <url><loc>https://idexal.com/contact</loc><priority>0.6</priority></url>
+  <url><loc>https://idexal.com/careers</loc><priority>0.4</priority></url>
+  <url><loc>https://idexal.com/partners</loc><priority>0.4</priority></url>
+  <url><loc>https://idexal.com/changelog</loc><priority>0.4</priority></url>
+  <url><loc>https://idexal.com/status</loc><priority>0.4</priority></url>
+  <url><loc>https://idexal.com/blog/introducing-idexal-ide</loc><priority>0.6</priority></url>
+  <url><loc>https://idexal.com/blog/rust-engine-internals</loc><priority>0.6</priority></url>
+  <url><loc>https://idexal.com/blog/multi-agent-workflows</loc><priority>0.6</priority></url>
+  <url><loc>https://idexal.com/blog/plugin-api-guide</loc><priority>0.6</priority></url>
+  <url><loc>https://idexal.com/blog/why-we-chose-tauri-style-architecture</loc><priority>0.6</priority></url>
+  <url><loc>https://idexal.com/blog/roadmap-h2-2026</loc><priority>0.6</priority></url>
+  <url><loc>https://idexal.com/features/ai-assistant</loc><priority>0.7</priority></url>
+  <url><loc>https://idexal.com/features/multi-language</loc><priority>0.7</priority></url>
+  <url><loc>https://idexal.com/features/terminal</loc><priority>0.7</priority></url>
+  <url><loc>https://idexal.com/features/git</loc><priority>0.7</priority></url>
+  <url><loc>https://idexal.com/features/plugins</loc><priority>0.7</priority></url>
+  <url><loc>https://idexal.com/features/cross-platform</loc><priority>0.7</priority></url>
+</urlset>

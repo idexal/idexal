@@ -1,0 +1,235 @@
+# Auto-Update Homebrew Cask
+# When a new release is tagged, this workflow:
+#   1. Downloads the macOS DMG
+#   2. Calculates SHA256 checksums
+#   3. Updates the cask formula
+#   4. Submits a PR to the tap repository
+
+name: Update Homebrew Cask
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., v1.0.0). Leave empty to use latest release.'
+        required: false
+        type: string
+
+env:
+  TAP_REPO: idexal/homebrew-idexal
+  CASK_NAME: idexal-ide
+
+jobs:
+  update-cask:
+    name: Update Homebrew Cask
+    runs-on: macos-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.event.release.tag_name }}"
+          fi
+          # Strip leading v
+          VERSION="${VERSION#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Resolved version: $VERSION"
+
+      - name: Download macOS DMG
+        id: download
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          TAG="${{ steps.version.outputs.TAG }}"
+
+          echo "Downloading macOS DMG for $TAG..."
+
+          # Find the DMG in release assets
+          ASSETS=$(gh release view "$TAG" --repo '${{ github.repository }}' --json assets --jq '.assets[].name')
+          echo "Available assets:"
+          echo "$ASSETS"
+
+          # Find the universal DMG
+          DMG=$(echo "$ASSETS" | grep -i "macOS.*universal.*dmg" | head -1)
+          if [ -z "$DMG" ]; then
+            DMG=$(echo "$ASSETS" | grep -i "\.dmg$" | head -1)
+          fi
+
+          if [ -z "$DMG" ]; then
+            echo "ERROR: No DMG found in release assets"
+            exit 1
+          fi
+
+          echo "Found DMG: $DMG"
+          gh release download "$TAG" --repo '${{ github.repository }}' --pattern "$DMG" --dir ./dmg
+
+          echo "DMG_PATH=./dmg/$DMG" >> $GITHUB_OUTPUT
+          echo "DMG_NAME=$DMG" >> $GITHUB_OUTPUT
+
+      - name: Calculate SHA256
+        id: checksum
+        run: |
+          HASH=$(shasum -a 256 "${{ steps.download.outputs.DMG_PATH }}" | awk '{print $1}')
+          echo "SHA256: $HASH"
+          echo "HASH=$HASH" >> $GITHUB_OUTPUT
+
+      - name: Get release info
+        id: release
+        run: |
+          TAG="${{ steps.version.outputs.TAG }}"
+          RELEASE_URL=$(gh release view "$TAG" --repo '${{ github.repository }}' --json url --jq '.url')
+          echo "RELEASE_URL=$RELEASE_URL" >> $GITHUB_OUTPUT
+
+      - name: Setup Homebrew
+        run: |
+          brew update
+          brew --version
+
+      - name: Create/update tap repository
+        run: |
+          # Create the tap repo if it doesn't exist
+          gh repo create "${{ env.TAP_REPO }}" \
+            --public \
+            --description "Homebrew tap for Idexal IDE" \
+            --homepage "https://idexal.com" \
+            2>/dev/null || echo "Tap repo already exists"
+
+      - name: Clone tap repository
+        run: |
+          git clone "https://x-access-token:${{ secrets.HOMEBREW_TAP_PAT }}@github.com/${{ env.TAP_REPO }}.git" tap-repo
+
+          # Create Casks directory
+          mkdir -p tap-repo/Casks
+
+      - name: Generate cask formula
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          HASH="${{ steps.checksum.outputs.HASH }}"
+
+          cat > tap-repo/Casks/${{ env.CASK_NAME }}.rb << 'CASK_EOF'
+      cask "#{@cask_name}" do
+        version "#{@version}"
+        sha256 "#{@sha256}"
+
+        url "https://github.com/idexal/idexal-ide/releases/download/v#{@version}/Idexal-IDE-#{@version}-macOS-universal.dmg"
+        name "Idexal IDE"
+        desc "Professional Multi-Agent AI-Powered Desktop IDE"
+        homepage "https://idexal.com"
+
+        livecheck do
+          url :url
+          regex(/Idexal[._-]IDE[._-]v?(\d+(?:\.\d+)+)\.dmg/i)
+        end
+
+        depends_on macos: ">= :big_sur"
+
+        app "Idexal IDE.app"
+
+        zap trash: [
+          "~/Library/Application Support/Idexal IDE",
+          "~/Library/Caches/Idexal IDE",
+          "~/Library/Preferences/com.idexal.ide.plist",
+          "~/Library/Saved Application State/com.idexal.ide.savedState",
+          "~/Library/HTTPStorages/com.idexal.ide",
+          "~/Library/WebKit/com.idexal.ide",
+        ]
+      end
+      CASK_EOF
+
+          # Replace placeholders
+          sed -i '' "s|#{@version}|$VERSION|g" tap-repo/Casks/${{ env.CASK_NAME }}.rb
+          sed -i '' "s|#{@sha256}|$HASH|g" tap-repo/Casks/${{ env.CASK_NAME }}.rb
+          sed -i '' "s|#{@cask_name}|${{ env.CASK_NAME }}|g" tap-repo/Casks/${{ env.CASK_NAME }}.rb
+
+          echo "Generated cask:"
+          cat tap-repo/Casks/${{ env.CASK_NAME }}.rb
+
+      - name: Validate cask
+        run: |
+          brew audit --cask tap-repo/Casks/${{ env.CASK_NAME }}.rb --strict 2>&1 || true
+          brew style tap-repo/Casks/${{ env.CASK_NAME }}.rb 2>&1 || true
+
+      - name: Push to tap repository
+        run: |
+          cd tap-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          BRANCH="update/${{ env.CASK_NAME }}-v${VERSION}"
+
+          git checkout -b "$BRANCH"
+          git add Casks/${{ env.CASK_NAME }}.rb
+          git commit -m "Update ${{ env.CASK_NAME }} to v${VERSION}"
+          git push origin "$BRANCH"
+
+          echo "Pushed branch: $BRANCH"
+
+      - name: Create PR to tap repository
+        run: |
+          cd tap-repo
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          BRANCH="update/${{ env.CASK_NAME }}-v${VERSION}"
+          RELEASE_URL="${{ steps.release.outputs.RELEASE_URL }}"
+
+          gh pr create \
+            --repo "${{ env.TAP_REPO }}" \
+            --title "Update ${{ env.CASK_NAME }} to v${VERSION}" \
+            --body "$(cat <<EOF
+          ## Update ${{ env.CASK_NAME }} to v${VERSION}
+
+          This PR updates the Homebrew cask for Idexal IDE to version ${VERSION}.
+
+          **Release:** ${RELEASE_URL}
+          **Installer:** macOS universal DMG
+          **SHA256:** ${{ steps.checksum.outputs.HASH }}
+
+          ### Changes
+          - Updated version to ${VERSION}
+          - Updated SHA256 checksum
+
+          ### Verification
+          After merging, users can update with:
+          \`\`\`bash
+          brew upgrade --cask ${{ env.CASK_NAME }}
+          \`\`\`
+
+          Or install fresh:
+          \`\`\`bash
+          brew install --cask ${{ env.TAP_REPO }}/Casks/${{ env.CASK_NAME }}
+          \`\`\`
+          EOF
+          )" \
+            --head "$BRANCH" \
+            --base main
+
+      - name: Summary
+        if: always()
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          echo ""
+          echo "========================================="
+          echo "  Homebrew Cask Update Summary"
+          echo "========================================="
+          echo "Package: ${{ env.CASK_NAME }}"
+          echo "Version: v$VERSION"
+          echo "Status: ${{ job.status }}"
+          echo "Tap: ${{ env.TAP_REPO }}"
+          echo ""
+          echo "To install (after merge):"
+          echo "  brew install --cask ${{ env.TAP_REPO }}/Casks/${{ env.CASK_NAME }}"
+          echo ""
+          echo "To update (after merge):"
+          echo "  brew upgrade --cask ${{ env.CASK_NAME }}"
+          echo "========================================="

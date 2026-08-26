@@ -1,0 +1,245 @@
+{
+  "name": "idexal-ide",
+  "version": "1.0.0",
+  "description": "Professional Multi-Agent AI-Powered IDE",
+  "author": "Zakariae Lahbabi <ide@idexal.com>",
+  "homepage": "https://idexal.com",
+  "main": "electron/dist/main.js",
+  "bin": {
+    "idexal": "./bin/idexal.js"
+  },
+  "scripts": {
+    "idexal": "node ./bin/idexal.js",
+    "idexal:serve": "node ./bin/idexal.js serve",
+    "idexal:open": "node ./bin/idexal.js open",
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "vite build && cd electron && tsc",
+    "build:rust": "cd rust-engine && cargo build --release && node scripts/copy-engine.js",
+    "build:cli": "cd rust-engine && cargo build --release --bin idexal",
+    "cli": "./rust-engine/target/release/idexal.exe",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:all": "vitest run && playwright test",
+    "lint": "eslint src --ext ts,tsx",
+    "typecheck": "tsc --noEmit",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "dist:all": "npm run build && electron-builder -wml --publish never",
+    "dist:portable": "npm run build && electron-builder --win portable --publish never",
+    "release": "node build/build-release.js",
+    "release:win": "node build/build-release.js win",
+    "release:mac": "node build/build-release.js mac",
+    "release:linux": "node build/build-release.js linux",
+    "release:all": "node build/build-release.js all",
+    "release:portable": "node build/build-release.js portable",
+    "icons": "node build/create-icons.js"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.6.0",
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-dropdown-menu": "^2.1.24",
+    "@radix-ui/react-popover": "^1.1.23",
+    "@radix-ui/react-select": "^2.3.7",
+    "@radix-ui/react-separator": "^1.1.15",
+    "@radix-ui/react-slot": "^1.3.3",
+    "@radix-ui/react-tabs": "^1.1.21",
+    "@radix-ui/react-tooltip": "^1.2.16",
+    "@xterm/addon-clipboard": "^0.2.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-webgl": "^0.19.0",
+    "@xterm/xterm": "^6.0.0",
+    "chokidar": "^3.5.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "electron-is-dev": "^2.0.0",
+    "electron-updater": "^6.8.9",
+    "monaco-editor": "^0.56.0",
+    "node-pty": "^1.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.7.0",
+    "simple-git": "^3.22.0",
+    "tailwind-merge": "^3.6.0",
+    "y-monaco": "^0.1.6",
+    "y-websocket": "^3.1.0",
+    "yjs": "^13.6.32",
+    "zustand": "^4.5.0"
+  },
+  "build": {
+    "appId": "com.idexal.ide",
+    "productName": "Idexal IDE",
+    "copyright": "Copyright © 2026 Idexal",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/dist/**/*",
+      "dist/**/*",
+      "!node_modules/**/*",
+      "node_modules/node-pty/**/*",
+      "node_modules/chokidar/**/*",
+      "node_modules/simple-git/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "bin/idexal.js",
+        "to": "bin/idexal.js"
+      },
+      {
+        "from": "bin/idexal.cmd",
+        "to": "bin/idexal.cmd"
+      },
+      {
+        "from": "rust-engine/target/release",
+        "to": "engine",
+        "filter": [
+          "**/*.node",
+          "**/*.dll",
+          "**/*.so",
+          "**/*.dylib"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "Idexal-IDE-${version}-Windows-${arch}.${ext}",
+      "signAndEditExecutable": false,
+      "verifyUpdateCodeSignature": false,
+      "forceCodeSigning": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Idexal IDE",
+      "include": "build/installer.nsh",
+      "language": "1033",
+      "warningsAsErrors": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "license": "LICENSE.txt"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Development",
+      "desktop": {
+        "Name": "Idexal IDE",
+        "Comment": "Professional Multi-Agent AI-Powered IDE",
+        "Keywords": "ide;code;editor;ai;development;",
+        "StartupNotify": "true"
+      },
+      "artifactName": "Idexal-IDE-${version}-Linux-${arch}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "notarize": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "artifactName": "Idexal-IDE-${version}-macOS-${arch}.${ext}",
+      "afterSign": "build/notarize.js"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      }
+    }
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "concurrently": "^8.2.2",
+    "electron": "^28.2.0",
+    "electron-builder": "^24.13.3",
+    "jsdom": "^24.0.0",
+    "postcss": "^8.4.33",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.12",
+    "vite-plugin-compression": "^0.5.1",
+    "vitest": "^1.2.0",
+    "wait-on": "^7.2.0"
+  }
+}

@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — Idexal IDE</title>
+  <meta name="description" content="Simple transparent pricing for Idexal IDE. Start free, scale when ready. Pro $29/mo, Team $99/mo, Enterprise custom.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#3b82f6', light: '#60a5fa', dark: '#1d4ed8' },
+            accent: { DEFAULT: '#22d3ee', light: '#67e8f9' },
+            surface: { DEFAULT: '#0f172a', alt: '#1e293b', border: '#334155' },
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #0a0f1a; color: #e2e8f0; overflow-x: hidden; }
+    .gradient-text { background: linear-gradient(135deg, #3b82f6, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .glow { box-shadow: 0 0 60px rgba(59,130,246,0.15), 0 0 120px rgba(34,211,238,0.08); }
+    .grid-bg { background-image: radial-gradient(circle at 1px 1px, rgba(148,163,184,0.08) 1px, transparent 0); background-size: 40px 40px; }
+    .card { background: rgba(15,23,42,0.6); border: 1px solid rgba(51,65,85,0.5); border-radius: 16px; backdrop-filter: blur(12px); transition: all 0.3s; }
+    .card:hover { border-color: rgba(59,130,246,0.3); box-shadow: 0 8px 32px rgba(59,130,246,0.1); }
+    .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 14px 36px; border-radius: 12px; font-weight: 600; font-size: 15px; border: none; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(59,130,246,0.3); }
+    .btn-secondary { background: rgba(30,41,59,0.8); color: #e2e8f0; padding: 14px 36px; border-radius: 12px; font-weight: 600; font-size: 15px; border: 1px solid #334155; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+    .btn-secondary:hover { border-color: #3b82f6; background: rgba(59,130,246,0.1); }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+    .plan-card { position: relative; transition: all 0.3s; }
+    .plan-card.popular { border: 2px solid #3b82f6; transform: scale(1.03); }
+    .plan-card.popular::before { content: 'MOST POPULAR'; position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #3b82f6, #22d3ee); color: white; padding: 5px 18px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; white-space: nowrap; }
+    .plan-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(59,130,246,0.15); }
+    .plan-card.popular:hover { transform: scale(1.03) translateY(-4px); }
+    .toggle-track { width: 48px; height: 26px; border-radius: 13px; cursor: pointer; transition: background 0.3s; position: relative; }
+    .toggle-knob { width: 22px; height: 22px; border-radius: 50%; background: white; position: absolute; top: 2px; transition: left 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; }
+    .faq-answer.open { max-height: 300px; padding-bottom: 16px; }
+    .comparison-table th, .comparison-table td { padding: 14px 16px; text-align: center; }
+    .comparison-table th { background: rgba(30,41,59,0.5); font-weight: 600; }
+    .comparison-table tr:hover td { background: rgba(30,41,59,0.3); }
+    .feature-row:nth-child(even) { background: rgba(15,23,42,0.3); }
+    section { scroll-margin-top: 80px; }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="fixed top-0 left-0 right-0 z-50 border-b border-surface-border" style="background: rgba(10,15,26,0.85); backdrop-filter: blur(16px);">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="landing.html" class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm">I</div>
+        <span class="text-lg font-bold">Idexal <span class="text-sm font-medium text-slate-400">IDE</span></span>
+      </a>
+      <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
+        <a href="landing.html#features" class="hover:text-white transition">Features</a>
+        <a href="pricing.html" class="text-white font-semibold">Pricing</a>
+        <a href="landing.html#cli" class="hover:text-white transition">CLI</a>
+        <a href="https://github.com/idexal" target="_blank" class="hover:text-white transition">GitHub</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="landing.html#download" class="btn-primary text-sm !px-5 !py-2.5">Download Free</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="grid-bg relative overflow-hidden pt-32 pb-16 border-b border-surface-border">
+    <div class="pointer-events-none absolute -top-32 left-1/2 w-[500px] h-[400px] -translate-x-1/2 rounded-full opacity-20 blur-3xl" style="background: radial-gradient(circle, #3b82f6, transparent);"></div>
+    <div class="max-w-4xl mx-auto px-6 text-center relative">
+      <div class="badge mx-auto w-fit mb-6">💰 Pricing</div>
+      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight">
+        Simple, transparent <span class="gradient-text">pricing</span>
+      </h1>
+      <p class="mt-6 text-xl text-slate-400 max-w-2xl mx-auto">
+        Start free, upgrade when you need more. No hidden fees, no surprises.
+      </p>
+
+      <!-- Billing Toggle -->
+      <div class="mt-8 flex items-center justify-center gap-4 text-sm">
+        <span id="monthlyLabel" class="font-semibold text-white">Monthly</span>
+        <div id="billingToggle" class="toggle-track bg-surface-alt border border-surface-border" onclick="toggleBilling()">
+          <div id="toggleKnob" class="toggle-knob" style="left: 2px;"></div>
+        </div>
+        <span id="yearlyLabel" class="text-slate-400">Yearly</span>
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">Save 20%</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Cards -->
+  <section class="py-20">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto items-stretch">
+
+        <!-- Free -->
+        <div class="plan-card card p-8 flex flex-col">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-2xl">🆓</span>
+            <h3 class="text-xl font-bold">Free</h3>
+          </div>
+          <p class="text-sm text-slate-400 mb-4">For individual developers getting started</p>
+          <div class="flex items-baseline gap-1 mb-1">
+            <span class="text-5xl font-extrabold">$0</span>
+            <span class="text-sm text-slate-400">/forever</span>
+          </div>
+          <p class="text-xs text-slate-500 mb-6">No credit card required</p>
+          <a href="landing.html#download" class="btn-secondary w-full mb-6">Get Started Free</a>
+          <div class="flex-1">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Includes</p>
+            <ul class="space-y-2.5 text-sm">
+              <li class="flex items-start gap-2.5"><span class="text-emerald-400 mt-0.5 shrink-0">✓</span> Full IDE with all 87 features</li>
+              <li class="flex items-start gap-2.5"><span class="text-emerald-400 mt-0.5 shrink-0">✓</span> 1,000 AI API calls per month</li>
+              <li class="flex items-start gap-2.5"><span class="text-emerald-400 mt-0.5 shrink-0">✓</span> All 18 CLI commands</li>
+              <li class="flex items-start gap-2.5"><span class="text-emerald-400 mt-0.5 shrink-0">✓</span> CRDT real-time collaboration</li>
+              <li class="flex items-start gap-2.5"><span class="text-emerald-400 mt-0.5 shrink-0">✓</span> Extension SDK + marketplace</li>
+              <li class="flex items-start gap-2.5"><span class="text-emerald-400 mt-0.5 shrink-0">✓</span> MCP server connections</li>
+              <li class="flex items-start gap-2.5"><span class="text-emerald-400 mt-0.5 shrink-0">✓</span> Community support</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Pro (Popular) -->
+        <div class="plan-card popular card p-8 flex flex-col">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-2xl">⚡</span>
+            <h3 class="text-xl font-bold">Pro</h3>
+          </div>
+          <p class="text-sm text-slate-400 mb-4">For professional developers who ship fast</p>
+          <div class="flex items-baseline gap-1 mb-1">
+            <span id="proPrice" class="text-5xl font-extrabold gradient-text">$29</span>
+            <span id="proPeriod" class="text-sm text-slate-400">/month</span>
+          </div>
+          <p id="proNote" class="text-xs text-slate-500 mb-6">Billed monthly</p>
+          <a href="landing.html#download" class="btn-primary w-full mb-6">Start Pro Trial</a>
+          <div class="flex-1">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Everything in Free, plus</p>
+            <ul class="space-y-2.5 text-sm">
+              <li class="flex items-start gap-2.5"><span class="text-blue-400 mt-0.5 shrink-0">★</span> <strong>Unlimited</strong> AI API calls</li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-400 mt-0.5 shrink-0">★</span> Priority AI models (GPT-4, Claude 3)</li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-400 mt-0.5 shrink-0">★</span> Custom AI providers (bring your key)</li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-400 mt-0.5 shrink-0">★</span> Advanced AI agents (architect, reviewer)</li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-400 mt-0.5 shrink-0">★</span> AI commit messages & code review</li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-400 mt-0.5 shrink-0">★</span> Session persistence & history</li>
+              <li class="flex items-start gap-2.5"><span class="text-blue-400 mt-0.5 shrink-0">★</span> Priority email support</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Enterprise -->
+        <div class="plan-card card p-8 flex flex-col">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-2xl">🏢</span>
+            <h3 class="text-xl font-bold">Enterprise</h3>
+          </div>
+          <p class="text-sm text-slate-400 mb-4">For teams and organizations at scale</p>
+          <div class="flex items-baseline gap-1 mb-1">
+            <span class="text-5xl font-extrabold">Custom</span>
+          </div>
+          <p class="text-xs text-slate-500 mb-6">Volume pricing available</p>
+          <a href="mailto:sales@idexal.com" class="btn-secondary w-full mb-6">Contact Sales</a>
+          <div class="flex-1">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Everything in Pro, plus</p>
+            <ul class="space-y-2.5 text-sm">
+              <li class="flex items-start gap-2.5"><span class="text-purple-400 mt-0.5 shrink-0">◆</span> <strong>Unlimited</strong> seats</li>
+              <li class="flex items-start gap-2.5"><span class="text-purple-400 mt-0.5 shrink-0">◆</span> SSO / SAML authentication</li>
+              <li class="flex items-start gap-2.5"><span class="text-purple-400 mt-0.5 shrink-0">◆</span> On-premise deployment option</li>
+              <li class="flex items-start gap-2.5"><span class="text-purple-400 mt-0.5 shrink-0">◆</span> Custom AI model fine-tuning</li>
+              <li class="flex items-start gap-2.5"><span class="text-purple-400 mt-0.5 shrink-0">◆</span> Shared workspaces & policies</li>
+              <li class="flex items-start gap-2.5"><span class="text-purple-400 mt-0.5 shrink-0">◆</span> Audit logs & compliance</li>
+              <li class="flex items-start gap-2.5"><span class="text-purple-400 mt-0.5 shrink-0">◆</span> Dedicated account manager</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature Comparison Matrix -->
+  <section class="py-20 border-t border-surface-border" style="background: rgba(15,23,42,0.4);">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-extrabold tracking-tight">Full <span class="gradient-text">feature comparison</span></h2>
+        <p class="mt-3 text-slate-400">See exactly what's included in each plan</p>
+      </div>
+
+      <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="comparison-table w-full text-sm min-w-[700px]">
+            <thead>
+              <tr class="border-b border-surface-border">
+                <th class="text-left px-6 py-4 font-semibold w-1/3">Feature</th>
+                <th class="px-4 py-4">
+                  <div class="text-lg">🆓</div>
+                  <div class="font-bold mt-1">Free</div>
+                  <div class="text-xs text-slate-400 font-normal">$0</div>
+                </th>
+                <th class="px-4 py-4">
+                  <div class="text-lg">⚡</div>
+                  <div class="font-bold mt-1 text-blue-400">Pro</div>
+                  <div class="text-xs text-slate-400 font-normal">$29/mo</div>
+                </th>
+                <th class="px-4 py-4">
+                  <div class="text-lg">🏢</div>
+                  <div class="font-bold mt-1">Enterprise</div>
+                  <div class="text-xs text-slate-400 font-normal">Custom</div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Editor & IDE -->
+              <tr class="border-b border-surface-border/50">
+                <td colspan="4" class="text-left px-6 py-3 font-bold text-xs uppercase tracking-wider text-blue-400 bg-blue-500/[0.05]">Editor & IDE</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Monaco Editor</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Multi-cursor & split view</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Built-in terminal</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Theme editor & builder</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+
+              <!-- AI Features -->
+              <tr class="border-b border-surface-border/50">
+                <td colspan="4" class="text-left px-6 py-3 font-bold text-xs uppercase tracking-wider text-purple-400 bg-purple-500/[0.05]">AI Features</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">AI Chat Panel</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">AI API calls/month</td>
+                <td class="text-slate-400">1,000</td>
+                <td class="font-bold bg-blue-500/[0.04] text-blue-400">Unlimited</td>
+                <td class="font-bold text-purple-400">Unlimited</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">AI Models</td>
+                <td class="text-slate-400">GPT-3.5, Llama</td>
+                <td class="bg-blue-500/[0.04]">GPT-4, Claude 3, all</td>
+                <td>All + fine-tuned</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Custom AI providers</td>
+                <td class="text-slate-500">—</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Inline code actions (8)</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Advanced AI agents</td>
+                <td class="text-slate-500">—</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">AI commit messages</td>
+                <td class="text-slate-500">—</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">AI code review</td>
+                <td class="text-slate-500">—</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Workspace indexing for AI</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+
+              <!-- Collaboration -->
+              <tr class="border-b border-surface-border/50">
+                <td colspan="4" class="text-left px-6 py-3 font-bold text-xs uppercase tracking-wider text-cyan-400 bg-cyan-500/[0.05]">Collaboration</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">CRDT real-time editing</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Collaborative cursors</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Team chat in editor</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Shared workspaces</td>
+                <td class="text-slate-500">—</td>
+                <td class="text-slate-500 bg-blue-500/[0.04]">—</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+
+              <!-- DevOps -->
+              <tr class="border-b border-surface-border/50">
+                <td colspan="4" class="text-left px-6 py-3 font-bold text-xs uppercase tracking-wider text-emerald-400 bg-emerald-500/[0.05]">DevOps & Infrastructure</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Advanced Git</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Docker panel</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Kubernetes dashboard</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">CI/CD pipeline viewer</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Security scanner</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+
+              <!-- Database & API -->
+              <tr class="border-b border-surface-border/50">
+                <td colspan="4" class="text-left px-6 py-3 font-bold text-xs uppercase tracking-wider text-amber-400 bg-amber-500/[0.05]">Database & API</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Database explorer</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">API client (REST/GraphQL)</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">MCP server connections</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+
+              <!-- Platform -->
+              <tr class="border-b border-surface-border/50">
+                <td colspan="4" class="text-left px-6 py-3 font-bold text-xs uppercase tracking-wider text-rose-400 bg-rose-500/[0.05]">Platform & Support</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Extension SDK</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Session persistence</td>
+                <td class="text-slate-500">—</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Cross-platform (Win/Mac/Linux)</td>
+                <td class="text-emerald-400">✓</td>
+                <td class="text-emerald-400 bg-blue-500/[0.04]">✓</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">SSO / SAML</td>
+                <td class="text-slate-500">—</td>
+                <td class="text-slate-500 bg-blue-500/[0.04]">—</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">On-premise deployment</td>
+                <td class="text-slate-500">—</td>
+                <td class="text-slate-500 bg-blue-500/[0.04]">—</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row border-b border-surface-border/30">
+                <td class="text-left px-6 py-3">Audit logs & compliance</td>
+                <td class="text-slate-500">—</td>
+                <td class="text-slate-500 bg-blue-500/[0.04]">—</td>
+                <td class="text-emerald-400">✓</td>
+              </tr>
+              <tr class="feature-row">
+                <td class="text-left px-6 py-3">Support</td>
+                <td class="text-slate-400">Community</td>
+                <td class="bg-blue-500/[0.04]">Priority email</td>
+                <td class="text-purple-400">Dedicated manager</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="py-20 border-t border-surface-border">
+    <div class="max-w-3xl mx-auto px-6">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-extrabold tracking-tight">Frequently asked <span class="gradient-text">questions</span></h2>
+      </div>
+
+      <div class="space-y-3" id="faqContainer">
+        <div class="card overflow-hidden">
+          <button class="faq-toggle w-full flex items-center justify-between gap-4 px-6 py-5 text-start" onclick="toggleFaq(this)">
+            <span class="font-semibold">Is the Free plan really free?</span>
+            <svg class="faq-chevron w-5 h-5 shrink-0 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-answer px-6 text-sm text-slate-400 leading-relaxed">
+            Yes. The Free tier includes the full IDE with all 87 features, 1,000 AI API calls per month, all 18 CLI commands, CRDT collaboration, and extension SDK. No credit card required, no trial period — free forever.
+          </div>
+        </div>
+
+        <div class="card overflow-hidden">
+          <button class="faq-toggle w-full flex items-center justify-between gap-4 px-6 py-5 text-start" onclick="toggleFaq(this)">
+            <span class="font-semibold">Can I switch between monthly and yearly billing?</span>
+            <svg class="faq-chevron w-5 h-5 shrink-0 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-answer px-6 text-sm text-slate-400 leading-relaxed">
+            Absolutely. You can switch anytime from the billing settings. Yearly billing saves 20% — Pro drops from $29/mo to $23/mo billed annually ($276/year instead of $348). Upgrades apply immediately with prorated billing; downgrades take effect at the next cycle.
+          </div>
+        </div>
+
+        <div class="card overflow-hidden">
+          <button class="faq-toggle w-full flex items-center justify-between gap-4 px-6 py-5 text-start" onclick="toggleFaq(this)">
+            <span class="font-semibold">Which AI providers are supported?</span>
+            <svg class="faq-chevron w-5 h-5 shrink-0 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-answer px-6 text-sm text-slate-400 leading-relaxed">
+            <strong>Free:</strong> GPT-3.5, Llama 3 (via Ollama), and community models.<br>
+            <strong>Pro:</strong> All Free models plus GPT-4, GPT-4 Turbo, Claude 3 Opus/Sonnet, Mistral, DeepSeek, Groq, and any OpenAI-compatible endpoint (bring your own API key).<br>
+            <strong>Enterprise:</strong> All Pro models plus custom fine-tuned models and dedicated inference endpoints.
+          </div>
+        </div>
+
+        <div class="card overflow-hidden">
+          <button class="faq-toggle w-full flex items-center justify-between gap-4 px-6 py-5 text-start" onclick="toggleFaq(this)">
+            <span class="font-semibold">What happens if I exceed 1,000 AI calls on Free?</span>
+            <svg class="faq-chevron w-5 h-5 shrink-0 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-answer px-6 text-sm text-slate-400 leading-relaxed">
+            You'll get a notification when you reach 800 calls. At 1,000, AI features pause until the next billing cycle. All other IDE features (editor, terminal, git, etc.) continue working normally. You can upgrade to Pro anytime for unlimited calls.
+          </div>
+        </div>
+
+        <div class="card overflow-hidden">
+          <button class="faq-toggle w-full flex items-center justify-between gap-4 px-6 py-5 text-start" onclick="toggleFaq(this)">
+            <span class="font-semibold">Do you offer team discounts?</span>
+            <svg class="faq-chevron w-5 h-5 shrink-0 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-answer px-6 text-sm text-slate-400 leading-relaxed">
+            Enterprise plans include volume pricing for teams of any size. We also offer special pricing for education, open-source maintainers, and nonprofits. Contact <a href="mailto:sales@idexal.com" class="text-blue-400 hover:underline">sales@idexal.com</a> for details.
+          </div>
+        </div>
+
+        <div class="card overflow-hidden">
+          <button class="faq-toggle w-full flex items-center justify-between gap-4 px-6 py-5 text-start" onclick="toggleFaq(this)">
+            <span class="font-semibold">Can I use my own API keys with the IDE?</span>
+            <svg class="faq-chevron w-5 h-5 shrink-0 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-answer px-6 text-sm text-slate-400 leading-relaxed">
+            Yes! Pro and Enterprise plans support custom AI providers. You can use your own OpenAI, Anthropic, or any OpenAI-compatible API key. The IDE streams directly from your provider — no data passes through our servers. This is ideal for teams with existing AI contracts.
+          </div>
+        </div>
+
+        <div class="card overflow-hidden">
+          <button class="faq-toggle w-full flex items-center justify-between gap-4 px-6 py-5 text-start" onclick="toggleFaq(this)">
+            <span class="font-semibold">Is my code sent to AI providers?</span>
+            <svg class="faq-chevron w-5 h-5 shrink-0 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-answer px-6 text-sm text-slate-400 leading-relaxed">
+            When you use AI features, the code context you explicitly share (selected text, file content) is sent to the AI provider you've configured. We never store your code on our servers. With Ollama (local), nothing leaves your machine. Enterprise customers can use on-premise deployments for full data sovereignty.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="py-20 border-t border-surface-border relative overflow-hidden">
+    <div class="pointer-events-none absolute left-1/2 top-1/2 w-[500px] h-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-15 blur-3xl" style="background: radial-gradient(circle, #22d3ee, transparent);"></div>
+    <div class="max-w-3xl mx-auto px-6 text-center relative">
+      <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight">
+        Start building <span class="gradient-text">smarter</span> today
+      </h2>
+      <p class="mt-4 text-lg text-slate-400">
+        Join thousands of developers using Idexal. Free forever — no credit card required.
+      </p>
+      <div class="mt-8 flex flex-wrap justify-center gap-4">
+        <a href="landing.html#download" class="btn-primary text-base !px-8 !py-3.5">Download Free</a>
+        <a href="mailto:sales@idexal.com" class="btn-secondary text-base !px-8 !py-3.5">Talk to Sales</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-10 border-t border-surface-border">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+      <span>© 2026 Idexal. All rights reserved.</span>
+      <div class="flex items-center gap-4">
+        <a href="landing.html" class="hover:text-white transition">Home</a>
+        <a href="https://github.com/idexal" target="_blank" class="hover:text-white transition">GitHub</a>
+        <a href="mailto:team@idexal.com" class="hover:text-white transition">Contact</a>
+      </div>
+      <span>Built by <a href="https://zakariaelahbabi.com" target="_blank" class="text-blue-400 hover:underline">Zakariae Lahbabi</a></span>
+    </div>
+  </footer>
+
+  <script>
+    let isYearly = false;
+
+    function toggleBilling() {
+      isYearly = !isYearly;
+      const knob = document.getElementById('toggleKnob');
+      const track = document.getElementById('billingToggle');
+      const monthlyLabel = document.getElementById('monthlyLabel');
+      const yearlyLabel = document.getElementById('yearlyLabel');
+      const proPrice = document.getElementById('proPrice');
+      const proPeriod = document.getElementById('proPeriod');
+      const proNote = document.getElementById('proNote');
+
+      if (isYearly) {
+        knob.style.left = '24px';
+        track.style.background = '#3b82f6';
+        monthlyLabel.classList.remove('font-semibold', 'text-white');
+        monthlyLabel.classList.add('text-slate-400');
+        yearlyLabel.classList.remove('text-slate-400');
+        yearlyLabel.classList.add('font-semibold', 'text-white');
+        proPrice.textContent = '$276';
+        proPeriod.textContent = '/year';
+        proNote.textContent = 'Billed annually (save 20%)';
+        proNote.classList.add('text-emerald-400');
+      } else {
+        knob.style.left = '2px';
+        track.style.background = '';
+        track.classList.add('bg-surface-alt', 'border', 'border-surface-border');
+        monthlyLabel.classList.add('font-semibold', 'text-white');
+        monthlyLabel.classList.remove('text-slate-400');
+        yearlyLabel.classList.add('text-slate-400');
+        yearlyLabel.classList.remove('font-semibold', 'text-white');
+        proPrice.textContent = '$29';
+        proPeriod.textContent = '/month';
+        proNote.textContent = 'Billed monthly';
+        proNote.classList.remove('text-emerald-400');
+      }
+    }
+
+    function toggleFaq(btn) {
+      const answer = btn.nextElementSibling;
+      const chevron = btn.querySelector('.faq-chevron');
+      const isOpen = answer.classList.contains('open');
+
+      // Close all others
+      document.querySelectorAll('.faq-answer').forEach(a => a.classList.remove('open'));
+      document.querySelectorAll('.faq-chevron').forEach(c => c.style.transform = '');
+
+      if (!isOpen) {
+        answer.classList.add('open');
+        chevron.style.transform = 'rotate(180deg)';
+      }
+    }
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  </script>
+</body>
+</html>

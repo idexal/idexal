@@ -1,0 +1,13 @@
+{
+  "name": "Idexal — AI Models & AI-Powered IDE",
+  "short_name": "Idexal",
+  "description": "Frontier AI models with pay-as-you-go pricing, plus a Rust-powered multi-agent IDE.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1b2e",
+  "theme_color": "#3b82f6",
+  "icons": [
+    { "src": "/icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "128x128", "type": "image/png" }
+  ]
+}

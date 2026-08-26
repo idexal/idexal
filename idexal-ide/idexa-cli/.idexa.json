@@ -1,0 +1,28 @@
+{
+  "aiProvider": {
+    "type": "openai"
+  },
+  "defaultModel": "gpt-4",
+  "features": {
+    "autoContext": true,
+    "gitIntegration": true,
+    "streaming": true,
+    "codeAnalysis": true
+  },
+  "context": {
+    "include": [
+      "src/**",
+      "lib/**"
+    ],
+    "exclude": [
+      "node_modules/**",
+      "dist/**",
+      "*.test.*"
+    ]
+  },
+  "name": "idexa-cli",
+  "version": "1.0.0",
+  "user": {
+    "apiKey": "test123"
+  }
+}

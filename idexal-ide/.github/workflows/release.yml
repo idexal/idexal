@@ -1,0 +1,262 @@
+# Idexal IDE Release Pipeline
+# Creates releases with installers for all platforms
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0, v1.1.0-beta
+
+# Only one release at a time
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+  RUST_VERSION: '1.77'
+
+jobs:
+  # ============================================
+  # Job 1: Build All Platforms
+  # ============================================
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            targets: "AppImage deb rpm tar.gz"
+          - os: windows-latest
+            platform: windows
+            targets: "nsis portable"
+          - os: macos-latest
+            platform: mac
+            targets: "dmg zip"
+            args: "--universal"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust-engine/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust-engine/Cargo.lock') }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Rust engine
+        run: cd rust-engine && cargo build --release
+
+      - name: Build frontend
+        run: npx vite build
+
+      - name: Build Electron main
+        run: npx tsc -p electron/tsconfig.json
+
+      - name: Generate wizard bitmaps
+        run: node build/create-wizard-bitmap.js
+        continue-on-error: true
+
+      - name: Build installers
+        run: npx electron-builder --${{ matrix.platform }} --publish never
+        env:
+          # Apple notarization credentials
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          # Code signing certificate
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # Skip notarization for non-macOS builds
+          SKIP_NOTARIZATION: ${{ matrix.platform != 'mac' && 'true' || 'false' }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/*.tar.gz
+            release/*.zip
+            release/*.blockmap
+          retention-days: 30
+
+  # ============================================
+  # Job 2: Create GitHub Release
+  # ============================================
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: List release files
+        run: ls -la release-artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Idexal IDE ${{ github.ref_name }}"
+          body: |
+            ## Idexal IDE ${{ github.ref_name }}
+            
+            ### Downloads
+            
+            | Platform | File |
+            |----------|------|
+            | Windows | `Idexal-IDE-*-Windows-x64.exe` (NSIS Installer) |
+            | Windows | `Idexal-IDE-*-Windows-x64.exe` (Portable) |
+            | macOS | `Idexal-IDE-*-macOS-universal.dmg` |
+            | Linux | `Idexal-IDE-*-Linux-x64.AppImage` |
+            | Linux | `Idexal-IDE-*-Linux-x64.deb` |
+            | Linux | `Idexal-IDE-*-Linux-x64.rpm` |
+            
+            ### What's New
+            
+            See [CHANGELOG](CHANGELOG.md) for details.
+            
+            ### Verify Checksums
+            
+            Checksums are provided in the release assets.
+            
+            ---
+            
+            **Built with** ⚡ [Idexal IDE](https://github.com/idexal/idexal-ide)
+          files: release-artifacts/*
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+          generate_release_notes: true
+
+      - name: Generate checksums
+        run: |
+          cd release-artifacts
+          sha256sum *.exe *.dmg *.AppImage *.deb *.rpm *.tar.gz *.zip > checksums-sha256.txt 2>/dev/null || true
+          cat checksums-sha256.txt
+
+      - name: Upload checksums
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-artifacts/checksums-sha256.txt
+          append_body: true
+
+      - name: Add winget install instructions
+        uses: softprops/action-gh-release@v2
+        with:
+          append_body: true
+          body: |
+            ### Winget (Windows)
+            ```powershell
+            winget install Idexal.IdexalIDE
+            ```
+
+  # ============================================
+  # Job 3: Publish to Winget
+  # ============================================
+  publish-winget:
+    name: Publish to Winget
+    needs: release
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    if: ${{ !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'alpha') }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Publishing v$version to winget"
+
+      - name: Download Windows installer
+        id: download
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.VERSION }}'
+          $releaseTag = 'v' + $version
+
+          $assets = gh release view $releaseTag --repo '${{ github.repository }}' --json assets --jq '.assets[].name'
+          $installer = ($assets -split "`n" | Where-Object { $_ -match '\.exe$' -and $_ -notmatch 'blockmap' -and $_ -match 'Windows' } | Select-Object -First 1)
+
+          if (-not $installer) {
+            Write-Error 'No Windows installer found in release assets'
+            exit 1
+          }
+
+          Write-Host "Downloading: $installer"
+          gh release download $releaseTag --repo '${{ github.repository }}' --pattern $installer --dir ./installer
+          echo "EXE_PATH=./installer/$installer" >> $env:GITHUB_OUTPUT
+          echo "EXE_NAME=$installer" >> $env:GITHUB_OUTPUT
+
+      - name: Calculate SHA256
+        id: checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash -Path '${{ steps.download.outputs.EXE_PATH }}' -Algorithm SHA256).Hash.ToLower()
+          echo "HASH=$hash" >> $env:GITHUB_OUTPUT
+          Write-Host "SHA256: $hash"
+
+      - name: Install wingetcreate
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri 'https://aka.ms/wingetcreate/latest' -OutFile wingetcreate.exe
+          echo "${{ github.workspace }}" >> $env:GITHUB_PATH
+
+      - name: Submit to winget-pkgs
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.VERSION }}'
+          $releaseTag = '${{ github.ref_name }}'
+          $exeName = '${{ steps.download.outputs.EXE_NAME }}'
+          $hash = '${{ steps.checksum.outputs.HASH }}'
+          $releaseUrl = '${{ github.event.release.html_url }}'
+          $installerUrl = "$releaseUrl/download/$releaseTag/$exeName"
+
+          .\wingetcreate.exe update `
+            --id 'Idexal.IdexalIDE' `
+            --version $version `
+            --urls $installerUrl `
+            --submit `
+            --token "${{ secrets.WINGET_PAT }}"

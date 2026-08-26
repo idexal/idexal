@@ -1,0 +1,41 @@
+{
+  "source": {
+    "url": "https://tailwindcss.com/",
+    "extractedAt": "2026-08-25T11:13:53.138Z",
+    "extractor": "dembrandt"
+  },
+  "colors": {
+    "palette": [],
+    "cssVariables": {}
+  },
+  "typography": {
+    "headingFont": "inter",
+    "bodyFont": "inter"
+  },
+  "spacing": {
+    "scale": [
+      "1px",
+      "2px",
+      "3px",
+      "4px",
+      "8px",
+      "12px",
+      "16px",
+      "24px",
+      "28px",
+      "32px",
+      "40px",
+      "57px",
+      "64px",
+      "72px",
+      "96px",
+      "160px"
+    ]
+  },
+  "radius": {
+    "scale": []
+  },
+  "shadows": {
+    "scale": []
+  }
+}

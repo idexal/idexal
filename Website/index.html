@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Idexal — AI Models & AI-Powered IDE</title>
+    <meta
+      name="description"
+      content="Idexal builds frontier AI models served from api.idexa.com with pay-as-you-go pricing, plus a professional multi-agent AI IDE with 72 panels and a Rust engine."
+    />
+    <meta name="keywords" content="AI IDE, AI models, pay-as-you-go API, multi-agent, Rust, Idexal" />
+    <meta name="theme-color" content="#3b82f6" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="128x128" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Open Graph / Twitter (defaults; per-page overrides via useSeo) -->
+    <meta property="og:title" content="Idexal — AI Models & AI-Powered IDE" />
+    <meta property="og:description" content="Frontier AI models with pay-as-you-go pricing, plus a Rust-powered multi-agent IDE." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://idexal.com/" />
+    <meta property="og:image" content="https://idexal.com/icon.png" />
+    <meta property="og:site_name" content="Idexal" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Idexal — AI Models & AI-Powered IDE" />
+    <meta name="twitter:description" content="Frontier AI models with pay-as-you-go pricing, plus a Rust-powered multi-agent IDE." />
+    <meta name="twitter:image" content="https://idexal.com/icon.png" />
+    <link rel="canonical" href="https://idexal.com/" />
+    <!-- Fonts: preconnect + preload for faster first paint -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <script>
+      // Apply saved language/direction before paint to avoid FOUC.
+      try {
+        var lang = localStorage.getItem('idexal-lang') || 'en'
+        document.documentElement.lang = lang
+        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

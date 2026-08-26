@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Computational Elegance - Idexal</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #060a14;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #94a3b8;
+    overflow-x: hidden;
+  }
+  canvas {
+    max-width: 92vw;
+    max-height: 78vh;
+    border-radius: 4px;
+    box-shadow: 0 0 80px rgba(59,130,246,0.06), 0 0 160px rgba(139,92,246,0.03);
+  }
+  .caption {
+    margin-top: 28px;
+    text-align: center;
+    opacity: 0;
+    animation: fadeUp 1.2s 2.5s ease forwards;
+  }
+  .caption h1 {
+    font-size: 13px;
+    font-weight: 200;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6, #a855f7);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 5px;
+  }
+  .caption p {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #475569;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<canvas id="art"></canvas>
+<div class="caption">
+  <h1>Computational Elegance</h1>
+  <p>An art movement for Idexal</p>
+</div>
+<script>
+const C = document.getElementById('art');
+const ctx = C.getContext('2d');
+const W = 1400, H = 900;
+C.width = W; C.height = H;
+
+// Brand colors
+const BLUE = '#3b82f6';
+const PURPLE = '#8b5cf6';
+const DARK = '#0a0e1a';
+const MID = '#111827';
+
+function drawBackground() {
+  const g = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W*0.7);
+  g.addColorStop(0, '#0f1729');
+  g.addColorStop(0.5, '#0a0e1a');
+  g.addColorStop(1, '#060a14');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawGrid() {
+  ctx.strokeStyle = 'rgba(30,41,59,0.3)';
+  ctx.lineWidth = 0.5;
+  const spacing = 40;
+  for (let x = spacing; x < W; x += spacing) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = spacing; y < H; y += spacing) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+}
+
+function drawFibonacci() {
+  const cx = W * 0.38, cy = H * 0.45;
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = BLUE;
+  ctx.lineWidth = 1.5;
+  
+  // Fibonacci spiral approximation
+  let a = 1, b = 1;
+  for (let i = 0; i < 10; i++) {
+    const r = a * 18;
+    const angle = i * Math.PI / 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, angle, angle + Math.PI/2);
+    ctx.stroke();
+    [a, b] = [b, a + b];
+  }
+  ctx.restore();
+}
+
+function drawHexGrid() {
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  const size = 25;
+  const w = size * 2;
+  const h = Math.sqrt(3) * size;
+  
+  for (let row = 0; row < 20; row++) {
+    for (let col = 0; col < 30; col++) {
+      const x = col * w * 0.75 + 100;
+      const y = row * h + (col % 2 ? h/2 : 0) + 50;
+      if (x > W || y > H) continue;
+      
+      const dist = Math.sqrt((x - W/2)**2 + (y - H/2)**2);
+      const alpha = Math.max(0, 1 - dist/500);
+      
+      ctx.strokeStyle = `rgba(59,130,246,${alpha * 0.15})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = Math.PI / 3 * i - Math.PI / 6;
+        const px = x + size * Math.cos(angle);
+        const py = y + size * Math.sin(angle);
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawNodes() {
+  const nodes = [];
+  // Create constellation-like node network
+  for (let i = 0; i < 80; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 100 + Math.random() * 350;
+    nodes.push({
+      x: W/2 + Math.cos(angle) * dist,
+      y: H/2 + Math.sin(angle) * dist,
+      r: 1.5 + Math.random() * 3,
+      bright: 0.3 + Math.random() * 0.7
+    });
+  }
+  
+  // Draw connections
+  ctx.save();
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const d = Math.sqrt((nodes[i].x - nodes[j].x)**2 + (nodes[i].y - nodes[j].y)**2);
+      if (d < 120) {
+        const alpha = (1 - d/120) * 0.15;
+        const g = ctx.createLinearGradient(nodes[i].x, nodes[i].y, nodes[j].x, nodes[j].y);
+        g.addColorStop(0, `rgba(59,130,246,${alpha})`);
+        g.addColorStop(1, `rgba(139,92,246,${alpha})`);
+        ctx.strokeStyle = g;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(nodes[i].x, nodes[i].y);
+        ctx.lineTo(nodes[j].x, nodes[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  
+  // Draw nodes
+  for (const n of nodes) {
+    const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r * 3);
+    g.addColorStop(0, `rgba(59,130,246,${n.bright * 0.4})`);
+    g.addColorStop(1, 'rgba(59,130,246,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(n.x - n.r*3, n.y - n.r*3, n.r*6, n.r*6);
+    
+    ctx.fillStyle = `rgba(147,197,253,${n.bright})`;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawConcentricRings() {
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  for (let r = 50; r < 500; r += 40) {
+    ctx.strokeStyle = r % 80 === 0 ? BLUE : PURPLE;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(W * 0.62, H * 0.52, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawCodeSnippet() {
+  ctx.save();
+  ctx.font = '11px "SF Mono", "Fira Code", monospace';
+  ctx.globalAlpha = 0.15;
+  
+  const lines = [
+    'fn elegant() -> impl Future<Output = Result<T>> {',
+    '    let stream = compute(data).await?;',
+    '    stream.filter_map(|item| item.refine())',
+    '          .collect::<Vec<_>>().await',
+    '}',
+    '',
+    'struct Constellation<T> {',
+    '    nodes: Vec<Node<T>>,',
+    '    pub fn connect(&mut self) {',
+    '        self.nodes.pairwise()',
+    '    }',
+    '}',
+    '',
+    '// elegance is a property of the system',
+    'pub trait Elegance: Send + Sync {',
+    '    fn elegance_level(&self) -> f64;',
+    '}',
+  ];
+  
+  lines.forEach((line, i) => {
+    const x = W * 0.65;
+    const y = H * 0.18 + i * 16;
+    // Syntax-like coloring
+    if (line.includes('fn ') || line.includes('struct ') || line.includes('pub trait') || line.includes('pub fn')) {
+      ctx.fillStyle = `rgba(139,92,246,${0.2})`;
+    } else if (line.includes('//')) {
+      ctx.fillStyle = `rgba(100,116,139,${0.2})`;
+    } else {
+      ctx.fillStyle = `rgba(148,163,184,${0.15})`;
+    }
+    ctx.fillText(line, x, y);
+  });
+  ctx.restore();
+}
+
+function drawOrbs() {
+  const orbs = [
+    { x: W * 0.2, y: H * 0.3, r: 150, color: '59,130,246', alpha: 0.04 },
+    { x: W * 0.75, y: H * 0.6, r: 200, color: '139,92,246', alpha: 0.03 },
+    { x: W * 0.5, y: H * 0.8, r: 120, color: '168,85,247', alpha: 0.025 },
+  ];
+  
+  for (const o of orbs) {
+    const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
+    g.addColorStop(0, `rgba(${o.color},${o.alpha * 3})`);
+    g.addColorStop(0.5, `rgba(${o.color},${o.alpha})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(o.x - o.r, o.y - o.r, o.r * 2, o.r * 2);
+  }
+}
+
+function drawRuneMarks() {
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  ctx.strokeStyle = BLUE;
+  ctx.lineWidth = 1;
+  
+  // Small rune-like marks scattered across the composition
+  const marks = [
+    [0.15, 0.7], [0.85, 0.2], [0.1, 0.15], [0.9, 0.8],
+    [0.3, 0.9], [0.7, 0.1], [0.45, 0.05], [0.55, 0.95],
+  ];
+  
+  for (const [fx, fy] of marks) {
+    const x = W * fx, y = H * fy;
+    ctx.beginPath();
+    ctx.moveTo(x - 5, y + 8);
+    ctx.lineTo(x, y - 8);
+    ctx.lineTo(x + 5, y + 8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y + 12, 3, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawBrandMark() {
+  ctx.save();
+  ctx.globalAlpha = 0.25;
+  const bx = W * 0.12, by = H * 0.88;
+  
+  // Simple "I" mark
+  ctx.font = 'bold 28px system-ui';
+  const g = ctx.createLinearGradient(bx, by - 15, bx + 30, by + 15);
+  g.addColorStop(0, BLUE);
+  g.addColorStop(1, PURPLE);
+  ctx.fillStyle = g;
+  ctx.fillText('I', bx, by);
+  
+  ctx.globalAlpha = 0.12;
+  ctx.font = '8px system-ui';
+  ctx.letterSpacing = '4px';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText('IDEXAL', bx + 5, by + 14);
+  ctx.restore();
+}
+
+// Render all layers
+drawBackground();
+drawGrid();
+drawHexGrid();
+drawFibonacci();
+drawConcentricRings();
+drawOrbs();
+drawNodes();
+drawCodeSnippet();
+drawRuneMarks();
+drawBrandMark();
+</script>
+</body>
+</html>

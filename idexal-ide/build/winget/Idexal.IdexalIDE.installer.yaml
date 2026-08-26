@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: Idexal.IdexalIDE
+PackageVersion: 1.0.0
+InstallerLocale: en-US
+MinimumOSVersion: 10.0.17763.0
+InstallerType: nsis
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+Protocols:
+  - idexal
+FileExtensions:
+  - js
+  - ts
+  - tsx
+  - jsx
+  - py
+  - rs
+  - go
+  - java
+  - cpp
+  - c
+  - h
+  - css
+  - html
+  - json
+  - yaml
+  - yml
+  - md
+  - toml
+  - xml
+  - sql
+  - sh
+  - bash
+  - zsh
+  - env
+  - gitignore
+  - dockerfile
+  - makefile
+  - cmake
+ReleaseDate: 2026-08-25
+ElevationRequirement: elevationRequired
+AppsAndFeaturesEntries:
+  - DisplayName: Idexal IDE
+    Publisher: Idexal
+    InstallerType: nsis
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/idexal/idexal-ide/releases/download/v1.0.0/Idexal-IDE-1.0.0-Windows-Setup-x64.exe
+    InstallerSha256: REPLACE_WITH_ACTUAL_SHA256
+    InstallerSwitches:
+      Silent: /S
+      SilentWithProgress: /S
+      Custom: /CURRENTUSER
+ManifestType: installer
+ManifestVersion: 1.6.0
