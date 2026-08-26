@@ -11,6 +11,8 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 ## ✅ Done
 - **IDE v2.7.1** — hotfix: clean-install packaging (asarUnpack + missing deps + zip) — app now opens on fresh Windows (MODULE_NOT_FOUND fixed), Setup 95M + Portable 95M + Zip 128M fallback + app.asar 26M, 90/90, live launch verified (win-unpacked stays 12s)
 - **CLI v2.7.1** — hotfix: real PE32+ binary via pkg (37.8MB, Node 18 embedded) — runs on clean Windows without Node (was JS text), 29/29, live --help/--version/ask --help verified
+- **IDE v2.8.0** — callbacks live (CLI `ide_open_file`/`ide_show_diff` → IDE `open-file`/`show-diff` IPC), on-device distilled n-gram ghost-text (Ollama → LM Studio → on-device fallback) + Settings On-Device panel (toggle + model `distilled-350M/1B/Xenova` + badge), vite 20s, 90/90
+- **CLI v2.8.0** — `do --watch` (chokidar 1200ms debounce, auto-index rebuild, live `⚡` cycles, `await Promise` keep-alive) + `ask --index --stream` combo, `plugins publish` real `npm publish --access public` with staging fallback, tools `ide_open_file`/`ide_show_diff`, PE 37.8MB + tgz 218K, 29/29
 - **IDE v2.7.0** — 90 panels, multi-agent orchestrator, multi-provider AI + fallback chains,
   bundled skills (auto-load + inject + enable/disable + catalog browser + fetch-from-repo + Team Packs share/import/apply),
   @file + @folder/ context, checkpoints on every apply + Undo, Ctrl+K streaming live preview,
@@ -25,17 +27,20 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 - **Skills v1.1.0** — 118-skill library with auto-generated index
 - **Website v0.9.0** — published (development intentionally deferred)
 
-## 🔥 Now — Next release (v2.8.0)
+## ✅ Shipped — v2.8.0 (2026-08-26)
 ### IDE v2.8.0
-- [ ] Agent-to-agent callbacks live (CLI → IDE open_file/show_diff via Protocol v2)
-- [ ] On-device fine-tuned completion model (distilled local ghost-text)
+- [x] Agent-to-agent callbacks live (CLI → IDE open_file/show_diff via Protocol v2)
+- [x] On-device fine-tuned completion model (distilled local ghost-text)
 
 ### CLI v2.8.0
-- [ ] `idexa do --watch` auto-rebuild index + `ask --index --stream` combo
-- [ ] `idexa plugins publish` → real npm registry push (billing)
+- [x] `idexa do --watch` auto-rebuild index + `ask --index --stream` combo
+- [x] `idexa plugins publish` → real npm registry push (billing `npm publish --access public`)
+
+## 🔥 Now — Next release (v2.9.0)
+- Plugin store billing live (Stripe payouts) + verification · Cloud sync AES-GCM + conflict merge · Multi-model router `ask --model auto`
 
 ## ⏭️ Next — v2.9.0 targets
-- Full plugin store billing + verification · Cloud sync AES-GCM + conflict merge
+- Collab Yjs polish · `idexa collab` multi-agent room
 
 ## 🧊 Later — differentiators
 - [ ] Cloud sync conflict resolution across devices

@@ -1,5 +1,13 @@
 # Changelog — Idexal (Ecosystem)
 
+## [2.8.0] — 2026-08-26
+
+**IDE 2.8.0 “Callbacks + On-Device”** + **CLI 2.8.0 “Watch + Real Publish”**
+
+- **IDE**: Protocol v2 callbacks live (`ide_open_file`/`ide_show_diff` via NDJSON `request`), `onDeviceModelService` distilled n-gram + optional transformers WASM (offline ghost-text fallback Ollama → LM Studio → on-device), Settings → Tab Autocomplete → On-Device panel (`onDeviceEnabled`/`onDeviceModel` in `idexal-settings`), `open-file` IPC accepts path + `show-diff` IPC, `preload` exposes `idexaCancel`/`showDiff`
+- **CLI**: `do --watch` (chokidar 1200ms debounce, auto `.idexa/index.json` rebuild, `⚡ Change detected`), `ask --index --stream` fully wired, `plugins publish` real `npm publish --access public` with staging fallback, new tools `ide_open_file`/`ide_show_diff` for bridge callbacks
+- **Build**: CLI PE 37.8MB + tgz 218K, IDE Setup 95M + Portable 95M + Zip 128M + asar 26M; `vite 20s` + `90/90` + `29/29`; hotfix 2.7.1 clean-install retained
+
 ## [2.7.1] — 2026-08-26 — HOTFIX: standalone binary + clean-install
 
 ### Fixed
