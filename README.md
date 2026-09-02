@@ -1,7 +1,10 @@
 <div align="center">
 
-# ⚡ Idexal
-
+<p align="center">
+  <a href="https://idexal.com">
+    <img src="https://raw.githubusercontent.com/idexal/idexla-Agents-AI-Web-UI/main/apps/web/public/logo.png" alt="idexla Agents AI Web UI" width="180" />
+  </a>
+</p>
 **The open AI development platform — a strong alternative to Claude Code & Codex**
 
 Desktop IDE for every platform · Custom CLI terminal · 118 bundled agent skills
