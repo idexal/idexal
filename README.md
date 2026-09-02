@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://idexal.com">
-    <img src="apps/web/public/logo.png" alt="idexla Agents AI Web UI" width="180" />
+    <img src="https://raw.githubusercontent.com/idexal/idexla-Agents-AI-Web-UI/main/apps/web/public/logo.png" alt="idexla Agents AI Web UI" width="100%" />
   </a>
 </p>
 
