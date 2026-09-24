@@ -1,4 +1,5 @@
 
+  <a href="https://idexal.com"><img src="[apps/web/public/logo.png](https://raw.githubusercontent.com/idexal/idexal/refs/heads/master/idexal%20BRAND%20logo%2Bicon/logo%20origin.png)" alt="idexla logo" width="120" /></a><br>
 
 
 <h1 align="center">idexal — OpenSource</h1>
@@ -104,7 +105,7 @@ Third-party licenses in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 ---
 
 <p align="center">
-  <a href="https://idexal.com"><img src="apps/web/public/logo.png" alt="idexla logo" width="120" /></a><br>
+  <a href="https://idexal.com"><img src="[apps/web/public/logo.png](https://raw.githubusercontent.com/idexal/idexal/refs/heads/master/idexal%20BRAND%20logo%2Bicon/logo%20origin.png)" alt="idexla logo" width="120" /></a><br>
   <strong>idexla Agents AI Web UI</strong> — Free OpenSource, Forever<br>
   Built with ❤️ by <a href="https://idexal.com">Idexal</a> • <a href="https://zakariaelahbabi.com">Zakariae Lahbabi</a><br>
   <em>Free for students • Free for indie hackers • Free for enterprises • Free for everyone</em>
