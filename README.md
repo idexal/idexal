@@ -17,7 +17,7 @@
   <a href="https://github.com/idexal/idexla-Agents-AI-Web-UI/releases"><img src="https://img.shields.io/github/v/release/idexal/idexla-Agents-AI-Web-UI?style=for-the-badge&label=Release&color=0A1628" alt="Release" /></a>
 </p>
 
-
+ 
 <p align="center">
   <em>by <a href="https://zakariaelahbabi.com">Zakariae Lahbabi</a> — Founder, CEO & Lead Developer @ <a href="https://idexal.com">Idexal</a></em>
 </p>
