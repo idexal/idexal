@@ -1,6 +1,7 @@
 
-  <a href="https://idexal.com"><img src="https://raw.githubusercontent.com/idexal/idexal/refs/heads/master/idexal%20BRAND%20logo%2Bicon/logo%20origin.png" alt="idexla logo" width="120" /></a><br>
-
+  <center>
+    <a href="https://idexal.com"><img src="https://raw.githubusercontent.com/idexal/idexal/refs/heads/master/idexal%20BRAND%20logo%2Bicon/logo%20origin.png" alt="idexla logo" width="80%" /></a><br>
+  </center>
 
 <h1 align="center">idexal — OpenSource</h1>
 
