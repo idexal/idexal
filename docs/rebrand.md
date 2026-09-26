@@ -126,6 +126,14 @@
 - 桌面端回归复核（v3.15.10）：这三个 hook 是桌面与 Web 共用的，所以改完必须在桌面目标再跑一次。用 `pnpm dev:desktop` 全新构建冷启动后经 CDP 抓取渲染进程日志：无 hook 顺序告警、无 `useTabStore 必须在 TabStoreProvider 内使用`、无错误边界接管；`documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop` 且标题栏品牌图为 `mark-dark.png`（主题与位图一致），窗口标题 `Idexal`，侧栏与输入区均渲染。截图确认主壳可见、无空白与文字压叠。
   - 复核过程中的两个测量陷阱，记录以免下次误判：`pnpm dev:desktop` 的 `pre-dev` 会 `rmSync('./out')`，若此时已有实例在跑，就会删掉它依赖的 `out/preload/index.cjs`，于是抓到“preload ENOENT + window.idexal undefined”三条假错误——那是我把被测产物删了，不是产品缺陷。另外端口 5174 被上一次 dev 的 vite 占用会让新实例直接启动失败（`Port 5174 is already in use`），必须先确认端口空闲再归因。
 
+### 打包产物在 v3.15.14 的实机复核
+
+- `pnpm bundle:desktop -- --os win --arch x64` 重新出包，产物 `packages/desktop/dist/`：`win-unpacked/Idexal Preview.exe` 与 `Idexal Preview-3.15.14-win-x64_TEST.exe`（150,462,088 字节）。
+- **读 VersionInfo 必须在 electron-builder 完全结束后**：构建中途读同一个 exe 会得到 `ProductName=Electron / CompanyName=GitHub, Inc. / FileVersion=41.0.3`，因为 `afterPack` 的 “updating asar integrity executable resource” 与版本资源写入发生在文件已落盘之后。等日志停止增长（本例 `bundle:audit-bundle-size end`）后重读，才是 `ProductName=Idexal Preview`、`CompanyName=Idexal`、`FileDescription=Idexal Preview`、`FileVersion=3.15.14`、`ProductVersion=3.15.14.0`。这条与 v3.15.5 那次误报同源，再次记录以免重犯。
+- 直接运行打包 exe（用 `--remote-debugging-port=9230` 与用户已开实例的 9229 隔离）：UA 报 `IdexalPreview/3.15.14`，窗口标题 `Idexal`，`documentElement.className = dark theme-zai-dark platform-windows-desktop`，标题栏 20px 品牌图与草稿水印均取 `mark-dark-<hash>.png`（生产构建带 hash 的官方位图），水印 `alt="Idexal"`，输入框占位文案为 “Ask Idexal anything…”，模型选择器显示 `idexal/idexal-code`。截图确认深色下标志与问候语无压叠、渐隐生效。
+- 复核后只关闭自己启动的那个实例（对该实例的 CDP 端点发 `Browser.close`，并确认 9229 仍存活），不用 `taskkill`，因为本机同时存在其他 Electron 应用。
+- 需要注意的副作用：打包版与开发版共用同一配置目录，启动后会**恢复用户的真实会话**（侧栏直接出现用户自己的阿拉伯语任务）。因此“跑一下打包版”并非无副作用的只读验证，会在用户屏幕上多开一个窗口；验证完应立即关闭该实例。
+
 ## 已知非品牌问题（记录以免被当成改名引入）
 
 - 实测（v3.15.3，CDP 直连运行中的桌面应用）：应用主题为深色时 `documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)').matches` 仍为 `false`（系统为浅色）。因此仓库里全部 122 处 `dark:` 工具类在桌面端启动阶段和 Web 端都跟系统偏好走，而不是跟应用主题走：这是上游遗留的主题机制问题，不属于品牌重构，本版本只把品牌位图的选图改成读 store 主题以消除“标志看不见”的后果，没有全局改写 `dark` 变体语义（那会影响所有 shadcn 组件的既有表现，需要单独设计与验收）。

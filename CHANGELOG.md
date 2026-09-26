@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.15.15 (2026-09-26)
+
+### Documentation
+
+- **docs:** 用重新出的 3.15.14 包做了一次实机复核，并记下读版本资源的时机陷阱
+  - `pnpm bundle:desktop -- --os win --arch x64` 重新产出 `win-unpacked/Idexal Preview.exe`
+    与 `Idexal Preview-3.15.14-win-x64_TEST.exe`（150,462,088 字节）。
+  - 陷阱复现并纠正：构建中途读该 exe 得到的是 `ProductName=Electron / CompanyName=GitHub, Inc.
+/ FileVersion=41.0.3`，因为 afterPack 的 asar 完整性与版本资源写入发生在文件落盘之后；
+    等日志停止增长后重读才得到 `Idexal Preview / Idexal / 3.15.14 / 3.15.14.0`。
+    与 v3.15.5 那次误报同源，故明确写入文档。
+  - 直接运行打包 exe（`--remote-debugging-port=9230` 与用户已开实例隔离）：UA `IdexalPreview/3.15.14`、
+    窗口标题 `Idexal`、深色主题下标题栏与草稿水印均取带 hash 的官方位图 `mark-dark-*.png`、
+    水印 `alt="Idexal"`、输入框占位 “Ask Idexal anything…”、模型选择器 `idexal/idexal-code`；
+    截图确认标志与问候语无压叠、渐隐生效。
+  - 记录副作用：打包版与开发版共用配置目录，启动会恢复用户真实会话并在屏幕上多开一个窗口，
+    因此不是只读验证；复核后只对自己启动的那个实例发 `Browser.close`（不用 `taskkill`，
+    本机还有其他 Electron 应用），并确认用户实例仍在。
+
 ## 3.15.14 (2026-09-26)
 
 ### Documentation

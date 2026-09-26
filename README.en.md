@@ -20,6 +20,7 @@ Idexal is an AI coding workspace with desktop, browser, and terminal interfaces.
 
 ## Updates
 
+- 2026-9-26: Updated to Idexal v3.15.15, verifying a freshly built Windows package on real hardware (exe resources report Idexal Preview / Idexal / 3.15.14; at runtime the brand bitmap, window title, placeholder text and model namespace are all Idexal) and recording that reading version resources mid-build returns Electron defaults.
 - 2026-9-26: Updated to Idexal v3.15.14, confirming via a read-only measurement of the real desktop window (1536×824, conversation 691px) that the 3.15.13 mount-time collapse cannot misfire on desktop.
 - 2026-9-26: Updated to Idexal v3.15.13, fixing the mobile-web cold-start case where the Send button was clipped off-screen and unreachable — the narrow-screen collapse only ran on resize and never on mount — and correcting the previous two entries that misjudged it as a design gap.
 - 2026-9-26: Updated to Idexal v3.15.12, root-causing the 390px composer defect (isMobileViewport is a dead prop; CollapsedRail is never rendered by the shell) and correcting the wrong assumptions in the previous entry.
