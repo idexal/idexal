@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.15.9 (2026-09-26)
+
+### Bug Fixes
+
+- **hooks:** 修复 `workspacePath` 由空变有时 hook 数量变化导致 OnboardingDialog 子树崩溃
+  - 现象：Web 端 390×844 冷加载主界面后，控制台固定报
+    `React has detected a change in the order of Hooks called by OnboardingDialog`
+    （第 8 个由 `useRef` 变 `useContext`），随后
+    `TypeError: Cannot read properties of undefined (reading 'length')`
+    抛在 `areHookInputsEqual → useStore → useTabStore`，被
+    `ScopedErrorBoundary:onboarding-dialog` 接走。全新端口、未热更过模块的冷启动可复现，
+    因此不是 Vite Fast Refresh 造成的假信号。
+  - 原因：`useIdexalSessionService` / `useIdexalAgentService` / `useIdexalTaskService` 把
+    hook 写在三元分支里——`workspacePath ? useWorkspaceServices(...) : useServices()`。
+    前者展开成多个 store 读取，后者只有一个 `useContext`。Web 首帧拿不到 `workspacePath`，
+    解析完成后才有，于是宿主组件两次渲染的 hook 数量不同，React 用错槽位比较依赖数组直接崩。
+  - 修复：三个 hook 改为无条件调用 `useServices()` 与 `useWorkspaceServices(...)`，只在**取值**时
+    按 `workspacePath` 分派。保持原语义不变：`workspacePath` 为空时仍返回 context services，
+    而不是 `useWorkspaceServices(null)` 会带回的 base services。
+  - 验证：同一冷启动路径下错误数由 5 降为 2，剩余 2 条是已记录的桌面专属
+    `window-controller` 通道超时；`pnpm typecheck` 0 错误、`pnpm lint` 70 warnings / 0 errors、
+    `architecture:check --changed` 0 violations。
+- **web:** 去掉浏览器标签标题里的内部接线字样
+  - `packages/web/src/main.tsx` 无条件把标题写成 `Idexal - Web + Server`，启动失败页写成
+    `Idexal - Web`。“Web + Server”是本仓库的内部部署组合，会漏进标签页、浏览历史、书签和
+    任务切换器。正常路径改由 `index.html` 提供 `Idexal`，失败页也只保留 `Idexal`；
+    登录回调页的 `Idexal - Sign In` 属页面文案，保持不变。
+
 ## 3.15.8 (2026-09-26)
 
 ### Bug Fixes

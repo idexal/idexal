@@ -416,7 +416,9 @@ function WebBootstrapErrorScreen({ message }: { message: string }) {
 }
 
 function renderWebBootstrapError(error: unknown): void {
-  document.title = "Idexal - Web";
+  // 修复：原标题 "Idexal - Web" 是本地联调时区分入口的接线标记，会出现在浏览器标签页、
+  // 收藏与任务切换器里；对用户没有意义，统一回落到 index.html 的产品名。
+  document.title = "Idexal";
   root.render(
     <WebBootstrapErrorScreen message={error instanceof Error ? error.message : String(error)} />,
   );
@@ -447,7 +449,9 @@ async function bootstrapWebApp() {
       onClose: () => {},
     });
     const platform = createWebPlatform();
-    document.title = "Idexal - Web + Server";
+    // 修复：这里原本把标题改写成 "Idexal - Web + Server"，那是本地同时起 server+web 时的接线标记，
+    // 会常驻浏览器标签页、浏览历史、书签和移动端任务切换器。index.html 已声明 <title>Idexal</title>，
+    // 正常启动路径不再覆写。
 
     root.render(
       <AppErrorBoundary>

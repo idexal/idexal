@@ -117,6 +117,13 @@
   - 同批发现并修复：水印的向下渐隐遮罩原先只在浅色主题生效，依据是一条我写在注释里的断言“深色位图自带渐隐”。逐行 alpha 实测否证了它——两张官方位图曲线完全一致（10%=103…98%=67），于是深色下标志保持满强度，与问候语 `14400px²` 的重叠区直接把文字压花。遮罩改为与主题无关后深色复核通过（`opacity:0.7`、`masked:true`）。
   - 教训：为深浅两套位图做差异化视觉处理前，先量两张图的 alpha/像素分布；“另一个文件看起来更淡”不等于它自带渐隐，可能只是墨色不同。
 
+### Web 目标移动视口实测（v3.15.9）
+
+- 此前所有真机验证都在桌面端；本轮按 `AGENTS.md` 的桌面/手机 Web 双端要求，用 390×844 视口冷启动 `pnpm dev:web` 复核主壳。
+- 发现并修复一个上游遗留的 Rules of Hooks 违规：`useIdexalSessionService`、`useIdexalAgentService`、`useIdexalTaskService` 都把 hook 写在三元分支里（`workspacePath ? useWorkspaceServices(...) : useServices()`）。`useWorkspaceServices` 展开为多次 store 读取，`useServices()` 只有一个 `useContext`，所以 `workspacePath` 由空变有的那次渲染会改变宿主组件的 hook 数量。Web 端首帧拿不到 `workspacePath`，因此必现：`OnboardingDialog` 第 8 个 hook 由 `useRef` 变 `useContext`，React 用错槽位比较依赖数组后抛 `Cannot read properties of undefined (reading 'length')`，整棵子树被 `ScopedErrorBoundary:onboarding-dialog` 接走。修复为两个 hook 无条件调用、只在取值时分派，从而保留“空 `workspacePath` 返回 context services 而非 base services”的原语义。
+- 判别“是 HMR 假信号还是真缺陷”的方法：换一个从未接收过热更新的端口冷加载。`createRoot() on a container that has already been passed to createRoot()` 只出现在被我热编辑过入口模块的旧页面上（`index.html` 仅一个 `#root` 与一个 module script，源码里只有一次 `createRoot`），冷启动不复现；hook 顺序崩溃在冷启动依旧复现，所以它是真缺陷。两者症状相同、结论相反，不能因为“看起来都像 dev 噪声”一起放过。
+- 修复后同一路径错误数 5 → 2，剩余 2 条是下方已记录的 `window-controller` 平台差异。`OnboardingDialog` 的 hook 列表在关闭态也会执行（Radix 只跳过 children 渲染），因此“挂载不再被错误边界接走”即为该崩溃已消除的直接证据；引导向导正文的实际展开需要用户主动打开，本轮未覆盖。
+
 ## 已知非品牌问题（记录以免被当成改名引入）
 
 - 实测（v3.15.3，CDP 直连运行中的桌面应用）：应用主题为深色时 `documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)').matches` 仍为 `false`（系统为浅色）。因此仓库里全部 122 处 `dark:` 工具类在桌面端启动阶段和 Web 端都跟系统偏好走，而不是跟应用主题走：这是上游遗留的主题机制问题，不属于品牌重构，本版本只把品牌位图的选图改成读 store 主题以消除“标志看不见”的后果，没有全局改写 `dark` 变体语义（那会影响所有 shadcn 组件的既有表现，需要单独设计与验收）。
