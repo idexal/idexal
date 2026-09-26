@@ -156,6 +156,32 @@
 - 产物级独立复核（不依赖退出码）：直接对 `dist/win-unpacked/resources/app.asar` 跑同一套闭包逻辑，得 `asarEntries=30630`、闭包根 15 → 展开 75 个模块、`missingCount=0`、`unresolvable=0`。
 - 反向对照（证明该检查不是恒真）：同一匹配器对不存在的 `__idexal_surely_not_a_real_package__` 返回 `false`，对 `undici` / `pngjs` / `node-forge` / `@opentelemetry/sdk-metrics` 返回 `true`。因此 “0 missing” 是有判别力的结果，不是空跑。
 
+### 品牌域名的两类残留：机器端点保留，人点的链接待决（v3.15.17 记录）
+
+全仓扫描 `zcode` 后必须分类，否则“还有 40 个文件命中”这种数字毫无意义——绝大多数命中是上游线上契约，改名会直接打断功能。分类标准是**这个字符串是被程序消费的，还是被人点击的**。
+
+- **机器端点，保留原值**（对端不在本仓库，改名即断登录 / 网关 / 市场 / 自动更新）：
+  `shared/src/idexalEndpoint.ts:3` 默认 API origin、`desktop/src/main/remoteCdn.ts:4` CDN base、
+  `shared/src/plugin-marketplaces.ts:37` 市场清单、`services/src/oauth/providers/zaiProviderConfig.ts:22`
+  与 `bigmodelProviderConfig.ts:19` 的 tokenUrl、`ui/src/v4/featureSuggestedPrompts.ts:11` 素材 base，
+  以及 `zcode-plan` / `zcode_official` / `zcode-artifact://` / `zcodejwttoken` / `X-ZCode-*` 等协议字面量。
+- **溯源与历史记录，保留**：`NOTICE.md`、本文件的新旧对照表、CHANGELOG 3.15.0 条目与 README 更新行，
+  它们存在的意义就是说明“从 ZCode 改到 Idexal”。
+- **人点击的链接，属真实品牌缺口，需产品决策而非静默改写**：
+  - `packages/web/src/share/ConversationShareLandingPage.tsx:91` 的 `IDEXAL_DOWNLOAD_URL = "https://zcode.z.ai"`，
+    在 `:545` 渲染成文案为 “Download Idexal” 的 `<a>`、在 `:678` 渲染成“返回首页”按钮。这是**公开分享页**，
+    外部访客看到的下载入口指向旧品牌域名。
+  - `packages/ui/src/lib/productDocs.ts:2` 的 `IDEXAL_PRODUCT_DOCS_URL = "https://zcode.z.ai/docs"`，
+    经 `App.tsx:693` `platform.openExternal(...)` 挂到应用内“文档”菜单。
+  - 为什么不直接改成 `https://idexal.com`：官方站点尚未部署，改过去会把两个可用链接变成死链，
+    属于用品牌问题换功能问题，比现状更糟。因此本条只记录并标注前置条件——
+    **待 idexal.com 上线且提供下载页与文档路径后，仅替换这两处**，机器端点保持不动。
+  - 同文件 `:90` 已有注释说明上游站点没有 `/download` 路径、根路径才是下载入口；迁移到 idexal.com
+    时需要一并确认新站的落地路径，避免照搬根路径假设。
+- 方法教训：品牌普查的产出必须是**分类后的可执行清单**，不是命中数。同一轮扫描里，
+  `zcode|z-code` 与 `zcode|z-code|z\.ai|智谱` 两个模式给出的文件数差异巨大，因为 Z.ai / BigModel
+  是本应用支持的**第三方模型供应商**，与旧品牌无关；把两者混在一个计数里会得出“改名没做完”的错误结论。
+
 ## 已知非品牌问题（记录以免被当成改名引入）
 
 - 实测（v3.15.3，CDP 直连运行中的桌面应用）：应用主题为深色时 `documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)').matches` 仍为 `false`（系统为浅色）。因此仓库里全部 122 处 `dark:` 工具类在桌面端启动阶段和 Web 端都跟系统偏好走，而不是跟应用主题走：这是上游遗留的主题机制问题，不属于品牌重构，本版本只把品牌位图的选图改成读 store 主题以消除“标志看不见”的后果，没有全局改写 `dark` 变体语义（那会影响所有 shadcn 组件的既有表现，需要单独设计与验收）。

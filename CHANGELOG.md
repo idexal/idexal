@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.15.17 (2026-09-26)
+
+### Documentation
+
+- **docs:** 把品牌域名残留拆成“机器端点保留 / 人点的链接待决”，并定位两处真实缺口
+  - 全仓扫 `zcode` 的命中必须先分类才有意义：`zcode|z-code` 与含 `z.ai`/`智谱` 的模式命中数差异巨大，
+    因为 Z.ai / BigModel 是本应用支持的第三方模型供应商，与旧品牌无关，混计会误判成“改名没做完”。
+  - 分类标准取“该字符串是被程序消费还是被人点击”。机器端点一律保留原值（对端不在本仓库，改名即断
+    登录 / 网关 / 插件市场 / 自动更新）：`idexalEndpoint.ts:3`、`remoteCdn.ts:4`、
+    `plugin-marketplaces.ts:37`、`zaiProviderConfig.ts:22`、`bigmodelProviderConfig.ts:19`、
+    `featureSuggestedPrompts.ts:11`，以及 `zcode-plan`、`zcode_official`、`zcode-artifact://`、
+    `zcodejwttoken`、`X-ZCode-*` 等协议字面量；NOTICE 与本文件的新旧对照属溯源，同样保留。
+  - 查出两处**人点击的**链接仍指向旧品牌域名，是真实品牌缺口：
+    公开分享页 `ConversationShareLandingPage.tsx:91` 的 `IDEXAL_DOWNLOAD_URL` 渲染成 “Download Idexal”
+    按钮（`:545`、`:678`），以及应用内“文档”菜单经 `App.tsx:693` 打开
+    `productDocs.ts:2` 的 `IDEXAL_PRODUCT_DOCS_URL`。
+  - 明确不改的理由与前置条件：`idexal.com` 尚未部署，直接替换会把可用链接变成死链，属于用品牌问题换
+    功能问题。记录为“待站点上线并提供下载与文档路径后仅替换这两处”，并提示 `:90` 既有注释所写的
+    “根路径才是下载入口、无 `/download` 路径”这一假设迁移时需重新确认。
+
 ## 3.15.16 (2026-09-26)
 
 ### Documentation

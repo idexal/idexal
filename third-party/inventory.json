@@ -244,7 +244,7 @@
     "apps/idexal-cli/packages/tui/package.json": "bf4d9d82f1fe3b89439684d6f523bebd53b68d401d00663f7fc62daa4d4e9404",
     "apps/idexal-cli/tools/prompt-trajectory/package.json": "b9a1074500bf58045b23227fbac68756a3b3087998847649a79355d2d6be69fb",
     "apps/idexal-cli/tools/typescript/package.json": "805b36f3c53ea095587da9bc719b143b55226d33a8d3c45ee2eebc2fa31dc9b3",
-    "package.json": "0e40d5dc33ddcd41ad17aed49e6951a98bc2c49769da3d526914836d8f6bc027",
+    "package.json": "f27b774ee3b3d926122a2f43f527363a29095e01f3d16d1984e7ca5086f9a0db",
     "packages/client/package.json": "b3e3308b700e75af5d2718f80037a3f23fba051c343770a96f056defa4314e42",
     "packages/desktop/package.json": "94be4c6de51fd70eb9ed8d5a0a23895b437e85f82f133bcfc1698c088c454717",
     "packages/desktop/src/renderer/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
