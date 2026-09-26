@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.15.5 (2026-09-26)
+
+### Documentation
+
+- **branding:** 补齐 Windows 打包产物的品牌取证，并记录 About 窗口不放 wordmark 的实测理由
+  - 实测 `dist/win-unpacked/Idexal Preview.exe`：PE 资源已是 `ProductName=Idexal Preview` /
+    `CompanyName=Idexal` / `FileVersion=3.15.4`，取其 32px 图标与 `build/icons/32x32.png` 逐像素平均差
+    `0.000`（与 Electron 默认图标差 `106.769`），证明 exe 图标确实换成官方品牌图标。
+  - 实测 NSIS 产物 `Idexal Preview-3.15.4-win-x64_TEST.exe`：`FileDescription=Idexal Desktop App`，
+    图标取自 `build/icon_installer.ico`（与源素材差 `13.1`，为 1024→32 重采样误差）；`_TEST` 后缀来自
+    `desktopArtifactEnvSuffix` 的后端环境标记，不是品牌残留。
+  - 记录打包机限制：`cdn.npmmirror.com` 与 `registry.npmmirror.com` 本机 DNS 不可解析，
+    `bundle.mjs` 的 binaries mirror 回退只覆盖 404、不覆盖 DNS 失败，需显式指定可直达的镜像。
+  - 取证教训：构建进程覆写 exe 期间读取会拿到覆写中途的副本，一度据此误判“图标没换”；
+    必须先确认构建退出或复制到稳定路径再测。
+  - About 窗口经实测纵向余量为 0（`scrollHeight == clientHeight == 280`），塞入 132×44 的 wordmark
+    会把按钮推到视口外，属版式设计改动，不在品牌重构范围内。
+
 ## 3.15.4 (2026-09-26)
 
 ### Bug Fixes

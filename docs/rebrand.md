@@ -81,9 +81,18 @@
 - 该遮罩是应用内唯一的大尺寸品牌留白面，且原本只渲染方形 mark 徽标、没有任何产品名文字，wordmark 在此补充信息而不是重复文字。
 - 登录页与引导页的方形深色 logo 壳由 `DESIGN.md` “Brand icon backplates” 一条明确保留，且其下已有 “Welcome to Idexal” 文案，把横向组合标塞进 96px 方形槽位会破坏版式，因此不改。
 - 深浅切换规则（实测修正）：品牌位图的墨色必须由 `useIdexalStore((s) => s.theme)` + `resolveTheme(theme)` 显式选图（同 `GlmMonochromeIcon`、`App.tsx` 的 `appLogoUrl`），**不得**用 Tailwind `dark:` 互斥两张 `<img>`。原因是本仓没有声明 class 版的 dark 变体，`node_modules/shadcn/dist/tailwind.css` 也没有，因此 `dark:` 编译为 `@media (prefers-color-scheme: dark)`；桌面端 `desktopMainIpcPlatform.ts` 会写 `nativeTheme.themeSource`，媒体查询随应用主题变化，看起来是对的，而 Web 目标里它只跟操作系统偏好，应用主题与系统偏好相反时深色底会压深色墨。实测证据：`packages/desktop/out/renderer/assets/styles-*.css` 内为 `@media (prefers-color-scheme:dark){.dark\:block{display:block}.dark\:hidden{display:none}}`，在浏览器里给祖先加 `.dark` 或改 `color-scheme: dark` 都不会让 `dark:hidden` 生效。
-- Provider 边界（v3.15.4 实测教训）：`RootStartupLoading` 由 `Root.tsx` 的 `isStartupRenderBlocked` 分支渲染，位置低于 `Root.tsx` 内挂载的 `<StoreProvider>`，所以品牌组件里直接用 `useIdexalStore` 会在启动遮罩抛 `useIdexalStore 必须在 StoreProvider 内使用` 并触发 `AppErrorBoundary`（“The app ran into a problem”）。这些组件一律用 `useIdexalStoreWithDefault((s) => s.theme, inferAppliedTheme())`：有 Provider 时随主题响应式更新，无 Provider 时退回 `applyTheme` 已写入的 `.dark` 类推断，不抛错。类型检查发现不了这条边界，只有真机启动才会暴露。
+- About 窗口不放 wordmark（实测结论，不是猜测）：在 256×280 视口渲染 `createCustomAboutDialogHtml` 的真实产物，`.app-icon` 占 22→74、`.title` 94→125.9、`.meta` 153.9→202.1、`.ok-button` 230→266，卡片 `scrollHeight == clientHeight == 280`，即纵向余量为 0；插入 132×44 的 wordmark 后 `scrollHeight` 变成 310、按钮底边 296 已超出 280。要在 About 里放横向组合标必须同时改窗口尺寸或卡片版式，属设计改动，不在品牌重构范围内。
+- Provider 边界（v3.15.4 实测教训）：`RootStartupLoading` 由 `Root.tsx` 的 `isStartupRenderBlocked` 分支渲染，位置低于同文件挂载的 `<StoreProvider>`，所以品牌组件里直接用 `useIdexalStore` 会在启动遮罩抛 `useIdexalStore 必须在 StoreProvider 内使用` 并触发 `AppErrorBoundary`（“The app ran into a problem”）。这些组件一律用 `useIdexalStoreWithDefault((s) => s.theme, inferAppliedTheme())`：有 Provider 时随主题响应式更新，无 Provider 时退回 `applyTheme` 已写入的 `.dark` 类推断，不抛错。类型检查发现不了这条边界，只有真机启动才会暴露。
 - 画布固有比例：wordmark 取 `w-28`（112px，与上方 96px 徽标组成锁版）并配 `aspect-[1136/380]` 预留高度，否则 `h-auto` 在 PNG 解码完成前塌成 0 高（实测冷加载首帧 `w=112 h=0`，加比例后 `112×37.5`）；组件自带 `max-w-full`，窄屏不溢出。
 - 验收口径：构建产物必须出现 `logo-light-*.png` / `logo-dark-*.png` 且被 JS chunk 引用（此前该组件无调用方，两张图会被 tree-shaking 移除）。
+
+### Windows 打包产物里的品牌落点（v3.15.5 实测）
+
+- `win` 段没有显式写 `icon`，electron-builder 走 `buildResources: "build"` 下的 `build/icon.ico` 自动发现（`build/icon.ico` 由本次品牌重构新增，含 16/24/32/48/64/128/256 七帧）。实测 `dist/win-unpacked/Idexal Preview.exe` 的 PE 资源：`ProductName=Idexal Preview`、`CompanyName=Idexal`、`FileDescription=Idexal Preview`、`FileVersion=3.15.4`；用 `ExtractAssociatedIcon` 取出的 32px 图与 `build/icons/32x32.png` 逐像素平均差为 `0.000`，与 Electron 自带图标为 `106.769`，即 exe 图标确实是官方品牌图标而非默认图标。
+- NSIS 产物 `dist/Idexal Preview-3.15.4-win-x64_TEST.exe`：`FileDescription=Idexal Desktop App`，其图标来自 `nsis.installerIcon/uninstallerIcon/installerHeaderIcon` 指向的 `build/icon_installer.ico`，与品牌应用图标不同素材属设计意图（配置注释里写明“安装图标与应用运行时图标解耦”）；与 `build/icon_installer.png` 缩到 32px 后平均差 `13.1`，为 1024→32 重采样误差。
+- 产物名里的 `_TEST` 后缀来自 `desktopArtifactEnvSuffix`，标记该包连的是测试后端，不是品牌残留。
+- 打包机网络限制：本机对 `cdn.npmmirror.com` 与 `registry.npmmirror.com` 都是 `no such host`，而 `bundle.mjs` 的 binaries mirror 回退只在输出含 404 时触发、不覆盖 DNS 失败，所以前两轮 `electron-builder` 在 `building target=nsis` 处失败；Electron runtime 镜像也要显式给出（`ELECTRON_MIRROR=https://github.com/electron/electron/releases/download/`），因为 `mise.toml` 默认写的是 npmmirror。第三轮重试成功产出安装包。
+- 取证方法教训：第一次读该 exe 时后台重试构建正在覆写同一文件，拿到的是覆写中途的副本（`VersionInfo` 仍是 `Electron`、体积与 `electron.exe` 完全相同），据此一度误判“Windows 图标没换”。对正在被构建覆写的产物做取证，必须先确认构建进程退出，或先复制到稳定路径再测。
 
 ## 已知非品牌问题（记录以免被当成改名引入）
 
