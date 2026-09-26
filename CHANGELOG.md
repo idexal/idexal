@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.15.1 (2026-09-26)
+
+### Bug Fixes
+
+- **server:** 修复 Windows 下 pnpm dev:web 无法启动
+  - 现象：tsup 报 Cannot find dist/entry-http.js'（结尾多出一个单引号），web 开发服务整体退出。
+  - 原因：dev 脚本用单引号包裹 --onSuccess 参数，cmd.exe 不把单引号当作引号，参数被原样带上尾随 '；
+    而 dist/entry-http.js 实际存在，因此不是构建缺失而是 shell 引号差异。
+  - 修复：改用双引号包裹，cmd.exe 与 POSIX shell 都能正确解析，不改变 macOS/Linux 行为。
+
 ## 3.15.0 (2026-09-26)
 
 ### Features

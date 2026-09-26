@@ -9,7 +9,7 @@
     "./remote/*.js": "./src/remote/*.ts"
   },
   "scripts": {
-    "dev": "tsup --watch --onSuccess 'node dist/entry-http.js'",
+    "dev": "tsup --watch --onSuccess \"node dist/entry-http.js\"",
     "build": "tsup && pnpm run build:remote",
     "build:remote": "tsx build-remote.ts",
     "lint": "oxlint",

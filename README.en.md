@@ -20,6 +20,7 @@ Idexal is an AI coding workspace with desktop, browser, and terminal interfaces.
 
 ## Updates
 
+- 2026-9-26: Updated to Idexal v3.15.1, fixing `pnpm dev:web` failing to start on Windows due to shell quoting.
 - 2026-9-26: Updated to Idexal v3.15.0, completing the full rebrand from the upstream ZCode project to Idexal. See [CHANGELOG.md](CHANGELOG.md) for the full record.
 - 2026-9-23: Updated to Idexal v3.14.3.
 
