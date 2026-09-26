@@ -20,6 +20,7 @@ Idexal 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Ag
 
 ## 更新
 
+- 2026-9-26：更新至 Idexal v3.15.12 版本，把 390px composer 缺陷查到根因（isMobileViewport 为死 prop、CollapsedRail 未被主壳渲染），纠正前一条记录里的错误假设。
 - 2026-9-26：更新至 Idexal v3.15.11 版本，补记手机 Web 390px 下 composer 的 Send 按钮被裁到屏外且无法滚动触达的实测缺陷与两种待定修法，并记录浅色主题与引导全流程复核通过。
 - 2026-9-26：更新至 Idexal v3.15.10 版本，补齐 3.15.9 hook 修复的桌面端冷启动回归复核，并记录 Provider Runtime 外网刷新失败属环境限制。
 - 2026-9-26：更新至 Idexal v3.15.9 版本，修复 Web 端 workspacePath 异步到位时 hook 数量变化导致 OnboardingDialog 子树崩溃，并去掉浏览器标签标题里的内部接线字样。

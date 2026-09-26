@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.15.12 (2026-09-26)
+
+### Documentation
+
+- **docs:** 把 390px composer 缺陷查到根因层，并纠正两条我自己的错误假设
+  - 证伪“移动端已实现只是没接线”：`V4ComposerToolbar` 的 `isMobileViewport` 是死 prop（只在类型
+    `:334` 与解构默认值 `:372` 出现，组件体从未读取），工具条里不存在任何手机布局分支可接；
+    三个 `isMobileViewport: false` 字面量（`ConversationComposer.tsx:827/832`、`SessionPane.tsx:2083`）
+    只喂 `ComposerAutoFocusOptions` 的聚焦决策，与布局无关。
+  - 证伪“窄屏收起为已有 rail”：`WorkspaceSidebarCollapsedRail` 只有定义与
+    `WorkspaceSidebar.tsx:156` 的再导出，主壳渲染路径没有任何使用点，收起需要新写渲染与状态逻辑。
+  - 结论修正：让 `Send` 在 390px 可达是一次真正的响应式设计工作，且改的是桌面共用的 composer 组件，
+    因此仍按仓库规则先与产品对齐，不在未对齐时叠加兜底分支。
+  - 补充阈值量测：390px 干净加载侧栏 195 / `Send` 右边界 474 不可达；768px 侧栏 264 / `Send` 可达；
+    480px `aside` 宽度 0 / `Send` 可达。480 与 390 的反差说明侧栏宽度不是纯 CSS 断点驱动，
+    其收起触发条件尚未定位。
+  - 同时修正 3.15.11 条目里“收起为已有 CollapsedRail”的措辞，并补回被误删的“跨渲染层矩形相交”
+    假阳性教训（水印与 Settings 面板文案的 7073px² 重叠属不同层，不是缺陷）。
+
 ## 3.15.11 (2026-09-26)
 
 ### Documentation
