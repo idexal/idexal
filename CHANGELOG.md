@@ -20,6 +20,10 @@
     `color-scheme: dark` 都不会让 `dark:hidden` 生效（实测 `matchMedia` 仍为 false、display 仍为 block）。
   - 影响：桌面端因为 `desktopMainIpcPlatform.ts` 会写 `nativeTheme.themeSource`，媒体查询恰好跟应用主题一致，
     问题被掩盖；Web/手机远控端在应用主题与系统偏好相反时会把深色墨压在深色底上，标志直接看不见。
+  - 实测复核（CDP 直连运行中的桌面应用）：系统为浅色、应用主题为深色时 `documentElement.className`
+    是 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)')` 仍为
+    `false`，即桌面端启动阶段同样会命中这个缺陷；仓库其余 122 处 `dark:` 工具类的这一上游主题机制问题
+    已登记在 `docs/rebrand.md`，本版本只修品牌位图选图，不全局改写 `dark` 变体语义。
   - 修复：`IdexalWordmarkLogo`、`WindowsTopLeftLogo`、`IdexalEmptyStateLogo`、`WorkspaceSidebarCollapsedRail`
     改为按 `useIdexalStore((s) => s.theme)` + `resolveTheme(theme)` 显式选图，与仓库既有的
     `GlmMonochromeIcon`、`App.tsx` `appLogoUrl` 同一套做法，两个目标表现一致且不再依赖 CSS 变体。

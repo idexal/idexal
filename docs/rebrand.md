@@ -86,6 +86,8 @@
 
 ## 已知非品牌问题（记录以免被当成改名引入）
 
+- 实测（v3.15.3，CDP 直连运行中的桌面应用）：应用主题为深色时 `documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)').matches` 仍为 `false`（系统为浅色）。因此仓库里全部 122 处 `dark:` 工具类在桌面端启动阶段和 Web 端都跟系统偏好走，而不是跟应用主题走：这是上游遗留的主题机制问题，不属于品牌重构，本版本只把品牌位图的选图改成读 store 主题以消除“标志看不见”的后果，没有全局改写 `dark` 变体语义（那会影响所有 shadcn 组件的既有表现，需要单独设计与验收）。
+
 - `pnpm dev:web` 在 Windows 上因 `packages/server` 的 `--onSuccess` 使用单引号而失败（cmd.exe 不识别单引号），已在 3.15.1 改为双引号。
 - About 窗口以 `data:text/html` 加载且 CSP 为 `img-src data:`，无法引用打包后的图片文件，因此其品牌标志以内联 data URI 提供，见 `packages/desktop/src/main/aboutWindowLogo.ts`。
 - 未登录时 `idexal-agent.subscribeSessionsIndexV4` 返回 'Idexal Agent runtime is not running.' 属预期守卫：Agent 运行时在鉴权并挂载工作区之后才启动。
