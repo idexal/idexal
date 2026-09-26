@@ -227,8 +227,157 @@ const fr: Record<string, string> = {
   "webRemoteControl.title": "Contrôle depuis le mobile",
   "chat.empty.greeting.evening": "Bonsoir, beau travail aujourd’hui",
   "chat.placeholder.newTask":
-    "Demandez anything à Idexal, @ pour ajouter un contexte, / pour les commandes",
+    "Demandez n’importe quoi à Idexal, @ pour ajouter un contexte, / pour les commandes ou les capacités",
   "taskList.newThread": "Nouvelle tâche",
+
+  // ——— Page Paramètres : navigation, Général, Apparence ———
+  "settings.sidebar.group.basics": "Généralités",
+  "settings.sidebar.group.agentCapabilities": "Capacités de l’agent",
+  "settings.sidebar.group.dataAndStats": "Données et statistiques",
+  "settings.systemTitle": "Général",
+  "settings.appearanceTitle": "Apparence",
+  "settings.modelProviderTitle": "Réglages des modèles",
+  "settings.memory": "Mémoire",
+  "settings.subagents.title": "Sous-agents",
+  "settings.plugins.title": "Extensions",
+  "settings.mcpTitle": "Serveurs MCP",
+  "settings.skills.title": "Compétences",
+  "settings.commands.title": "Commandes",
+  "settings.automations.title": "Automatisations",
+  "settings.hooks.title": "Hooks",
+  "settings.browser.title": "Utilisation du navigateur",
+  "settings.computerUse.title": "Utilisation de l’ordinateur",
+  "settings.shortcuts.title": "Raccourcis clavier",
+  "settings.workspaceFileSearch.title": "Périmètre de recherche dans l’espace de travail",
+  "settings.usageTitle": "Statistiques d’utilisation",
+  "settings.locale": "Langue",
+  "settings.localeDescription": "Choisissez la langue d’affichage de l’interface de l’application.",
+  "settings.locale.system": "Paramètre par défaut du système",
+  "settings.interfaceMode": "Mode d’interface",
+  "settings.interfaceMode.description":
+    "Le mode Bureau met l’accent sur les résumés et les résultats. Le mode Code affiche les commandes, la sortie et les modifications de code.",
+  "settings.interfaceMode.coding": "Mode Code",
+  "settings.interfaceMode.office": "Mode Bureau",
+  "settings.terminalProfile": "Hériter du profil de terminal du système",
+  "settings.terminalProfileDescription":
+    "Lors du lancement du terminal intégré, récupère si possible l’environnement du shell de connexion, le proxy, les variables Kubernetes et la police du terminal local.",
+  "settings.terminalFontFamily": "Police du terminal",
+  "settings.terminalFontFamilyDescription":
+    "Laissez vide pour détecter automatiquement les paramètres du terminal système ; saisissez une valeur pour remplacer la police du terminal Idexal.",
+  "settings.dataBaseDirSave": "Enregistrer",
+  "settings.terminalFontFamilyPlaceholder":
+    "Laissez vide pour hériter, p. ex. MesloLGS NF, monospace",
+  "settings.integratedTerminalShell": "Shell du terminal intégré",
+  "settings.integratedTerminalShellDescription":
+    "S’applique uniquement aux nouvelles sessions. Sous Windows, Bash utilise ce shell ; Auto essaie Git Bash puis cmd.exe.",
+  "settings.integratedTerminalShell.auto": "Auto",
+  "settings.nativeSearchEnhancements": "Recherche et Grep améliorés",
+  "settings.nativeSearchEnhancementsDescription":
+    "Utilisez la recherche et Grep améliorés dans les nouvelles sessions et celles restaurées après un redémarrage. Les sessions actives gardent leur réglage actuel ; la recherche reste inchangée sous Windows.",
+  "settings.httpProxy": "Proxy HTTP",
+  "settings.httpProxyDescription":
+    "Achemine le trafic sortant des modèles, de MCP, des outils de commande et du moteur de rendu de l’application via ce proxy ; les variables d’environnement système ne sont pas lues. Laissez vide pour une connexion directe, le navigateur intégré suivant alors le proxy de votre système. Redémarrez l’application pour appliquer.",
+  "settings.httpProxyPlaceholder":
+    "Vide signifie que le navigateur intégré suit le proxy système, p. ex. http://127.0.0.1:7890",
+  "settings.httpProxyNoProxy": "Aucun proxy",
+  "settings.httpProxyNoProxyDescription":
+    "Les requêtes correspondant à ces hôtes se connectent directement au lieu d’utiliser le proxy HTTP. Séparez les règles par des virgules. Redémarrez l’application pour appliquer.",
+  "settings.httpProxyNoProxyPlaceholder": "p. ex. localhost,127.0.0.1,::1,.example.com,*.corp.com",
+  "settings.httpProxyCaCertPath": "Certificat personnalisé",
+  "settings.httpProxyCaCertPathDescription":
+    "Facultatif. Indiquez le chemin d’un certificat racine PEM pour l’injecter en tant que NODE_EXTRA_CA_CERTS des modèles, de MCP et des outils de commande, et qu’il soit approuvé lors de la vérification des certificats du moteur de rendu. Redémarrez l’application pour appliquer.",
+  "settings.httpProxyCaCertPathPlaceholder": "p. ex. /Users/name/certs/root-ca.pem",
+  "settings.desktopChromiumHardwareAcceleration": "Accélération matérielle Chrome",
+  "settings.desktopChromiumHardwareAccelerationDescription":
+    "Désactivez cette option pour contourner les fenêtres vides, les plantages ou les problèmes de rendu causés par certains GPU ou pilotes. Redémarrez l’application pour appliquer.",
+  "settings.receivePreviewUpdates": "Recevoir les mises à jour d’aperçu en avant-première",
+  "settings.receivePreviewUpdatesDescription":
+    "Activé, vous accédez le plus tôt possible aux nouvelles fonctionnalités et améliorations. Désactivé, vous recevez les mises à jour selon le calendrier de publication habituel.",
+  "settings.autoDownloadAndInstallUpdates":
+    "Télécharger et installer automatiquement les mises à jour",
+  "settings.autoDownloadAndInstallUpdatesDescription":
+    "Activé, le téléchargement des mises à jour démarre dès qu’elles sont détectées. Le redémarrage demande tout de même une confirmation si des tâches sont en cours.",
+  "settings.notification": "Notifications des tâches",
+  "settings.notificationDescription":
+    "Envoie des notifications de bureau lorsqu’une tâche se termine, échoue ou nécessite une approbation.",
+  "settings.notificationSound": "Son de notification",
+  "settings.notificationSoundDescription":
+    "Lorsque les notifications sont activées, vous pouvez réduire séparément le son des notifications de tâches.",
+  "settings.closeToTrayOnWindows": "Masquer dans la barre d’état à la fermeture de la fenêtre",
+  "settings.closeToTrayOnWindowsDescription":
+    "Windows uniquement. Le bouton de fermeture et son raccourci masquent la fenêtre, tandis que Quitter depuis la barre d’état ferme bien l’application.",
+  "settings.keepAwakeWhileRunning": "Garder l’ordinateur éveillé",
+  "settings.keepAwakeWhileRunningDescription":
+    "Empêche la veille du système en cas d’inactivité. Vous pouvez toujours mettre en veille manuellement ou en fermant le capot. Ordinateur de bureau uniquement.",
+  "settings.idexalInteractionBehavior": "Comportement d’interaction",
+  "settings.idexalInteractionBehaviorDescription":
+    "Pendant qu’Idexal s’exécute, ajoutez les actions de suivi à la file ou guidez-les pour qu’elles s’exécutent après le prochain appel d’outil.",
+  "settings.askUserQuestionAutoResolution": "Continuer automatiquement les questions",
+  "settings.askUserQuestionAutoResolutionDescription":
+    "Activé, les questions de l’Agent se poursuivent automatiquement après 5 minutes sans réponse. Désactivé, les questions actuelles et futures attendent votre réponse.",
+  "settings.modelIoFullRetention": "Conserver les E/S complètes du modèle",
+  "settings.modelIoFullRetentionDescription":
+    "Conservez intégralement les requêtes et réponses du modèle, sans compression, limite de taille ni suppression automatique.",
+  "settings.messageStreamShowReasoning": "Afficher le raisonnement",
+  "settings.messageStreamShowReasoningDescription":
+    "Affiche le raisonnement complet dans le flux de messages. Désactivé, le premier élément de raisonnement de chaque tour reste visible.",
+  "settings.messageStreamShowTodos": "Afficher les to-dos",
+  "settings.messageStreamShowTodosDescription":
+    "Affichez les cartes de l’outil Todo dans le flux de messages.",
+  "settings.toolGroupingExplore": "Grouper les outils d’exploration",
+  "settings.toolGroupingExploreDescription":
+    "Groupe les lectures et recherches consécutives dans une section Explorer.",
+  "settings.toolGroupingTerminal": "Grouper les commandes du terminal",
+  "settings.toolGroupingTerminalDescription":
+    "Groupe les commandes shell consécutives qui ne sont pas en lecture seule dans une section Terminal.",
+  "settings.toolGroupingChanges": "Grouper les modifications de fichiers",
+  "settings.toolGroupingChangesDescription":
+    "Groupe les appels consécutifs à Write, Edit et ApplyPatch dans une section Modifications.",
+  "settings.taskAutoArchive": "Archiver automatiquement les anciennes tâches",
+  "settings.taskAutoArchiveDescription":
+    "Analyse périodiquement les espaces de travail récemment ouverts et archive automatiquement, après le délai de conservation, les tâches terminées sans message non lu et non épinglées.",
+  "settings.taskAutoArchiveDays": "Conservation avant archivage",
+  "settings.taskAutoArchiveDaysDescription":
+    "Une tâche n’est éligible à l’archivage automatique que si sa dernière mise à jour est plus ancienne que ce délai.",
+  "settings.dataBaseDir": "Chemin de stockage des données",
+  "settings.dataBaseDirDescription":
+    "Répertoire racine des données de l’application (par défaut le dossier personnel de l’utilisateur). Les données existantes sont copiées vers le nouvel emplacement. Le suffixe .idexal/v2 ne peut pas être modifié.",
+  "settings.onboarding": "Parcours d’initiation",
+  "settings.onboardingDescription":
+    "Choisissez de nouveau votre rôle, le mode d’interface et vos préférences. Utilisez les réglages de migration pour importer des données.",
+  "settings.onboardingOpen": "Ouvrir le parcours d’initiation",
+  "settings.appearance.interfaceTitle": "Réglages de l’interface",
+  "settings.appearance.interfaceDescription":
+    "Choisissez le thème de l’application et la taille du texte de l’interface.",
+  "settings.themeMode": "Thème de l’application",
+  "settings.themeModeDescription": "Choisissez clair ou sombre, ou suivez le thème du système.",
+  "settings.uiFontSize": "Taille de police de l’interface",
+  "settings.uiFontSizeDescription":
+    "Ajustez le texte de l’interface sans modifier les icônes ni les dimensions de la mise en page.",
+  "settings.appearance.codeTitle": "Réglages du code",
+  "settings.appearance.codeDescription":
+    "Choisissez les thèmes de code, la taille de police et les options d’affichage indépendamment de la taille de police de l’interface.",
+  "settings.lightTheme": "Thème de code clair",
+  "settings.lightThemeDescription":
+    "Thème de coloration utilisé pour le code dans l’interface claire.",
+  "settings.darkTheme": "Thème de code sombre",
+  "settings.darkThemeDescription":
+    "Thème de coloration utilisé pour le code dans l’interface sombre.",
+  "settings.showLineNumbers": "Afficher les numéros de ligne",
+  "settings.showLineNumbersDescription":
+    "Affiche les numéros de ligne dans les vues de code et de différence.",
+  "settings.wrapLongLines": "Retourner les lignes longues",
+  "settings.wrapLongLinesDescription": "Retourne automatiquement les lignes de code trop longues.",
+  "settings.fontSize": "Taille de police du code",
+  "settings.fontSizeDescription":
+    "Ajustez la taille de police par défaut des blocs de code, des aperçus de fichiers et des vues de différence.",
+  "settings.previewSectionTitle": "Aperçu du code",
+  "settings.previewDescription":
+    "Prévisualisez ensemble les thèmes de code clair et sombre. Le thème utilisé par l’interface actuelle est marqué comme actif.",
+  "settings.previewLight": "Aperçu clair",
+  "settings.previewDark": "Aperçu sombre",
+  "settings.title": "Réglages",
+  "settings.navLabel": "Sections",
 };
 
 export default fr;

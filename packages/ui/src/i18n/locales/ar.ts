@@ -189,7 +189,7 @@ const ar: Record<string, string> = {
   "sidebar.usage.plan.percentUsed": "تم استهلاك {percent}%",
   "sidebar.usage.plan.remainingValue": "المتبقي",
   "sidebar.usage.plan.total": "الإجمالي",
-  "sidebar.usage.plan.resetAt": "تُعاد {time}",
+  "sidebar.usage.plan.resetAt": "تُعاد التهيئة {time}",
   "sidebar.usage.plan.modelUsage": "استخدام النماذج",
   "sidebar.usage.plan.openStats": "إحصاءات الاستخدام",
   "sidebar.usage.plan.refresh": "تحديث الحصة",
@@ -202,7 +202,7 @@ const ar: Record<string, string> = {
   "sidebar.usage.plan.hidden": "علّم المزوّد هذا الرصيد كمخفي",
   "sidebar.usage.plan.currentPlan": "مستوى الخطة",
   "sidebar.usage.plan.noPlan": "لا توجد خطة Coding فعّالة",
-  "sidebar.usage.plan.expires": "تُعاد التعيين",
+  "sidebar.usage.plan.expires": "تُعاد التهيئة",
   "sidebar.usage.plan.fiveHour": "5 ساعات",
   "sidebar.usage.plan.weekly": "أسبوعي",
   "sidebar.usage.plan.toolCalls": "استدعاءات الأدوات",
@@ -227,6 +227,147 @@ const ar: Record<string, string> = {
   "chat.empty.greeting.evening": "مساءً، عمل رائع اليوم",
   "chat.placeholder.newTask": "اسأل Idexal أي شيء، ‏@ لإضافة سياق، ‏/ للأوامر أو القدرات",
   "taskList.newThread": "مهمة جديدة",
+
+  // ——— 设置页：导航分组 + 通用 + 外观 ———
+  "settings.sidebar.group.basics": "الأساسي",
+  "settings.sidebar.group.agentCapabilities": "قدرات الوكيل",
+  "settings.sidebar.group.dataAndStats": "البيانات والإحصاءات",
+  "settings.systemTitle": "عام",
+  "settings.appearanceTitle": "المظهر",
+  "settings.modelProviderTitle": "إعدادات النموذج",
+  "settings.memory": "الذاكرة",
+  "settings.subagents.title": "الوكلاء الفرعيون",
+  "settings.plugins.title": "الإضافات",
+  "settings.mcpTitle": "خوادم MCP",
+  "settings.skills.title": "المهارات",
+  "settings.commands.title": "الأوامر",
+  "settings.automations.title": "الأتمتة",
+  "settings.hooks.title": "الخطافات",
+  "settings.browser.title": "استخدام المتصفح",
+  "settings.computerUse.title": "استخدام الحاسوب",
+  "settings.shortcuts.title": "اختصارات لوحة المفاتيح",
+  "settings.workspaceFileSearch.title": "نطاق البحث في مساحة العمل",
+  "settings.usageTitle": "إحصاءات الاستخدام",
+  "settings.locale": "اللغة",
+  "settings.localeDescription": "اختر لغة العرض المستخدمة في واجهة التطبيق.",
+  "settings.locale.system": "افتراضي النظام",
+  "settings.interfaceMode": "نمط الواجهة",
+  "settings.interfaceMode.description":
+    "يركّز نمط المكتب على الملخّصات والنتائج. أما نمط البرمجة فيعرض الأوامر والمخرجات وتغييرات الشيفرة.",
+  "settings.interfaceMode.coding": "نمط البرمجة",
+  "settings.interfaceMode.office": "نمط المكتب",
+  "settings.terminalProfile": "ورث إعدادات طرفية النظام",
+  "settings.terminalProfileDescription":
+    "عند تشغيل الطرفية المدمجة، استورد بيئة صدفة الدخول والوكيل ومتغيّرات Kubernetes وخط الطرفية المحلي عند الإمكان.",
+  "settings.terminalFontFamily": "خط الطرفية",
+  "settings.terminalFontFamilyDescription":
+    "اتركه فارغًا للتعرف التلقائي على إعدادات طرفية النظام؛ وحدّد قيمة لتجاوز خط الطرفية في Idexal.",
+  "settings.dataBaseDirSave": "حفظ",
+  "settings.terminalFontFamilyPlaceholder": "اتركه فارغًا للوراثة، مثل MesloLGS NF، monospace",
+  "settings.integratedTerminalShell": "صدفة الطرفية المدمجة",
+  "settings.integratedTerminalShellDescription":
+    "يسري على الجلسات الجديدة فقط. في Windows يستخدم Bash هذه الصدفة؛ أمّا «تلقائي» فيجرّب Git Bash ثم cmd.exe.",
+  "settings.integratedTerminalShell.auto": "تلقائي",
+  "settings.nativeSearchEnhancements": "البحث و Grep المحسَّنان",
+  "settings.nativeSearchEnhancementsDescription":
+    "استخدم البحث و Grep المحسَّنين في الجلسات الجديدة وفي الجلسات المستعادة بعد إعادة تشغيل التطبيق. تحتفظ الجلسات النشطة بإعدادها الحالي؛ ويبقى البحث في Windows دون تغيير.",
+  "settings.httpProxy": "وكيل HTTP",
+  "settings.httpProxyDescription":
+    "مرِّر عبر هذا الوكيل حركة الصادر الخاصة بالنموذج و MCP وأدوات الأوامر وعارض التطبيق؛ لا تُقرأ متغيّرات بيئة النظام. اتركه فارغًا لتتصل هذه الحركة مباشرة، بينما يتبع المتصفح المدمج إعدادات الوكيل في نظامك. أعد تشغيل التطبيق لتسري التغييرات.",
+  "settings.httpProxyPlaceholder":
+    "الفراغ يعني أن المتصفح المدمج يتبع وكيل النظام، مثل http://127.0.0.1:7890",
+  "settings.httpProxyNoProxy": "بلا وكيل",
+  "settings.httpProxyNoProxyDescription":
+    "الطلبات المطابقة لهذه المضيفين تتصل مباشرة بدل استخدام وكيل HTTP. افصل القواعد بفواصل. أعد تشغيل التطبيق لتسري التغييرات.",
+  "settings.httpProxyNoProxyPlaceholder": "مثل localhost,127.0.0.1,::1,.example.com,*.corp.com",
+  "settings.httpProxyCaCertPath": "شهادة مخصّصة",
+  "settings.httpProxyCaCertPathDescription":
+    "اختياري. حدّد مسار شهادة جذر بصيغة PEM ليُحقَن كـ NODE_EXTRA_CA_CERTS للنماذج و MCP وأدوات الأوامر، وليُعتَمَد به في التحقق من شهادات العارض. أعد تشغيل التطبيق لتسري التغييرات.",
+  "settings.httpProxyCaCertPathPlaceholder": "مثل /Users/name/certs/root-ca.pem",
+  "settings.desktopChromiumHardwareAcceleration": "التسريع العتادي لـ Chrome",
+  "settings.desktopChromiumHardwareAccelerationDescription":
+    "عطّل هذا للتغلّب على النوافذ الفارغة أو التعطّلات أو مشاكل العرض الناجمة عن بعض وحدات معالجة الرسوميات أو تعريفاتها. أعد تشغيل التطبيق لتسري التغييرات.",
+  "settings.receivePreviewUpdates": "استلام تحديثات المعاينة مبكرًا",
+  "settings.receivePreviewUpdatesDescription":
+    "عند التفعيل تحصل على أبكر وصول إلى المزايا والتحسينات الجديدة. عند التعطيل تصلك دفعات التحديث وفق جدول الإصدارات المعتاد.",
+  "settings.autoDownloadAndInstallUpdates": "تنزيل التحديثات وتثبيتها تلقائيًا",
+  "settings.autoDownloadAndInstallUpdatesDescription":
+    "عند التفعيل يبدأ تنزيل التحديثات بمجرد العثور عليها. وتبقى إعادة التشغيل تتطلب تأكيدًا عند وجود مهام قيد التشغيل.",
+  "settings.notification": "إشعارات المهام",
+  "settings.notificationDescription":
+    "أرسل إشعارات سطح المكتب عند اكتمال المهمة أو فشلها أو حاجتها إلى موافقة.",
+  "settings.notificationSound": "صوت الإشعارات",
+  "settings.notificationSoundDescription":
+    "عند تفعيل الإشعارات يمكنك إسكات صوت إشعارات المهام بشكل منفصل.",
+  "settings.closeToTrayOnWindows": "إخفاء إلى الدرج عند إغلاق النافذة",
+  "settings.closeToTrayOnWindowsDescription":
+    "نظام Windows فقط. زر الإغلاق واختصاره يُخفيان النافذة، بينما «الإنهاء» من الدرج يُخرج التطبيق فعليًا.",
+  "settings.keepAwakeWhileRunning": "إبقاء الحاسوب مستيقظًا",
+  "settings.keepAwakeWhileRunningDescription":
+    "يمنع دخول النظام في السكون بسبب الخمول. ويبقى بوسعك إدخاله في السكون يدويًا أو بإغلاق الغطاء. سطح المكتب فقط.",
+  "settings.idexalInteractionBehavior": "سلوك التفاعل",
+  "settings.idexalInteractionBehaviorDescription":
+    "أثناء تشغيل Idexal، أضِف الإجراءات اللاحقة إلى قائمة الانتظار أو وجّهها لتُنفَّذ بعد استدعاء الأداة التالي.",
+  "settings.askUserQuestionAutoResolution": "متابعة الأسئلة تلقائيًا",
+  "settings.askUserQuestionAutoResolutionDescription":
+    "عند التفعيل تستمر أسئلة الوكيل تلقائيًا بعد 5 دقائق دون إجابة. عند التعطيل تنتظر الأسئلة الحالية واللاحقة ردّك.",
+  "settings.modelIoFullRetention": "الاحتفاظ بمدخلات النموذج ومخرجاته كاملة",
+  "settings.modelIoFullRetentionDescription":
+    "احتفظ بطلبات النموذج واستجاباته كاملة دون ضغط أو حدود حجم أو حذف تلقائي.",
+  "settings.messageStreamShowReasoning": "إظهار الاستدلال",
+  "settings.messageStreamShowReasoningDescription":
+    "اعرض الاستدلال كاملًا داخل تدفق الرسائل. وعند التعطيل يبقى أول عنصر استدلال في كل دور ظاهرًا.",
+  "settings.messageStreamShowTodos": "إظهار المهام",
+  "settings.messageStreamShowTodosDescription": "اعرض بطاقات أداة المهام داخل تدفق الرسائل.",
+  "settings.toolGroupingExplore": "تجميع أدوات الاستكشاف",
+  "settings.toolGroupingExploreDescription":
+    "اجمع عمليات القراءة والبحث المتتالية في قسم «الاستكشاف».",
+  "settings.toolGroupingTerminal": "تجميع أوامر الطرفية",
+  "settings.toolGroupingTerminalDescription":
+    "اجمع أوامر الصدفة المتتالية التي لا تقتصر على القراءة في قسم «الطرفية».",
+  "settings.toolGroupingChanges": "تجميع تغييرات الملفات",
+  "settings.toolGroupingChangesDescription":
+    "اجمع استدعاءات Write و Edit و ApplyPatch المتتالية في قسم «التغييرات».",
+  "settings.taskAutoArchive": "الأرشفة التلقائية للمهام القديمة",
+  "settings.taskAutoArchiveDescription":
+    "افحص مساحات العمل المفتوحة مؤخرًا بشكل دوري، وارشف تلقائيًا المهام المكتملة التي لا رسائل غير مقروءة فيها وغير المثبّتة بعد انقضاء مدة الاحتفاظ.",
+  "settings.taskAutoArchiveDays": "مدة الاحتفاظ قبل الأرشفة",
+  "settings.taskAutoArchiveDaysDescription":
+    "لا تصبح المهمة مؤهلة للأرشفة التلقائية إلا إذا كان آخر تحديث لها أقدم من هذه المدة.",
+  "settings.dataBaseDir": "مسار تخزين البيانات",
+  "settings.dataBaseDirDescription":
+    "الدليل الجذري لبيانات التطبيق (افتراضيًا دليل منزل المستخدم). ستُنسخ البيانات الموجودة إلى الموضع الجديد. ولا يمكن تغيير اللاحقة ‏‎.idexal/v2‏‎.",
+  "settings.onboarding": "البدء الموجّه",
+  "settings.onboardingDescription":
+    "اختر دورك ونمط الواجهة وتفضيلاتك من جديد. استخدم إعدادات الترحيل لاستيراد البيانات.",
+  "settings.onboardingOpen": "فتح البدء الموجّه",
+  "settings.appearance.interfaceTitle": "إعدادات الواجهة",
+  "settings.appearance.interfaceDescription": "اختر سمة التطبيق وحجم نص الواجهة.",
+  "settings.themeMode": "سمة التطبيق",
+  "settings.themeModeDescription": "اختر الفاتح أو الداكن أو اتباع سمة النظام.",
+  "settings.uiFontSize": "حجم خط الواجهة",
+  "settings.uiFontSizeDescription": "اضبط نص الواجهة دون تغيير الأيقونات أو أبعاد التخطيط.",
+  "settings.appearance.codeTitle": "إعدادات الشيفرة",
+  "settings.appearance.codeDescription":
+    "اختر سمات الشيفرة وحجم الخط وخيارات العرض بشكل مستقل عن حجم خط الواجهة.",
+  "settings.lightTheme": "السمة الفاتحة للشيفرة",
+  "settings.lightThemeDescription": "سمة التلوين المستخدمة لمحتوى الشيفرة في الواجهة الفاتحة.",
+  "settings.darkTheme": "السمة الداكنة للشيفرة",
+  "settings.darkThemeDescription": "سمة التلوين المستخدمة لمحتوى الشيفرة في الواجهة الداكنة.",
+  "settings.showLineNumbers": "إظهار أرقام الأسطر",
+  "settings.showLineNumbersDescription": "اعرض أرقام الأسطر في أدلتي الشيفرة والفروق.",
+  "settings.wrapLongLines": "التفاف الأسطر الطويلة",
+  "settings.wrapLongLinesDescription": "لفّ أسطر الشيفرة الطويلة تلقائيًا.",
+  "settings.fontSize": "حجم خط الشيفرة",
+  "settings.fontSizeDescription":
+    "اضبط حجم الخط الافتراضي لكتل الشيفرة ومعاينات الملفات وعروض الفروق.",
+  "settings.previewSectionTitle": "معاينة الشيفرة",
+  "settings.previewDescription":
+    "عاين سمتي الشيفرة الفاتحة والداكنة معًا، وتُعلَّم السمة المستخدمة في الواجهة الحالية بأنها نشطة.",
+  "settings.previewLight": "معاينة فاتحة",
+  "settings.previewDark": "معاينة داكنة",
+  "settings.title": "الإعدادات",
+  "settings.navLabel": "الأقسام",
 };
 
 export default ar;

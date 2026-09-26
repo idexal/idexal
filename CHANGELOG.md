@@ -1,5 +1,38 @@
 # Changelog
 
+## 3.16.2 (2026-09-26)
+
+### Changes
+
+- **feat(i18n):** 翻译设置页（导航 + 通用 + 外观），并修掉三处已确认的译文缺陷
+  - `ar` / `fr` 各从 208 键增至 **317 键**（净增 109），覆盖设置页左侧导航的 3 个分组标题与
+    16 个分区标题、General 分区的 66 个标签与说明、Appearance 分区的 22 个。
+    取键方式沿用上一次的纠正：不是按前缀猜，而是从 `settingsPageConfig.ts` 的
+    `titleId / contentTitleId / descriptionId` 与 `GeneralSectionContent`、
+    `AppearanceSectionContent` 两个组件里**实际出现的 `id:` 字面量**抽取，
+    因此译的都是真会渲染的键。
+  - 顺带发现并修掉三处真实缺陷（不是格式化差异，是错的译文）：
+    - `fr chat.placeholder.newTask` 原文是 `Demandez anything à Idexal…`——句子里留着英文
+      `anything`，且丢了"ou les capacités"半句。已改为完整法语。
+    - `ar sidebar.usage.plan.expires` 是 `تُعاد التعيين`，语法不通（字面像"被再任命"）。
+      对齐英文 `Resets` 改为 `تُعاد التهيئة`。
+    - `ar sidebar.usage.plan.resetAt` 是 `تُعاد {time}`，缺宾语、读不通，改为 `تُعاد التهيئة {time}`。
+      这三条都是我此前那批外壳译文里的，说明"键补齐"不等于"值正确"，需要单独扫一遍。
+  - 新增两份静态校验，且都做了反向证明（在构造的坏数据上确实会失败，不是恒绿）：
+    - `verify-locales.mjs`：重复键、孤儿键（不在 `en-US` 中）、`ar`/`fr` 键集对称性、
+      以及"键写了但值因换行没解析上"。结果 317/317、orphans 0、双向差集 0。
+    - `verify-placeholders.mjs`：每条值的 `{placeholder}` 集合必须与英文逐字一致
+      （漏掉 `{time}` 这类会让 ICU 渲染出字面量或直接失败）。结果 0 处不匹配；
+      并显式断言该比较能识别"少一个占位符"，否则报告无意义。
+  - **本次未做实跑渲染验证，原因记清楚**：`SettingsPage` 只在桌面渲染进程挂载（`packages/web`
+    不引它），而再起一个隔离 dev 实例需要先跑 `@idexal/desktop` 的 `pre-dev`，它会
+    `rmSync('./out', {recursive:true})`——用户当前的开发实例正有 `tsup --watch` 在写同一份
+    `out/`，两个 watcher 抢同一目录会打乱其会话。因此这一版只有静态门禁与字符串级校验，
+    阿语设置页的**排版几何**（导航栏 + 表单 + 开关这个新面在 RTL 下的表现）仍是未测面。
+  - 覆盖率：`en-US` 5859 键，ar/fr 各 **317 / 5859 ≈ 5.4%**。
+  - 门禁：`pnpm typecheck` exit 0；`pnpm lint` 70 warnings / 0 errors（基线未变）；
+    `pnpm fmt:check` 通过。
+
 ## 3.16.1 (2026-09-26)
 
 ### Changes
