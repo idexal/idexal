@@ -1,5 +1,56 @@
 # Changelog
 
+## 3.16.5 (2026-09-26)
+
+### Changes
+
+- **docs:** 交付逐条带代码出处的改进提案，并顺带查出桌面主进程还有一批语言硬编码未修
+  - `docs/improvement-proposals.md`：每条都标 **[已存在] / [确证缺失] / [已发现的缺陷]** 并给
+    `文件:行号`，目的是让提案能被直接执行而不是又一份愿望清单。
+    刻意写明"不要重建"的部分：可观测性其实已经完整（ARMS RUM `appARMSBootstrap.ts`、
+    上报前脱敏 `armsEventRedaction.ts:98-114`、`crashReporter` `desktopCrashCapture.ts:373`、
+    ANR 5s / 冻结 30s `desktopStabilityTelemetry.ts:19,21`、React 错误桥
+    `renderer/src/main.tsx:323-329`、"报告问题"附日志 zip `feedbackService.ts:232-243`）；
+    技能开关、插件个人来源（git/URL/本地目录）、hooks/subagents/automations/bots/memory 服务层
+    也都已存在。**这次调研的直接作用就是不提出重复建设**。
+  - **核心确证（关于 fallback）**：模型侧只有**同模型内**重试
+    （`apps/idexal-cli/packages/adapters/src/model/retry-policy.ts:13` 默认 `maxAttempts = 11`、
+    `empty-completion-retry.ts:8` 空响应另有 1 次），
+    分类器已经把 429 / 529 / 401·403 / 400·422 / 5xx / 超时 / 流空闲 / 上下文超长 / TLS / 取消
+    分开并给出 `retryable` 与 `retryAfterMs`（`failure-classifier.ts:81-310`），
+    但**没有任何代码路径会因为模型 A 失败而改调模型 B**：
+    `nextModelId` 的全部命中都是配置里的模型改名（`packages/provider/src/config/model-config.ts:471`、
+    `config-service.ts:376,457`、`facades.ts:78-408`），`switchModelConfig` 是用户主动命令
+    （`idexalTaskServiceAdapter.ts:1169,2741`）。
+    因此提案给的是"在现有分类结论上加一维 fallbackEligible + 候选链由 provider 层按现有
+    `executable/selectable` 判定解析"，并明确不新建第二套分类器（避免两条真相链），
+    以及最难的一条硬边界：**已有工具执行后不得换模型重放**，否则副作用二次执行。
+  - **提案过程中又查出同形状缺陷**：写"崩溃屏已修"之后，用
+    `grep -rnE '=== *"zh-CN"|=== *"en-US"'` 扫了一遍，发现桌面主进程里还有 **6+ 处应用自己的文字**
+    只认 zh/en——强制更新对话框（`forceUpdatePrompt.ts:41-52`，含"请勿关闭应用"这种
+    不可中断操作的指令）、退出确认（`index.ts:1317-1322`）、内嵌浏览器原生 `alert/confirm`
+    按钮（`embeddedBrowserJavaScriptDialog.ts:67-69`，不点掉页面就卡住）、
+    **"Idexal is controlling your computer" 安全提示条**
+    （`windowsCuaOperationIndicatorContent.ts:14-17`，且文案与手填像素宽度绑在同一分支：
+    中文 234 / 英文 308，加语言必须实测宽度而不是猜）、
+    外部工作区打开确认框（`desktopOAuthDeepLink.ts:140-150`，
+    源码里已有 `TODO(i18n)` 精确预言了这件事）。
+    这不在 `docs/i18n-rtl.md` 那五个刻意保持窄类型的外部契约之内，所以是真缺陷。
+    而 `packages/desktop/src/main/**` **不在 `pnpm typecheck` 覆盖范围内**
+    （`tsconfig.main.json` 约 90 个既有错误、不作门禁），所以没有任何门禁会提醒。
+    已记为 §1.6 / §1.7 并列为实施阶段 1。
+  - 同时修订了自己之前的两处表述：§1.2 标为已修复；RTL 物理工具类从"≥400 处/197 文件"
+    改为逐类实测的 **743 处 / 250 文件**，并确认逻辑属性用量为 0
+    （`start-N/end-N` 的 30 处命中逐条核对后全是 `col-start-*` / `row-start-*` 栅格线名，
+    `text-start` 的 1 处在代码注释里——直接引用就会把"零迁移"错报成"已开始迁移"）。
+  - 一次误判的纠正：裸 `node` 加载 `packages/shared/dist` 时报
+    `Cannot find module '.../model-option-map/src/compiler.js'`，我一度以为仓库缺文件。
+    实测 `compiler.ts` 存在、包入口是 `"./src/index.ts"`，`.js` 说明符是 TS ESM 约定、
+    由打包器解析——**探针本身无效，结论作废**，没有写进提案。
+  - 本次为纯文档变更，未改任何生产代码；门禁复跑：`typecheck` exit 0、
+    `lint` 70 warnings / 0 errors、`fmt:check` 通过、`architecture:check --changed` violations 0、
+    `licenses check` 通过。
+
 ## 3.16.4 (2026-09-26)
 
 ### Changes
