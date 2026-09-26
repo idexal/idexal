@@ -244,6 +244,24 @@
 - 教训：一条"外部条件不满足"的结论必须用可复现的探测支撑，单次网络非零返回不等于对方不可用；
   尤其当我打算据此连续几轮不做某件事时，更应复测或换协议/换重试再确认。
 
+### 登录入口不再暴露上游账号连接（v3.15.22）
+
+- 品牌重构后仍有一处把上游商业身份直接摆在首屏：未登录面板并排渲染
+  `Connect to Z.ai (Global)` 与 `Connect to BigModel (CN)` 两枚账号连接按钮。
+  按产品决策，Idexal 现阶段用户自带 API key 走内置的多家模型供应商，订阅平台 web 门户尚未就绪，
+  因此这两枚按钮下线，原位换成**一枚禁用占位按钮** `Subscriptions coming soon`（无链接、无 onClick）。
+- 这条属于品牌边界而非功能删减：按钮指向的是上游账号体系，不是 Idexal 自己的订阅/计费。
+  `Use API key` 保持原样，仍是当前唯一可用登录路径。
+- 清理时的一处反例值得记下：`login.oauth.regionTag.{zai,bigmodel}` 这两个 key 在
+  WelcomeScreen 里只服务于被删掉的按钮标签，但 `packages/ui/src/botsUi.ts:72-74` 仍在读取它们。
+  只按"这个文件里没人用了"删除就会打断另一处功能——删文案前必须全仓查读者，而不是查引用来源。
+  同理 `useOAuth` 的 waiting/error/retry/cancel 状态机全部保留：`loginEntryRequest` 仍会从设置页
+  发起指定 provider 的授权，登录入口继续统一承载它的展示。下线的是按钮，不是这条链路。
+- 国际化陷阱：`Locale` 只有 `zh-CN` 与 `en-US`，而 `createIntl` 对缺失 key 的行为是
+  **回退成 key 字面量**，没有编译期校验。也就是说漏写一份不会报错，只会把
+  `login.subscription.comingSoon` 原样显示给用户。因此新文案必须两份同时写，并在验收里显式检查
+  "界面上不出现 key 字面量"。
+
 ## 已知非品牌问题（记录以免被当成改名引入）
 
 - 实测（v3.15.3，CDP 直连运行中的桌面应用）：应用主题为深色时 `documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)').matches` 仍为 `false`（系统为浅色）。因此仓库里全部 122 处 `dark:` 工具类在桌面端启动阶段和 Web 端都跟系统偏好走，而不是跟应用主题走：这是上游遗留的主题机制问题，不属于品牌重构，本版本只把品牌位图的选图改成读 store 主题以消除“标志看不见”的后果，没有全局改写 `dark` 变体语义（那会影响所有 shadcn 组件的既有表现，需要单独设计与验收）。

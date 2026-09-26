@@ -20,6 +20,7 @@ Idexal is an AI coding workspace with desktop, browser, and terminal interfaces.
 
 ## Updates
 
+- 2026-9-26: Updated to Idexal v3.15.22: the sign-in screen no longer offers the Z.ai / BigModel account-connection buttons. They are replaced by a single disabled placeholder with no link — `Subscriptions coming soon` — until the subscription portal is ready; `Use API key` remains the only working path today. The placeholder label is localized for both app languages.
 - 2026-9-26: Updated to Idexal v3.15.21: measured that idexal.com is in fact live (an earlier assumption was wrong) and pointed the public share page's download entry at the official domain; the in-app Docs menu is unchanged because the site currently serves only its root — /docs and friends return 404.
 - 2026-9-26: Updated to Idexal v3.15.20: audited the published releases (tags and releases match 1:1, naming and states consistent) and recorded the real gap — no release carries a downloadable artifact — along with why the existing unsigned `_TEST` installer can't simply be attached.
 - 2026-9-26: Updated to Idexal v3.15.19: end-to-end testing of the production build in a real browser showed the previous prefers-color-scheme icon selection never actually took effect (a light OS plus the app's default dark theme put dark strokes on a dark tab), so the icon is now chosen by the app theme in the bootstrap script, verified in both directions.

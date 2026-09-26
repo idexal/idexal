@@ -1,20 +1,17 @@
 /* oxlint-disable eslint(max-lines) */
 /**
- * WelcomeScreen —— OAuth / API Key 登录入口
+ * WelcomeScreen —— 订阅占位 / API Key / OAuth 登录入口
  *
- * 通过 useOAuth hook 驱动 OAuth 流程。
+ * 产品规则见 docs/login-entry.md：账号 OAuth 按钮已从入口下线，
+ * 但 useOAuth 状态机保留给设置页发起的 provider 连接流程复用。
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Loader2Icon, LoaderIcon, TriangleAlertIcon } from "lucide-react";
+import { LoaderIcon, TriangleAlertIcon } from "lucide-react";
 import {
   type OAuthProviderMeta,
-  BIGMODEL_PROVIDER_ID,
   TID_LOGIN_USE_API_KEY_BUTTON,
   TID_OAUTH_CANCEL,
   TID_OAUTH_ERROR,
-  TID_OAUTH_LOGIN_BUTTON,
-  ZAI_PROVIDER_ID,
-  testId,
 } from "@idexal/shared";
 import { Alert, AlertDescription } from "./components/ui/alert.js";
 import { Button } from "./components/ui/button.js";
@@ -22,7 +19,6 @@ import { IdexalAboutLogo } from "@/components/ui/IdexalAboutLogo.js";
 import { useOAuth } from "./hooks/useOAuth.js";
 import { useIdexalIntl } from "./i18n/IntlProvider.js";
 import { LoginApiKeyForm } from "./login/LoginApiKeyForm.js";
-import { renderOAuthProviderIcon } from "./lib/oauthProviderIcon.js";
 import { ThemeHeroVisual } from "./openWorkspacePageThemeHero.js";
 import { useIdexalStore } from "./store/StoreProvider.js";
 
@@ -70,17 +66,8 @@ function shouldCompleteLoginFromExistingUser(params: {
 
 function LoginPanel({ active, onComplete }: LoginPanelProps) {
   const { intl } = useIdexalIntl();
-  const {
-    startLogin,
-    cancel,
-    reset,
-    status,
-    error,
-    providers,
-    loadingProviders,
-    pendingProvider,
-    refreshProviders,
-  } = useOAuth();
+  const { startLogin, cancel, reset, status, error, providers, pendingProvider, refreshProviders } =
+    useOAuth();
   const user = useIdexalStore((s) => s.user);
   const oauthError = useIdexalStore((s) => s.oauthError);
   const setOAuthError = useIdexalStore((s) => s.setOAuthError);
@@ -143,7 +130,6 @@ function LoginPanel({ active, onComplete }: LoginPanelProps) {
   const pendingProviderName = pendingProvider
     ? (providerNameMap.get(pendingProvider) ?? pendingProvider)
     : null;
-  const visibleProviders = useMemo(() => resolveVisibleLoginProviders(providers), [providers]);
 
   useEffect(() => {
     if (active) {
@@ -292,65 +278,23 @@ function LoginPanel({ active, onComplete }: LoginPanelProps) {
             若只判断 status==="idle" 会让失败块和渠道按钮列表同屏、状态纠缠。
             失败期间统一由下方失败块接管（重新登录/取消），渠道列表等错误清掉后再回来。 */}
         {status === "idle" && !oauthError && loginMode === "providers" && (
-          <div className="space-y-4">
-            {loadingProviders ? (
-              <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-6 text-ui-base text-foreground-subtle">
-                <Loader2Icon className="size-4 animate-spin" />
-                {intl.formatMessage({ id: "login.oauth.loadingProviders" })}
-              </div>
-            ) : null}
-
-            {!loadingProviders && providers.length === 0 ? (
-              <Alert
-                variant="warning"
-                className="flex items-center justify-center gap-2 text-center"
-                data-testid={TID_OAUTH_ERROR}
-              >
-                <TriangleAlertIcon className="size-4" />
-                <AlertDescription className="text-center">
-                  {intl.formatMessage({ id: "login.oauth.noProviders" })}
-                </AlertDescription>
-              </Alert>
-            ) : null}
-
-            {!loadingProviders ? (
-              <div className="space-y-2">
-                {visibleProviders.map((provider) => (
-                  <Button
-                    key={provider.id}
-                    variant="default"
-                    className="h-10 w-full text-ui-base"
-                    size="lg"
-                    data-testid={
-                      provider.id === BIGMODEL_PROVIDER_ID
-                        ? TID_OAUTH_LOGIN_BUTTON
-                        : testId(TID_OAUTH_LOGIN_BUTTON, provider.id)
-                    }
-                    onClick={() => void startTrackedLogin(provider.id)}
-                  >
-                    {renderOAuthProviderIcon(provider.id, "size-4")}
-                    <span className="min-w-0 truncate">
-                      {intl.formatMessage(
-                        { id: getLoginOAuthButtonMessageId(provider.id) },
-                        { provider: provider.displayName },
-                      )}
-                    </span>
-                    <LoginOAuthRegionTag providerId={provider.id} />
-                  </Button>
-                ))}
-                <Button
-                  variant="outline"
-                  className="h-10 w-full text-ui-base"
-                  size="lg"
-                  data-testid={TID_LOGIN_USE_API_KEY_BUTTON}
-                  onClick={() => {
-                    setLoginMode("apiKey");
-                  }}
-                >
-                  {intl.formatMessage({ id: "login.useApiKey" })}
-                </Button>
-              </div>
-            ) : null}
+          <div className="space-y-2">
+            {/* 订阅平台的 web 门户还没就绪，这里只放禁用占位：无链接、无点击行为，
+                等门户上线后再接真实入口，避免先给用户一个点了没反应的"可用"按钮。 */}
+            <Button variant="default" className="h-10 w-full text-ui-base" size="lg" disabled>
+              {intl.formatMessage({ id: "login.subscription.comingSoon" })}
+            </Button>
+            <Button
+              variant="outline"
+              className="h-10 w-full text-ui-base"
+              size="lg"
+              data-testid={TID_LOGIN_USE_API_KEY_BUTTON}
+              onClick={() => {
+                setLoginMode("apiKey");
+              }}
+            >
+              {intl.formatMessage({ id: "login.useApiKey" })}
+            </Button>
           </div>
         )}
 
@@ -483,65 +427,6 @@ function LoginPanelLogo() {
       <IdexalAboutLogo className="h-auto w-10" />
     </div>
   );
-}
-
-function getLoginOAuthButtonMessageId(providerId: string): string {
-  switch (providerId) {
-    case ZAI_PROVIDER_ID:
-      return "login.oauth.button.zai";
-    case BIGMODEL_PROVIDER_ID:
-      return "login.oauth.button.bigmodel";
-    default:
-      return "login.oauth.button";
-  }
-}
-
-function getLoginOAuthRegionTagMessageId(providerId: string): string | null {
-  switch (providerId) {
-    case ZAI_PROVIDER_ID:
-      return "login.oauth.regionTag.zai";
-    case BIGMODEL_PROVIDER_ID:
-      return "login.oauth.regionTag.bigmodel";
-    default:
-      return null;
-  }
-}
-
-function LoginOAuthRegionTag({ providerId }: { providerId: string }) {
-  const { intl } = useIdexalIntl();
-  const messageId = getLoginOAuthRegionTagMessageId(providerId);
-
-  if (!messageId) {
-    return null;
-  }
-
-  return (
-    <span className="ml-1 inline-flex h-5 shrink-0 items-center rounded-full border border-primary-foreground/30 px-2 text-ui-xs font-medium leading-none text-primary-foreground/60">
-      {intl.formatMessage({ id: messageId })}
-    </span>
-  );
-}
-
-function getProviderPriority(provider: OAuthProviderMeta): number {
-  switch (provider.id) {
-    // Windows 登录入口里 z.ai 入口需要固定排在最上面，
-    // 之前把 BigModel 设成更高优先级后，用户首屏会先看到次要入口。
-    // 这里直接调整排序权重，只改展示顺序，不影响 OAuth provider 的真实配置来源。
-    case ZAI_PROVIDER_ID:
-      return 0;
-    case BIGMODEL_PROVIDER_ID:
-      return 1;
-    default:
-      return 10 + provider.order;
-  }
-}
-
-function resolveVisibleLoginProviders(providers: OAuthProviderMeta[]): OAuthProviderMeta[] {
-  // ZAI / BigModel 现在共享 App 登录事实源，未登录时登录入口必须同时展示两个入口。
-  // 不能临时隐藏 BigModel，否则用户无法主动选择 BigModel 作为 active provider。
-  return [...providers].sort((left, right) => {
-    return getProviderPriority(left) - getProviderPriority(right);
-  });
 }
 
 function resolveLoginRetryProvider({

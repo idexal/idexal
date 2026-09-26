@@ -866,12 +866,7 @@ const enUS: Record<string, string> = {
   "login.description": "Connect your account to start using Idexal",
   "login.oauth.activeProviderHint":
     "Current active provider: {provider}. Signing in again replaces the current identity.",
-  "login.oauth.loadingProviders": "Loading account providers...",
-  "login.oauth.noProviders":
-    "No account providers are available right now. Please try again later.",
-  "login.oauth.button": "Continue with {provider}",
-  "login.oauth.button.zai": "Connect to Z.ai",
-  "login.oauth.button.bigmodel": "Connect to BigModel",
+  "login.subscription.comingSoon": "Subscriptions coming soon",
   "login.oauth.regionTag.zai": "Global",
   "login.oauth.regionTag.bigmodel": "CN",
   "login.oauth.waiting": "Waiting for {provider} authentication...",

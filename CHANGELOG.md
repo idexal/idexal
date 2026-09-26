@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.15.22 (2026-09-26)
+
+### Changes
+
+- **feat(ui):** 登录入口下线 Z.ai / BigModel 账号连接按钮，改为单个"订阅即将上线"占位
+  - 按产品决策：Idexal 现阶段用户自带 API key，走已内置的多家模型供应商；订阅平台的 web
+    门户尚未就绪，因此不对外提供账号 OAuth 入口。原来并排的 `Connect to Z.ai (Global)` 与
+    `Connect to BigModel (CN)` 两个按钮删除，原位替换为**一个禁用按钮** `Subscriptions coming soon`，
+    无链接、无 onClick、不发请求——避免先给用户一个"看着可点、点了没反应"的按钮。
+  - 文案进入应用全部语言：`Locale` 只有 `zh-CN` 与 `en-US`（`packages/shared/src/protocol.ts:75`），
+    新增 `login.subscription.comingSoon` 两份都写。这里必须人工对齐——`createIntl` 对缺失 key
+    只是回退成 key 字面量，**没有编译期校验**，漏一份不会报错、只会把 `login.subscription.comingSoon`
+    直接显示给用户。
+  - 同步清理随按钮一起失效的死代码与死文案：`LoginPanel` 的 provider 列表渲染、加载态、
+    "无可用登录提供方"告警，以及 `resolveVisibleLoginProviders`/`getProviderPriority`/
+    `getLoginOAuthButtonMessageId`/`LoginOAuthRegionTag` 四个私有辅助函数；删除
+    `login.oauth.{loadingProviders,noProviders,button,button.zai,button.bigmodel}` 与
+    已无引用方的 `TID_OAUTH_LOGIN_BUTTON`。
+  - **保留** `login.oauth.regionTag.*`：核验时发现 `packages/ui/src/botsUi.ts:72-74` 仍在读取这两个
+    key，只按 WelcomeScreen 的引用删除会打断另一处功能。同理保留 `useOAuth` 的
+    waiting/error/retry/cancel 状态机——`loginEntryRequest` 仍会从设置页发起指定 provider 的授权，
+    登录入口继续负责统一展示。删的是按钮，不是这条链路。
+  - 新增 `docs/login-entry.md` 固化产品规则与验收场景（AGENTS.md 要求先写 spec 再改行为）。
+  - 实测于隔离实例（`IDEXAL_DESKTOP_APPLICATION_NAME=Idexal QA` + 独立 userData/HOME + CDP 9232，
+    不触碰正在运行的 9229）：英文态按钮为 `Subscriptions coming soon`(disabled) +
+    `Use API key`，两枚 302×40；切到 `zh-CN` 重载后为 `订阅功能即将上线` + `使用 API key`，
+    `rawKeyLeak=false` 即未出现 key 字面量；`Connect to Z.ai`/`Connect to BigModel` 文本命中 0。
+    点击序列：点占位按钮面板无变化 → 点 `使用 API key` 进入表单（`apiKeyInput=true`，5 枚按钮）→
+    点 `取消` 回到两按钮面板；全程 `EXCEPTIONS 0`。
+  - 门禁：`pnpm typecheck` exit 0；`pnpm lint` 70 warnings / 0 errors（与改动前基线一致，无新增）；
+    `oxfmt` 4 个改动文件通过；`architecture-check --changed` violations 0 / new 0。
+
 ## 3.15.21 (2026-09-26)
 
 ### Changes
