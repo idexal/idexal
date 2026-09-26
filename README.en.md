@@ -20,6 +20,7 @@ Idexal is an AI coding workspace with desktop, browser, and terminal interfaces.
 
 ## Updates
 
+- 2026-9-26: Updated to Idexal v3.15.11, recording the measured mobile-web defect where the composer's Send button is clipped off-screen and unreachable at 390px, with two candidate fixes pending product alignment, plus the passing light-theme and onboarding walkthrough checks.
 - 2026-9-26: Updated to Idexal v3.15.10, adding the desktop cold-boot regression check for the 3.15.9 hook fix and recording that the Provider Runtime CDN refresh failure is an environment limit.
 - 2026-9-26: Updated to Idexal v3.15.9, fixing an OnboardingDialog subtree crash caused by a hook-count change when workspacePath resolves asynchronously on web, and removing internal wiring jargon from the browser tab title.
 - 2026-9-26: Updated to Idexal v3.15.8, fixing brand bitmaps disagreeing with the applied theme when App theme is System (white logo on a light page); bitmap choice now subscribes to the .dark class only.

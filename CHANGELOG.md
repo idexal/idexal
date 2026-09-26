@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.15.11 (2026-09-26)
+
+### Documentation
+
+- **docs:** 记录手机 Web 宽度下 composer 的 Send 按钮不可达，并补全浅色主题与引导流程复核
+  - 390×844 冷启动 Web 目标实测：侧栏展开占 195px，`.chat-composer-input-surface` 为
+    `x=216, width=271`（右边界 487）已越出视口，内层卡片 `overflow-hidden` 且
+    `documentElement.scrollWidth === 390`（无横向滚动可补救），于是 `Send`（`x=446..474`）、
+    模型选择器、`On` 与分支 chip 被裁到屏外且无法触达。链路为 `group/toolbar flex items-end gap-3`
+    不换行 + 右侧组 `shrink-0` + 内容列未约束 composer 宽度。属上游小屏适配缺失，非品牌改动引入；
+    两种修法（约束宽度并让工具栏收纳 / 窄断点自动收起侧栏为已有 CollapsedRail）取舍不同，
+    按仓库规则先与产品对齐，不擅自叠加兜底分支。
+  - 同轮复核通过：Settings → Appearance 切到 Light 后 `.dark` 移除、`theme-zai-light` 生效、
+    品牌位图为 `mark-light.png` 且 `data-v4-draft-logo="light"`（v3.15.8 的订阅修复在 Web 浅色路径同样成立）；
+    完整走完 OccupationOnboarding 三步直至主壳，全程无 hook 顺序告警、无错误边界接管，
+    即 v3.15.9 的修复在真实交互路径上成立。
+  - 记录一次自我纠正的假阳性：水印与 “Choose the app theme and…” 算出 7073px² 重叠，但后者属于叠在主壳之上的
+    Settings 面板，与下层草稿空态水印不在同一渲染层；关闭 Settings 后重测才得到上面可复现的结论。
+    做矩形相交前先确认两个盒子同层。
+
 ## 3.15.10 (2026-09-26)
 
 ### Documentation
