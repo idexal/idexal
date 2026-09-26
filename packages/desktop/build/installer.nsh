@@ -1,4 +1,66 @@
-!include nsDialogs.nsh
+﻿!include nsDialogs.nsh
+; ── 向导自定义文案的多语言表 ──────────────────────────────────────────────
+; 应用界面语言是阿拉伯语/英语/法语，向导里我们自己写的提示必须跟随同一套语言，
+; 否则英文用户会在一个只有报错是中文的安装流程里被卡住。
+!define IDEXAL_LANG_EN 1033
+!define IDEXAL_LANG_FR 1036
+!define IDEXAL_LANG_AR 1025
+
+LangString IdexalBlockTitle ${IDEXAL_LANG_EN} "Choose a different installation folder"
+LangString IdexalBlockTitle ${IDEXAL_LANG_FR} "Choisissez un autre dossier d'installation"
+LangString IdexalBlockTitle ${IDEXAL_LANG_AR} "اختر مجلد تثبيت مختلفًا"
+
+LangString IdexalBlockSubtitle ${IDEXAL_LANG_EN} "This folder or one of its subfolders contains an Idexal data folder"
+LangString IdexalBlockSubtitle ${IDEXAL_LANG_FR} "Ce dossier ou l'un de ses sous-dossiers contient un dossier de données Idexal"
+LangString IdexalBlockSubtitle ${IDEXAL_LANG_AR} "يحتوي هذا المجلد أو أحد مجلداته الفرعية على مجلد بيانات Idexal"
+
+LangString IdexalDataFound ${IDEXAL_LANG_EN} "An Idexal data folder (.idexal) was found in this location:"
+LangString IdexalDataFound ${IDEXAL_LANG_FR} "Un dossier de données Idexal (.idexal) a été trouvé ici :"
+LangString IdexalDataFound ${IDEXAL_LANG_AR} "تم العثور على مجلد بيانات Idexal (‏.idexal‏) في هذا الموقع:"
+
+LangString IdexalDataFoundHint ${IDEXAL_LANG_EN} "To keep your past sessions and settings from being removed by the installer, go back and pick another folder.$$
+$$
+This folder cannot be used."
+LangString IdexalDataFoundHint ${IDEXAL_LANG_FR} "Pour éviter que l'installateur supprime vos sessions et réglages, revenez en arrière et choisissez un autre dossier.$$
+$$
+Ce dossier ne peut pas être utilisé."
+LangString IdexalDataFoundHint ${IDEXAL_LANG_AR} "حتى لا يحذف المثبّت جلساتك وإعداداتك السابقة، ارجع إلى الخطوة السابقة واختر مجلدًا آخر.$$
+$$
+لا يمكن استخدام هذا المجلد."
+
+LangString IdexalPickAnother ${IDEXAL_LANG_EN} "Pick another folder"
+LangString IdexalPickAnother ${IDEXAL_LANG_FR} "Choisir un autre dossier"
+LangString IdexalPickAnother ${IDEXAL_LANG_AR} "اختر مجلدًا آخر"
+
+LangString IdexalBlockedTitle ${IDEXAL_LANG_EN} "Idexal data folder detected"
+LangString IdexalBlockedTitle ${IDEXAL_LANG_FR} "Dossier de données Idexal détecté"
+LangString IdexalBlockedTitle ${IDEXAL_LANG_AR} "تم العثور على مجلد بيانات Idexal"
+
+LangString IdexalBlockedBody ${IDEXAL_LANG_EN} "An Idexal data folder (.idexal) exists in this location, so installation has stopped.$$
+Please run the installer again and choose a different folder."
+LangString IdexalBlockedBody ${IDEXAL_LANG_FR} "Un dossier de données Idexal (.idexal) existe ici, l'installation est donc arrêtée.$$
+Veuillez relancer l'installateur et choisir un autre dossier."
+LangString IdexalBlockedBody ${IDEXAL_LANG_AR} "يوجد مجلد بيانات Idexal في هذا الموقع، لذلك تم إيقاف التثبيت.$$
+الرجاء إعادة تشغيل المثبّت واختيار مجلد مختلف."
+
+LangString IdexalDeleteOldFileFailed ${IDEXAL_LANG_EN} "Could not delete an old version file:"
+LangString IdexalDeleteOldFileFailed ${IDEXAL_LANG_FR} "Impossible de supprimer un fichier de la version précédente :"
+LangString IdexalDeleteOldFileFailed ${IDEXAL_LANG_AR} "تعذّر حذف ملف من الإصدار السابق:"
+
+LangString IdexalCleanupFailedTitle ${IDEXAL_LANG_EN} "Could not remove the previous version"
+LangString IdexalCleanupFailedTitle ${IDEXAL_LANG_FR} "Impossible de supprimer la version précédente"
+LangString IdexalCleanupFailedTitle ${IDEXAL_LANG_AR} "تعذّر إزالة الإصدار السابق"
+
+LangString IdexalCleanupFailedBody ${IDEXAL_LANG_EN} "Error code: $R0$$
+This is usually a file in use, insufficient permissions, or not enough disk space.$$
+Detailed log: ${IDEXAL_UNINSTALLER_LOG_PATH}"
+LangString IdexalCleanupFailedBody ${IDEXAL_LANG_FR} "Code d'erreur : $R0$$
+Il s'agit le plus souvent d'un fichier utilisé, d'autorisations insuffisantes ou d'un manque d'espace disque.$$
+Journal détaillé : ${IDEXAL_UNINSTALLER_LOG_PATH}"
+LangString IdexalCleanupFailedBody ${IDEXAL_LANG_AR} "رمز الخطأ: $R0$$
+السبب عادة ملف قيد الاستخدام أو صلاحيات غير كافية أو عدم كفاية مساحة القرص.$$
+السجل التفصيلي: ${IDEXAL_UNINSTALLER_LOG_PATH}"
+
 !include FileFunc.nsh
 
 !ifndef IDEXAL_INSTALLER_DEFAULT_LOG_PATH
@@ -114,7 +176,7 @@
       !ifdef BUILD_UNINSTALLER
         !insertmacro IdexalReportUninstallerStage "cleanup-failed reason=permission-or-disk-space"
       !endif
-      Abort "无法删除旧版本文件：$INSTDIR\$R1"
+      Abort "$(IdexalDeleteOldFileFailed) $INSTDIR\$R1"
 
     idexalManifestClose:
       FileClose $R0
@@ -298,7 +360,7 @@
       SetDetailsPrint listonly
       DetailPrint "Idexal: cleanup-failed exit-code=$R0"
       Call IdexalShowUninstallerCleanupDetails
-      MessageBox MB_OK|MB_ICONSTOP "旧版本清理失败（错误码 $R0）。可能是文件被占用、权限不足或磁盘空间不足。详细日志：${IDEXAL_UNINSTALLER_LOG_PATH}" /SD IDOK
+      MessageBox MB_OK|MB_ICONSTOP "$(IdexalCleanupFailedTitle)$\r$\n$(IdexalCleanupFailedBody)" /SD IDOK
       SetErrorLevel 2
       Quit
     ${endif}
@@ -526,28 +588,28 @@
     idexalInstallDirDataBlockFound:
       IfSilent idexalInstallDirDataBlockSilent
 
-      !insertmacro MUI_HEADER_TEXT "需要修改安装目录" "当前安装目录或其子目录包含 Idexal 数据目录"
+      !insertmacro MUI_HEADER_TEXT "$(IdexalBlockTitle)" "$(IdexalBlockSubtitle)"
       nsDialogs::Create 1018
       Pop $0
       StrCmp $0 error idexalInstallDirDataBlockDialogFailed 0
 
-      ${NSD_CreateLabel} 0u 0u 300u 44u "检测到该安装目录或其子目录中存在 .idexal 数据目录：$\r$\n$R2"
+      ${NSD_CreateLabel} 0u 0u 300u 44u "$(IdexalDataFound)$\r$\n$R2"
       Pop $1
-      ${NSD_CreateLabel} 0u 54u 300u 70u "为避免历史会话和配置被安装器清理，请返回上一步选择其他安装目录。$\r$\n$\r$\n当前目录不能继续安装。"
+      ${NSD_CreateLabel} 0u 54u 300u 70u "$(IdexalDataFoundHint)"
       Pop $1
 
       GetDlgItem $1 $HWNDPARENT 1
       EnableWindow $1 0
       GetDlgItem $1 $HWNDPARENT 3
       EnableWindow $1 1
-      SendMessage $1 ${WM_SETTEXT} 0 "STR:重选目录"
+      SendMessage $1 ${WM_SETTEXT} 0 "STR:$(IdexalPickAnother)"
       Call IdexalResizeInstallDirBackButton
 
       nsDialogs::Show
       Return
 
     idexalInstallDirDataBlockDialogFailed:
-      MessageBox MB_OK|MB_ICONSTOP "检测到安装目录或其子目录中存在 .idexal 数据目录，安装已停止。请重新运行安装器并选择其他安装目录。"
+      MessageBox MB_OK|MB_ICONSTOP "$(IdexalBlockedTitle)$\r$\n$(IdexalBlockedBody)"
       SetErrorLevel 1
       Quit
 

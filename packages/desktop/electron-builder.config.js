@@ -754,6 +754,21 @@ export default {
     installerIcon: "build/icon_installer.ico",
     uninstallerIcon: "build/icon_installer.ico",
     installerHeaderIcon: "build/icon_installer.ico",
+    // 向导位图：MUI2 要求 header 150x57、sidebar 164x314，尺寸不符会在 NSIS 编译期直接失败。
+    installerHeader: "build/installerHeader.bmp",
+    installerSidebar: "build/installerSidebar.bmp",
+    // 应用界面语言是阿/英/法，向导必须同步；缺省只有 en_US 会让阿语用户看到英文安装流程。
+    installerLanguages: ["en_US", "fr_FR", "ar_SA"],
+    // 开始菜单归入应用分组，卸载面板与快捷方式用稳定显示名，避免用户看到内部包名。
+    menuCategory: true,
+    shortcutName: desktopProductIdentity.productName,
+    uninstallDisplayName: desktopProductIdentity.productName,
+    // 卸载只删程序文件，不清用户数据：安装器本身已有"安装目录含 .idexal 即阻断"的保护，
+    // 反过来在卸载时清空 userData 会让用户以为卸载会毁掉会话历史而不敢卸载。
+    deleteAppDataOnUninstall: false,
+    createDesktopShortcut: true,
+    createStartMenuShortcut: true,
+    runAfterFinish: true,
   },
   detectUpdateChannel: false,
   publish: {
