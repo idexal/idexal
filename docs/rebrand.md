@@ -232,6 +232,18 @@
   必然报 `ws://…/ws` 握手失败、`Unexpected response code: 200`——静态服务器把 `/ws` 按 SPA 回退
   返回了 index.html。属测试环境缺后端，不是产品问题。
 
+### 官方站点其实已上线：纠正一条被我引用了三轮的前提（v3.15.21）
+
+- 前几轮把"`idexal.com` 尚未部署，所以不能替换人点击的链接"写进了结论。本轮直接探测发现该前提是错的：
+  `https://idexal.com` 返回 **200**，标题 `Idexal — AI products that build with you`，DNS 解析到 Cloudflare。
+  误判来自一次 `curl -w %{http_code}` 输出 `000` 的抖动，我没有复测就把它当成了"站点不可达"的事实。
+- 处置：公开分享页的下载入口已切到 `https://idexal.com`（根路径，因为 `/download` 实测 404，
+  且源码既有注释说明首页本身就是下载入口）；应用内"文档"菜单**保持不动**，
+  因为官方站目前只有根路径——`/docs`、`/documentation`、`/guide`、`/guides`、`/handbook`、
+  `/blog`、`/help`、`/faq` 全部 404，切换只会制造死链。
+- 教训：一条"外部条件不满足"的结论必须用可复现的探测支撑，单次网络非零返回不等于对方不可用；
+  尤其当我打算据此连续几轮不做某件事时，更应复测或换协议/换重试再确认。
+
 ## 已知非品牌问题（记录以免被当成改名引入）
 
 - 实测（v3.15.3，CDP 直连运行中的桌面应用）：应用主题为深色时 `documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)').matches` 仍为 `false`（系统为浅色）。因此仓库里全部 122 处 `dark:` 工具类在桌面端启动阶段和 Web 端都跟系统偏好走，而不是跟应用主题走：这是上游遗留的主题机制问题，不属于品牌重构，本版本只把品牌位图的选图改成读 store 主题以消除“标志看不见”的后果，没有全局改写 `dark` 变体语义（那会影响所有 shadcn 组件的既有表现，需要单独设计与验收）。

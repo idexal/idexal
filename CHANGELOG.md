@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.15.21 (2026-09-26)
+
+### Changes
+
+- **feat(web):** 公开分享页的下载入口切到官方域名 idexal.com
+  - 此前连续几轮把"官网尚未部署"当作不改的理由记录在案，这个前提是错的。实测
+    `https://idexal.com` 返回 **200**，页面标题为 `Idexal — AI products that build with you`，
+    域名解析到 Cloudflare。之前的探测输出 `http=000` 是一次请求抖动，不是站点不可达。
+  - 因此把 `ConversationShareLandingPage.tsx` 的 `IDEXAL_DOWNLOAD_URL` 由上游域名改为
+    `https://idexal.com`。仍指根路径而非 `/download`：实测 `/download` 返回 404，
+    与该文件既有注释"站点首页本身就是下载入口"一致。
+  - 文档入口**不改**并写明代价：`productDocs.ts` 仍指向上游文档站，因为官方站目前只有根路径可用——
+    实测 `/docs`、`/docs/`、`/documentation`、`/guide`、`/guides`、`/handbook`、`/blog`、`/help`、`/faq`
+    全部 404，换成 `idexal.com/docs` 会把可用链接变成死链。已在源码注释里记下这组探测结果与切换条件。
+  - 同时完成对外身份字符串的逐项核验：`contact@idexal.com` 确认存在于 `README.md`(2)、
+    `README.en.md`(2)、`NOTICE.md`(1)、`packages/desktop/electron-builder.config.js`(2)，
+    这些文件里没有任何非 idexal 邮箱；`THIRD-PARTY-NOTICES.md` 与 `third-party/**` 下的第三方
+    版权邮箱属法律署名，按 Apache-2.0 原样保留、不得改写。
+
+## 3.15.20 (2026-09-26)
+
 ## 3.15.20 (2026-09-26)
 
 ### Documentation

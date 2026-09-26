@@ -88,7 +88,9 @@ interface Copy {
 }
 
 // 站点首页本身就是下载入口，没有 /download 这个 path（单独的下载链接会 404）。
-const IDEXAL_DOWNLOAD_URL = "https://zcode.z.ai";
+// 官方域名已上线（实测 https://idexal.com 返回 200，标题为 Idexal 官方站），因此对外下载入口
+// 从上游域名切到官方域名；仍指根路径而不是 /download，与上面那条既有约束一致。
+const IDEXAL_DOWNLOAD_URL = "https://idexal.com";
 
 const COPY: Record<ConversationShareLandingLocale, Copy> = {
   "zh-CN": {
