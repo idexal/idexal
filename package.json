@@ -1,6 +1,6 @@
 {
   "name": "idexal",
-  "version": "3.16.6",
+  "version": "3.16.7",
   "private": true,
   "homepage": "https://idexal.com",
   "bugs": {
@@ -24,7 +24,7 @@
     "prepare:desktop-runtime": "pnpm --filter @idexal/desktop prepare:runtime-assets",
     "dep:graph": "node scripts/dependency-graph.mjs",
     "dep:refs": "node scripts/dep-refs.mjs",
-    "verify:pre-push": "pnpm run lint && pnpm run architecture:check -- --changed",
+    "verify:pre-push": "pnpm run lint && pnpm run architecture:check -- --changed && node scripts/check-i18n.mjs",
     "build": "pnpm -r build",
     "build:desktop-agent:bytecode": "node scripts/build-desktop-agent-bytecode.mjs",
     "build:idexal": "node scripts/build-idexal.mjs",

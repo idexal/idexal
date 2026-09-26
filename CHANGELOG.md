@@ -1,5 +1,42 @@
 # Changelog
 
+## 3.16.7 (2026-09-26)
+
+### Changes
+
+- **feat(i18n):** 语言表一致性检查落地为仓库门禁，挂进 `pnpm verify:pre-push`
+  - 新增 `scripts/check-i18n.mjs`（`coverage` 子命令单看覆盖率），`verify:pre-push` 变为
+    `lint && architecture:check --changed && node scripts/check-i18n.mjs`。
+    拦六项：**重复键**、**孤儿键**（译文里出现 `en-US` 没有的键）、**译文空值**、
+    **`{placeholder}` 与英文不一致**、**`ar`/`fr` 覆盖键集不对称**、**阿语行混入 CJK**。
+    占位符那条做成拦截而非提示：漏一个 `{time}` 会把字面量渲染给用户，而类型检查看不见它。
+  - **为什么不再用正则数键**：语言表里存在含连字符与非 ASCII 的键
+    （`sidebar.settings.locale.en-US`、`ssh.assetInstallMode.local-download-upload`、
+    `feedback.severity.P1-高.label`），字符集 `[A-Za-z0-9_.]` 会静默跳过它们——
+    本次前三版发布的覆盖率（5859 / 208 / 317 / 371）正是这么算错的，真实是 **5872 / 386**。
+    新脚本在 `vm` 沙箱里把语言表当模块求值再读真实键集，并**自检解析器有没有吃到那些别扭的键**：
+    一个都没吃到就判定失败，因为那时"通过"和"根本没看"长得一样。
+  - **门禁本身被验证有判别力**，不是恒绿：逐项注入真实缺陷后全部 exit 1 ——
+    删掉一个 ar 键 → 报 `fr 独有键`；删掉 `{used}/{total}` → 报占位符不匹配；
+    往阿语句子里塞 `言語` → 报混入 CJK；造一个 `totally.made.up.key` → 报孤儿键；
+    逐项还原后恢复 exit 0，`ar.ts` 与 HEAD 逐字节相同（sha256 一致）。
+  - 有意**不**做硬门禁的一项：值里残留未译英文词的启发式扫描。
+    法语合法同源词（`session`、`Menu`、`Total`、`Quota`、`Mention`）在约 380 键里产生 38 条误报，
+    做成必过检查只会让人把它关掉。它留在写作流程里当辅助扫描。
+    分界是：机器能判对错的进 CI，需要人判断的不进。
+  - `docs/i18n-rtl.md` 与提案 §1.3 同步为"已完成"，并写清命令名、六项内容与两条实现约束。
+  - 顺带修好被这次整理打断的写作工具：`apply-translations.mjs` 原先引用已删除的
+    `locale-loader.mjs`，改为内置同一套 `vm` 求值；实测它现在能把
+    `sidebar.settings.locale.en-US` 认成"已存在"而跳过——旧的跳过连字符键的逻辑会把
+    这个键**再插一遍**造成重复。
+  - 记录一条待确认事实（本次不改动）：`en-US` 有 4 个空值，其中
+    `automations.form.schedule.minuteSuffix` 与 `…fromPriceSuffix` 像是刻意留空的后缀，
+    而 `chat.empty.description.afterWorkspace` 与 `feedback.submit.bug.supplementalDescription`
+    需要产品确认是否本该有文案。
+  - 门禁：`node scripts/check-i18n.mjs` 通过；`pnpm typecheck` exit 0；
+    `pnpm lint` 70 warnings / 0 errors；`pnpm fmt:check` 通过；
+    `architecture:check --changed` violations 0 / new 0；`licenses check` 通过。
+
 ## 3.16.6 (2026-09-26)
 
 ### Changes
