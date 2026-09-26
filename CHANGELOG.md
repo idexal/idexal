@@ -1,5 +1,57 @@
 # Changelog
 
+## 3.16.1 (2026-09-26)
+
+### Changes
+
+- **feat(desktop):** Windows 向导安装器改为品牌化三语并补齐安装体验配置（提交于 `f9c96fb`，本次一并计入发布记录）
+  - 界面语言切到阿/英/法后，NSIS 向导里我们自己写的提示仍是硬编码中文：安装目录含 `.idexal`
+    数据时的阻断页、"重选目录"按钮、旧版本清理失败与删除失败提示。英/法用户会卡在一个
+    只有报错是中文的流程里。改为 10 个 LangString 键 × 3 语言（共 30 条），全部经 `$(...)` 引用。
+  - 两个非显然的实现约束，均已实测：语言常量必须用数字 ID（1033/1036/1025）而非 `${LANG_ENGLISH}`——
+    后者要等 `MUI_LANGUAGE` 展开才有定义，而 `installer.nsh` 的展开时机由 electron-builder 决定，
+    实测用 `${LANG_ENGLISH}` 会被 `makensis -WX` 判为错误；文件必须带 **UTF-8 BOM**，否则
+    `makensis` 按系统代码页读取（实测无 BOM 报 `(ACP)`、有 BOM 报 `(UTF8)`），阿拉伯语会静默乱码。
+  - 机制用独立夹具在 electron-builder 自带的 NSIS 3.0.4.1 上以 `-WX` 编译通过（三语言 +
+    nsDialogs 页面引用自定义 LangString）。**与 electron-builder 生成模板的整包集成编译尚未执行**：
+    那需要整包构建，而构建会删除当前运行中的开发实例所依赖的 `out/` 目录。
+  - 补齐向导配置：`installerLanguages` 三语、品牌化 header/sidebar 位图（150×57 与 164×314，
+    MUI2 的硬性尺寸，由 `logo_idexal` 生成并断言笔画与底色亮度差）、`menuCategory`、
+    稳定的 `shortcutName` / `uninstallDisplayName`、`deleteAppDataOnUninstall=false`
+    （卸载只删程序文件，不碰用户数据）。
+  - 生成位图时修正了一处自己的错误假设：`dark_*` / `light_*` 是按**目标背景**命名
+    （`dark_*` 是浅色笔画，用于深底），第一版把两者用反，产出的图在各自底色上几乎不可见却
+    "生成成功"；生成脚本因此改为对素材 alpha 加权亮度做断言，而不是靠人眼盯预览。
+    顺带发现并纠正了断言本身的缺陷：最初测的是合成后画布（全像素不透明，恒通过），
+    改测源标志的 alpha 加权亮度后才有判别力。
+- **fix(i18n):** 补齐阿/法双语的应用外壳文案，并撤回 v3.16.0 中一句未经实测的判断
+  - `locales/ar.ts` 与 `locales/fr.ts` 各从 59 键增至 **208 键**（净增 149），两份文件的键集
+    经 `diff` 复核**完全一致**，不会出现在阿语里有条目、法语里回退英文的不对称覆盖。
+  - 覆盖范围为常驻可见外壳：`workspaceSidebar.*`（44）、`sidebar.*`（51）、`titleBar.*`（21）、
+    `common.*`（16）、`app.*`（5）、`chat.*`（5）、`taskList.*`（3）、`workspace.*`（2）、
+    `webRemoteControl.*`（2）与 `taskGroup.*` / `offPeak.*` / `mode.*` / `locale.*` /
+    `commandCenter.*` / `automations.*` 各 1。
+  - **撤回上一版的错误结论**：v3.16.0 的 changelog 与 README 写着"Tailwind 物理工具类不认 `dir`，
+    ≥400 处 / 197 文件 ⇒ 部分组件的内外边距与绝对定位仍按 LTR 摆放"。那句是从**计数**推断的，
+    不是观察来的。对同一视口分别以 `en-US` 与 `ar` 实测几何后，外壳已经正确镜像：侧栏
+    `x=936..1200`（从右起）、发送按钮落到左侧、唯一一处"越界"是本来就停在画布外的抽屉面板。
+    据此把该节改写为"待逐组件复核"，而不是"已知的镜像缺陷"。物理类不自动镜像这一条**仍然成立**，
+    但它构成的是未验证区域，不是已确认的故障。
+  - 真正的缺陷是**翻译覆盖率**而非排版方向。选择待译键的方式也随之纠正：按前缀（`sidebar.` 等）
+    批量取键会漏掉界面上真实可见的文案——"New task""Search""Automations" 分别挂在
+    `taskList.*` / `commandCenter.*` / `workspace.*` 下。改用语义反查（按英文值找键）加 DOM 溯源
+    （`#task-new-button` → `NewTaskButtonGroup.tsx:40` → `taskList.newThread`）逐条补齐。
+  - 实测（隔离实例，独立 app name + userData/HOME + CDP 9234，未触碰用户正在使用的 9229）：
+    阿语态 `dir === "rtl"`、`lang === "ar"`，`مهمة جديدة / بحث / الأتمتة / متج…` 等外壳标签全部为阿语，
+    输入框占位为 `اسأل Idexal أي شيء`，**可见英文残留计数为 0**。
+  - 覆盖率的诚实数字：`en-US` 共 **5859** 键，故 ar/fr 覆盖率为 **208 / 5859 ≈ 3.6%**；其余仍走
+    英文回退链（不会泄漏 key）。未译大头是 `settings`（约 1847）与 `chat`（约 1343）。
+    `PPT Creation` / `Error Fix` / `Weekly Summary` 一类建议芯片由服务端下发文案，客户端无法翻译，
+    需要服务端支持或在前端做键映射，另行处理。
+  - 门禁：`pnpm typecheck` exit 0；`pnpm lint` 70 warnings / 0 errors（与既有基线一致，未新增）；
+    `pnpm fmt:check` 通过；`architecture:check --changed` violations 0。本次为纯文案表变更，
+    未触及桌面子进程代码，故未重复启动实例。
+
 ## 3.16.0 (2026-09-26)
 
 ### Changes
@@ -50,6 +102,8 @@
     分布在 197 个文件，不会自动镜像。当前状态是"阿拉伯语可读、文本方向正确"，
     但部分组件的间距与绝对定位仍按 LTR 摆放。改为逻辑属性并逐组件验收是独立一次工程，
     本次不声称"完整 RTL"。
+    （**该判断已在 3.16.1 撤回**：末句是从计数推断的，未经观察；同视口几何实测显示外壳已正确镜像，
+    真实缺口是翻译覆盖率。计数本身仍然成立，但它指向的是未复核区域而非已知缺陷。）
 
 ## 3.15.22 (2026-09-26)
 
