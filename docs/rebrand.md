@@ -182,6 +182,26 @@
   `zcode|z-code` 与 `zcode|z-code|z\.ai|智谱` 两个模式给出的文件数差异巨大，因为 Z.ai / BigModel
   是本应用支持的**第三方模型供应商**，与旧品牌无关；把两者混在一个计数里会得出“改名没做完”的错误结论。
 
+### 标签页图标取错变体（v3.15.18 修复）
+
+品牌位图全部换完后，Web 端标签页图标仍是唯一“看着不对但说不出为什么”的地方，实测确认是真缺陷。
+
+- 现象与根因：`packages/web/index.html` 内嵌的 32×32 base64 图标取自官方 **light** 变体
+  （深色笔画 + 透明底），而该文件自己声明 `<meta name="color-scheme" content="dark" />`、
+  `theme-color #161616`、脚本里 `DEFAULT_THEME = "zai-dark"`，即标签栏默认深色。深色笔画落在深色标签栏上，
+  标志的白色主笔画又不在该变体里，于是只剩蓝色部件，视觉上像标志损坏。
+- 定位手法（不要靠肉眼猜）：把 base64 解码，与 `logo_idexal/dark_icon_idexal.png`、
+  `light_icon_idexal.png` 裁到同一 alpha 外接框、缩到同尺寸、合成到同一底色做像素比对，
+  再并排渲染成一张对照图。**必须看图**：平均亮度会忽略 alpha，单看数字会误判（本轮 dark 变体
+  平均亮度反而高于 light 变体，因为它的白色笔画面积更大）。
+- 修复：改成两条带 `media="(prefers-color-scheme: dark|light)"` 的 `<link rel="icon">`，
+  分别用官方成对提供的两个变体。这是用既有资产做既有用途，没有新造品牌样式。
+- 复核：从文件回读两条链接的载荷并重新比对，`media=dark` 对应 dark 变体、`media=light` 对应 light 变体。
+- 残余限制（明确记录）：`prefers-color-scheme` 跟**系统**设置，标签栏底色跟**应用内** store 主题
+  （脚本写 `documentElement.style.colorScheme`），两者可不一致；`public/favicon.ico` 属浏览器兜底请求，
+  无法用 media query 分流，已统一为 dark 变体以匹配默认深色主题。要与主题彻底解耦，需给标志加自有
+  深色圆角底板（即应用图标那种形态），属品牌样式决策，先定方案再改。
+
 ## 已知非品牌问题（记录以免被当成改名引入）
 
 - 实测（v3.15.3，CDP 直连运行中的桌面应用）：应用主题为深色时 `documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)').matches` 仍为 `false`（系统为浅色）。因此仓库里全部 122 处 `dark:` 工具类在桌面端启动阶段和 Web 端都跟系统偏好走，而不是跟应用主题走：这是上游遗留的主题机制问题，不属于品牌重构，本版本只把品牌位图的选图改成读 store 主题以消除“标志看不见”的后果，没有全局改写 `dark` 变体语义（那会影响所有 shadcn 组件的既有表现，需要单独设计与验收）。

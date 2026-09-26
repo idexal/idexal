@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.15.18 (2026-09-26)
+
+### Bug Fixes
+
+- **fix(web):** 标签页图标改用与配色匹配的官方变体，修掉标志主笔画在深色标签栏下看不清
+  - 缺陷：`packages/web/index.html` 内嵌的 32×32 图标取自官方 **light** 变体（深色笔画、透明底），
+    而本应用声明 `<meta name="color-scheme" content="dark" />`、`theme-color #161616`、
+    `DEFAULT_THEME = "zai-dark"`，标签栏默认即为深色，于是标志的白色对应笔画缺失、主笔画与背景同化，
+    标签页上只剩蓝色部件，读起来像一个坏掉的标志。
+  - 判据不是靠肉眼猜：把内嵌 base64 解码后与 `logo_idexal/dark_icon_idexal.png`、
+    `light_icon_idexal.png` 同尺寸合成到同一底色做像素比对，并排渲染确认现用图标缺的正是 dark 变体
+    里那条白色笔画，与 light 变体一致。
+  - 修复：改为两条带 `media="(prefers-color-scheme: dark|light)"` 的 `<link rel="icon">`，
+    分别取官方 dark 与 light 两个变体——两个变体本就是为此成对提供的，不新造品牌样式。
+    生成时先按 alpha 外接框裁掉留白再等比缩到 32×32，避免小尺寸下标志被四周透明边距稀释。
+  - 验证：从**文件**而非变量回读两条链接的载荷，与两个官方变体做同底色差值比对，
+    `media=dark` 命中 dark 变体、`media=light` 命中 light 变体，均 OK；`pnpm fmt:check` 通过、
+    oxlint 70 warnings / 0 errors、`pnpm typecheck` 退出码 0 且无 `error TS`、architecture:check 0 违规。
+  - 已知残余限制（记录不掩盖）：`prefers-color-scheme` 跟随**系统**设置，而标签栏底色由脚本按
+    **应用内** store 主题写入 `documentElement.style.colorScheme`，两者可不一致；
+    `packages/web/public/favicon.ico` 是浏览器兜底请求、无法用 media query 选择，已统一改为 dark 变体
+    以匹配应用默认深色。彻底与主题无关的做法是给标志加自有底板（应用图标那种深色圆角方块），
+    但那属于品牌样式决策，需先定方案再实施。
+
 ## 3.15.17 (2026-09-26)
 
 ### Documentation
