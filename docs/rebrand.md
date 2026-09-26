@@ -71,3 +71,12 @@
 3. `pnpm dev:desktop` 可启动，桌面窗口标题与设置页显示 Idexal。
 4. 对外身份字符串一致：全仓搜索历史占位邮箱（`dev@` + 本站域名）无命中；官方联系邮箱在 `README.md`、`README.en.md`、`NOTICE.md` 与 `packages/desktop/electron-builder.config.js` 中均为 `contact@idexal.com`。
 5. 版本号一致：发行元数据只有一个来源。根 `package.json` 的 `version` 经 `packages/desktop/scripts/build-metadata.mjs` 得出 `appVersion`，再注入 `__IDEXAL_VERSION__` 与 electron-builder `extraMetadata.version`；源码中不另写版本常量。`apps/idexal-cli` 用自身 `.release-it.json` 独立发版，不参与桌面版本对齐。
+
+6. 品牌视觉落地以生产构建为证：在 `packages/desktop` 执行 `pnpm exec vite build` 后，`out/renderer/assets/` 必须出现带哈希的 `mark-light-*.png` 与 `mark-dark-*.png`，且被 JS chunk 引用；深浅两套 wordmark（`logo-light-*.png` / `logo-dark-*.png`）目前只被 `IdexalWordmarkLogo` 引用，而该组件在上游就没有调用方，因此会被 tree-shaking 从产物中移除。wordmark 当前的实际落点是 README 双语横幅与 macOS DMG 背景；若要在应用内使用，需要先确定版式落点（登录页、About 或侧栏属于 DESIGN.md 的设计决策），不能为消除死代码而临时塞进方形 mark 槽位。
+
+## 已知非品牌问题（记录以免被当成改名引入）
+
+- `pnpm dev:web` 在 Windows 上因 `packages/server` 的 `--onSuccess` 使用单引号而失败（cmd.exe 不识别单引号），已在 3.15.1 改为双引号。
+- About 窗口以 `data:text/html` 加载且 CSP 为 `img-src data:`，无法引用打包后的图片文件，因此其品牌标志以内联 data URI 提供，见 `packages/desktop/src/main/aboutWindowLogo.ts`。
+- 未登录时 `idexal-agent.subscribeSessionsIndexV4` 返回 'Idexal Agent runtime is not running.' 属预期守卫：Agent 运行时在鉴权并挂载工作区之后才启动。
+- 桌面专属通道 `window-controller` 在 Web 目标中会超时，属平台差异，与品牌无关。

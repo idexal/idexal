@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.15.2 (2026-09-26)
+
+### Documentation
+
+- **rebrand:** 补充品牌视觉验收口径与已知非品牌问题
+  - 新增验收项 6：以 `pnpm exec vite build` 的产物为证，要求 `mark-light-*.png` / `mark-dark-*.png` 带哈希落盘并被 JS chunk 引用。
+  - 记录实测缺口：wordmark 两套 PNG 仅被 `IdexalWordmarkLogo` 引用，而该组件上游即无调用方，会被 tree-shaking 移出产物；其在项目内的实际落点是 README 双语横幅与 macOS DMG 背景，应用内版式落点属 DESIGN.md 的设计决策。
+  - 新增「已知非品牌问题」小节，登记 3.15.1 修复的 Windows `dev:web` 引号问题、About 窗口 CSP 只能内联 data URI 的约束、未登录时 Agent 运行时守卫属预期、以及 `window-controller` 通道在 Web 目标超时属平台差异。
+
 ## 3.15.1 (2026-09-26)
 
 ### Bug Fixes

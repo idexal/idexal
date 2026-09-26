@@ -20,6 +20,7 @@ Idexal 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Ag
 
 ## 更新
 
+- 2026-9-26：更新至 Idexal v3.15.2 版本，补充品牌视觉验收口径与已知非品牌问题说明。
 - 2026-9-26：更新至 Idexal v3.15.1 版本，修复 Windows 下 `pnpm dev:web` 因 shell 引号差异无法启动的问题。
 - 2026-9-26：更新至 Idexal v3.15.0 版本，完成从上游 ZCode 到 Idexal 的完整品牌重构。完整记录见 [CHANGELOG.md](CHANGELOG.md)。
 - 2026-9-23：更新至 Idexal v3.14.3 版本。
