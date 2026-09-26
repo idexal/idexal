@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.16.3 (2026-09-26)
+
+### Changes
+
+- **feat(i18n):** 翻译输入框与 @ 引用面板，覆盖率增至 371 / 5859 键
+  - `ar` / `fr` 各从 317 键增至 **371 键**（净增 54），覆盖会话主视图的常驻与高频界面：
+    输入框提示与拖拽提示、`@` 引用面板的全部 6 个分类（文件 / 附加组件 / 技能 / 会话 /
+    白板 / 加载中）及其空态与搜索提示、错误横幅（复制、展开、重试、上报、无可用模型）、
+    上下文用量弹层、推理级别选择、配额重置提醒、连接态文案。
+  - 沿用 3.16.2 的取键方式并把它做成通用脚本：扫组件里真实的 `id / titleId / descriptionId /
+labelId / messageId` 字面量，**只挑 `en-US` 里有而 `ar.ts` 还没有的**，因此不会重复劳动、
+    也不会译已经不渲染的键。
+  - 把上一版学到的"键补齐 ≠ 值正确"变成固定动作：新批次写完后立刻跑值级扫描。
+    本次 9 条命中全部是法语同源词或刻意保留的技术名（`Sessions`、`Mention`、`Sources`、
+    `cache`、`conversations`、`Coding`），无漏译；上一版那三条真缺陷正是这套扫描抓出来的。
+  - 校验结果：`ar`/`fr` 键集双向差集 0、孤儿键 0、重复键 0；每条值的 `{placeholder}` 集合与
+    英文逐字一致（0 处不匹配），且该校验的反向探针仍然可判别。
+  - **仍未实跑渲染**：与 3.16.2 同一原因——再起一个 dev 实例会触发 `@idexal/desktop` 的
+    `pre-dev`，`rmSync` 掉用户实例正在被 `tsup --watch` 写入的 `packages/desktop/out`。
+    用户 `:9229` 实例本次全程未被触碰（收尾复查仍为 200）。
+  - 门禁：`pnpm typecheck` exit 0；`pnpm lint` 70 warnings / 0 errors；`pnpm fmt:check` 通过；
+    `architecture:check --changed` violations 0；`licenses.mjs check` 通过。
+
 ## 3.16.2 (2026-09-26)
 
 ### Changes
