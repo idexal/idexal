@@ -6,20 +6,23 @@
     <meta name="theme-color" content="#161616" />
     <meta name="color-scheme" content="dark" />
     <!-- Chrome dev 下可能不发 favicon 网络请求；内嵌小尺寸 App 图标，避免标签页回退到默认图标。-->
-    <!-- 标签页图标按系统配色取官方 dark / light 两个变体：白色笔画版用于深色标签栏，
-         深色笔画版用于浅色标签栏，避免任一模式下标志主笔画与背景同化而看不清。-->
+    <!-- 官方成对提供 dark / light 两个标志变体：深色笔画版用于浅色标签栏，白色笔画版用于深色标签栏。
+         选择必须由**应用主题**决定而不是 media 查询：标签栏底色来自下面脚本写入的
+         documentElement.style.colorScheme，而 prefers-color-scheme 跟的是**系统**设置，
+         两者可以相反（实测 OS 浅色 + 应用默认深色时，media 方案会选中深色笔画版放到深色标签栏上，
+         等于没修）。这里只声明两个候选，由脚本按最终主题删掉不该生效的那一个。-->
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      media="(prefers-color-scheme: dark)"
+      data-idexal-theme="dark"
       href="data:image/png;base64,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"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      media="(prefers-color-scheme: light)"
+      data-idexal-theme="light"
       href="data:image/png;base64,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"
     />
     <title>Idexal</title>
@@ -48,6 +51,12 @@
             .querySelector('meta[name="theme-color"]')
             ?.setAttribute("content", BROWSER_THEME_COLORS[theme]);
           document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", theme);
+          // 标签页图标跟随同一份主题结论，保证笔画颜色与标签栏底色始终相反。
+          for (const iconLink of document.querySelectorAll("link[data-idexal-theme]")) {
+            if (iconLink.getAttribute("data-idexal-theme") !== theme) {
+              iconLink.remove();
+            }
+          }
         };
 
         try {

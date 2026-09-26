@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.15.19 (2026-09-26)
+
+### Bug Fixes
+
+- **fix(web):** 标签页图标改由**应用主题**选择，撤回 v3.15.18 的 media 查询方案（实测无效）
+  - 补做 v3.15.18 明确承认没做的端到端验证：跑 `pnpm --filter @idexal/web build` 出生产包，
+    用静态服务器托管后在真实 Chromium 里加载，读 `matchMedia` 与实际存活的 `link[rel=icon]`。
+  - 结果推翻上一版的修法：本机系统为浅色而应用默认深色（`html.class = dark theme-zai-dark`、
+    脚本写入 `colorScheme: dark`，标签栏因此是深色），而 `prefers-color-scheme` 跟的是**系统**设置，
+    浏览器于是选中 light 变体（深色笔画）放到深色标签栏上——**等于没修**。
+    这不是边缘情况，而是本应用默认主题下的常态。
+  - 修复：两个变体仍作为 `<link data-idexal-theme="dark|light">` 声明，但不再用 media 属性，
+    改由首屏主题脚本（原本就已解析出 `finalTheme` 并同步 `theme-color` 与 `colorScheme`）
+    按同一结论移除不该生效的那条，使笔画颜色始终与标签栏底色相反。
+  - 端到端复核两个方向：应用深色时只剩 `data-idexal-theme=dark`、不透明像素平均亮度 197（白色笔画）；
+    置 `localStorage['idexal-theme']='light'` 重载后只剩 `=light`、亮度 70.9（深色笔画），
+    且 `theme-color` 同步为 `#f8f8f8`，`#root` 正常挂载、标题为 Idexal。两个方向都对，说明不是写死。
+  - 生产构建产物层面也确认过：`packages/web/dist/index.html` 保留两条链接且载荷与官方变体一一对应，
+    说明 Vite 处理 HTML 不会破坏内嵌 data URI。
+  - 残余限制（记录）：图标在首屏按**已持久化**的主题选定；会话内切换主题不会即时更换标签页图标，
+    这与该脚本对 `theme-color` / `colorScheme` 的既有处理方式一致。要即时跟随需在应用主题服务里加一条
+    更新链接的副作用，属新增行为，未在本轮擅自引入。
+
 ## 3.15.18 (2026-09-26)
 
 ### Bug Fixes

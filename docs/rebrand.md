@@ -194,13 +194,27 @@
   `light_icon_idexal.png` 裁到同一 alpha 外接框、缩到同尺寸、合成到同一底色做像素比对，
   再并排渲染成一张对照图。**必须看图**：平均亮度会忽略 alpha，单看数字会误判（本轮 dark 变体
   平均亮度反而高于 light 变体，因为它的白色笔画面积更大）。
-- 修复：改成两条带 `media="(prefers-color-scheme: dark|light)"` 的 `<link rel="icon">`，
-  分别用官方成对提供的两个变体。这是用既有资产做既有用途，没有新造品牌样式。
-- 复核：从文件回读两条链接的载荷并重新比对，`media=dark` 对应 dark 变体、`media=light` 对应 light 变体。
-- 残余限制（明确记录）：`prefers-color-scheme` 跟**系统**设置，标签栏底色跟**应用内** store 主题
-  （脚本写 `documentElement.style.colorScheme`），两者可不一致；`public/favicon.ico` 属浏览器兜底请求，
-  无法用 media query 分流，已统一为 dark 变体以匹配默认深色主题。要与主题彻底解耦，需给标志加自有
-  深色圆角底板（即应用图标那种形态），属品牌样式决策，先定方案再改。
+- 第一次修复（v3.15.18，**已被实测推翻**）：改成两条带 `media="(prefers-color-scheme: dark|light)"` 的 `<link rel="icon">`，
+  分别用官方成对提供的两个变体。静态比对载荷是对的，但没在真实浏览器里验证选择结果。
+- 端到端验证暴露问题（v3.15.19）：跑 `pnpm --filter @idexal/web build` 出生产包、用静态服务器托管、
+  在真实 Chromium 里读 `matchMedia` 与实际存活的 `link[rel=icon]`。结果是本机系统浅色而应用默认深色
+  （`html.class = dark theme-zai-dark`，脚本写入 `colorScheme: dark`，标签栏因此是深色），
+  浏览器按 `prefers-color-scheme` 选中 **light 变体（深色笔画）放到深色标签栏上——等于没修**。
+  这不是边缘情况，而是本应用默认主题下的常态。根因：`prefers-color-scheme` 跟**系统**设置，
+  标签栏底色跟**应用内** store 主题，两者可以相反。
+- 正确修复：两个变体仍作为 `<link data-idexal-theme="dark|light">` 声明，但**不用 media 属性**，
+  改由首屏主题脚本按它已经算出的 `finalTheme`（同一处逻辑已在同步 `theme-color` 与 `colorScheme`）
+  移除不该生效的那一条，使笔画颜色始终与标签栏底色相反。
+- 双向复核：应用深色时只剩 `data-idexal-theme=dark`、不透明像素平均亮度 197（白色笔画）；
+  置 `localStorage['idexal-theme']='light'` 重载后只剩 `=light`、亮度 70.9（深色笔画），
+  且 `theme-color` 同步为 `#f8f8f8`、`#root` 正常挂载。两个方向都对，证明不是写死。
+- 产物层复核：`packages/web/dist/index.html` 保留两条链接且载荷与官方变体一一对应，
+  说明 Vite 处理 HTML 不会破坏内嵌 data URI。
+- 残余限制（明确记录）：图标在首屏按**已持久化**的主题选定，会话内切换主题不会即时更换，
+  这与该脚本对 `theme-color` / `colorScheme` 的既有处理一致；要即时跟随需在应用主题服务里加副作用，
+  属新增行为，未在本轮擅自引入。`public/favicon.ico` 属浏览器兜底请求、无法按主题分流，统一取
+  深色主题下可读的 dark 变体。要与主题彻底解耦，需给标志加自有深色圆角底板（即应用图标那种形态），
+  属品牌样式决策，先定方案再改。
 
 ## 已知非品牌问题（记录以免被当成改名引入）
 
