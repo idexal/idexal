@@ -11,6 +11,8 @@ import { cn } from "@/components/lib/utils.js";
 import { useIdexalIntl } from "@/i18n/IntlProvider.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { logger } from "@/logger.js";
+import { useIdexalStore } from "@/store/StoreProvider.js";
+import { resolveTheme } from "@/useTheme.js";
 
 const GREETING_BOUNDARY_HOURS = [5, 9, 12, 14, 18, 23] as const;
 const GREETING_MIN_FONT_SIZE_PX = 20;
@@ -211,35 +213,32 @@ export function ConversationDraftEmptyState({ className }: { className?: string 
 }
 
 function IdexalEmptyStateLogo({ className }: { className?: string }) {
-  // 修复：两套资源都是官方标志位图，不再依赖 currentColor，因此沿用原本就存在于这里的
-  // Tailwind `dark:` 互斥写法显式选图（.dark 类由主题系统切换，与 prefers-color-scheme 无关）。
+  // 修复：两套资源都是官方标志位图，不再依赖 currentColor，必须显式选图。
+  // 这里按应用主题（Zustand `theme`）选，不用 Tailwind `dark:`——本仓没有 class 版 dark 变体，
+  // `dark:` 编译成 @media (prefers-color-scheme: dark)，Web 目标只跟系统偏好，会和应用主题相反。
   // 浅色件在原始 PNG 上自带深色字，需要保留原来的向下渐隐遮罩；
-  // 夜间资源本身已带渐变和透明度，公共容器再叠遮罩会重复变淡，故浅深各自的类互斥。
+  // 夜间资源本身已带渐变和透明度，公共容器再叠遮罩会重复变淡，故遮罩只跟浅色一起出现。
+  const theme = useIdexalStore((state) => state.theme);
+  const isDark = resolveTheme(theme) === "dark";
   return (
-    <>
-      <img
-        aria-hidden="true"
-        className={cn(
-          className,
-          "object-contain opacity-70 dark:hidden",
-          "[-webkit-mask-image:linear-gradient(to_bottom,black_0%,transparent_70%,transparent_100%)]",
-          "[-webkit-mask-repeat:no-repeat] [-webkit-mask-size:100%_100%]",
-          "[mask-image:linear-gradient(to_bottom,black_0%,transparent_70%,transparent_100%)]",
-          "[mask-repeat:no-repeat] [mask-size:100%_100%]",
-        )}
-        data-v4-draft-logo="light"
-        src={brandMarkLightUrl}
-        alt=""
-        draggable={false}
-      />
-      <img
-        aria-hidden="true"
-        className={cn(className, "hidden object-contain dark:block")}
-        data-v4-draft-logo="dark"
-        src={brandMarkDarkUrl}
-        alt=""
-        draggable={false}
-      />
-    </>
+    <img
+      aria-hidden="true"
+      className={cn(
+        className,
+        "object-contain",
+        !isDark &&
+          cn(
+            "opacity-70",
+            "[-webkit-mask-image:linear-gradient(to_bottom,black_0%,transparent_70%,transparent_100%)]",
+            "[-webkit-mask-repeat:no-repeat] [-webkit-mask-size:100%_100%]",
+            "[mask-image:linear-gradient(to_bottom,black_0%,transparent_70%,transparent_100%)]",
+            "[mask-repeat:no-repeat] [mask-size:100%_100%]",
+          ),
+      )}
+      data-v4-draft-logo={isDark ? "dark" : "light"}
+      src={isDark ? brandMarkDarkUrl : brandMarkLightUrl}
+      alt=""
+      draggable={false}
+    />
   );
 }

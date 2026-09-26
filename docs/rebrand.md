@@ -72,7 +72,17 @@
 4. 对外身份字符串一致：全仓搜索历史占位邮箱（`dev@` + 本站域名）无命中；官方联系邮箱在 `README.md`、`README.en.md`、`NOTICE.md` 与 `packages/desktop/electron-builder.config.js` 中均为 `contact@idexal.com`。
 5. 版本号一致：发行元数据只有一个来源。根 `package.json` 的 `version` 经 `packages/desktop/scripts/build-metadata.mjs` 得出 `appVersion`，再注入 `__IDEXAL_VERSION__` 与 electron-builder `extraMetadata.version`；源码中不另写版本常量。`apps/idexal-cli` 用自身 `.release-it.json` 独立发版，不参与桌面版本对齐。
 
-6. 品牌视觉落地以生产构建为证：在 `packages/desktop` 执行 `pnpm exec vite build` 后，`out/renderer/assets/` 必须出现带哈希的 `mark-light-*.png` 与 `mark-dark-*.png`，且被 JS chunk 引用；深浅两套 wordmark（`logo-light-*.png` / `logo-dark-*.png`）目前只被 `IdexalWordmarkLogo` 引用，而该组件在上游就没有调用方，因此会被 tree-shaking 从产物中移除。wordmark 当前的实际落点是 README 双语横幅与 macOS DMG 背景；若要在应用内使用，需要先确定版式落点（登录页、About 或侧栏属于 DESIGN.md 的设计决策），不能为消除死代码而临时塞进方形 mark 槽位。
+6. 品牌视觉落地以生产构建为证：在 `packages/desktop` 执行 `pnpm exec vite build` 后，`out/renderer/assets/` 必须出现带哈希的 `mark-light-*.png`、`mark-dark-*.png`、`logo-light-*.png`、`logo-dark-*.png`，且四张都被 JS chunk 引用（v3.15.3 起 wordmark 有了应用内调用方，不再被 tree-shaking 移除）。
+
+### wordmark 的应用内落点
+
+官方 wordmark（`logo-light.png` / `logo-dark.png`，画布 1136×380、墨迹满幅、比例 2.99:1）除 README 双语横幅与 macOS DMG 背景外，应用内落点为**启动/重连遮罩**（`RootStartupLoading`）：
+
+- 该遮罩是应用内唯一的大尺寸品牌留白面，且原本只渲染方形 mark 徽标、没有任何产品名文字，wordmark 在此补充信息而不是重复文字。
+- 登录页与引导页的方形深色 logo 壳由 `DESIGN.md` “Brand icon backplates” 一条明确保留，且其下已有 “Welcome to Idexal” 文案，把横向组合标塞进 96px 方形槽位会破坏版式，因此不改。
+- 深浅切换规则（实测修正）：品牌位图的墨色必须由 `useIdexalStore((s) => s.theme)` + `resolveTheme(theme)` 显式选图（同 `GlmMonochromeIcon`、`App.tsx` 的 `appLogoUrl`），**不得**用 Tailwind `dark:` 互斥两张 `<img>`。原因是本仓没有声明 class 版的 dark 变体，`node_modules/shadcn/dist/tailwind.css` 也没有，因此 `dark:` 编译为 `@media (prefers-color-scheme: dark)`；桌面端 `desktopMainIpcPlatform.ts` 会写 `nativeTheme.themeSource`，媒体查询随应用主题变化，看起来是对的，而 Web 目标里它只跟操作系统偏好，应用主题与系统偏好相反时深色底会压深色墨。实测证据：`packages/desktop/out/renderer/assets/styles-*.css` 内为 `@media (prefers-color-scheme:dark){.dark\:block{display:block}.dark\:hidden{display:none}}`，在浏览器里给祖先加 `.dark` 或改 `color-scheme: dark` 都不会让 `dark:hidden` 生效。
+- 宽度取 `w-28`（112px → 可见高约 37px），与上方 96px 徽标形成组合锁版；组件自带 `max-w-full`，窄屏不会溢出。
+- 验收口径：构建产物必须出现 `logo-light-*.png` / `logo-dark-*.png` 且被 JS chunk 引用（此前该组件无调用方，两张图会被 tree-shaking 移除）。
 
 ## 已知非品牌问题（记录以免被当成改名引入）
 

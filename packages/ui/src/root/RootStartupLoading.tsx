@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import brandMarkDarkUrl from "@/assets/brand/mark-dark.png";
 import { cn } from "@/components/lib/utils.js";
+import { IdexalWordmarkLogo } from "@/components/ui/IdexalAboutLogo.js";
 import "@/root/rootStartupLogoPulse.css";
 
 interface RootStartupLoadingProps {
@@ -21,6 +22,8 @@ export function RootStartupLoading({ label, children, busy = true }: RootStartup
       data-testid="root-startup-loading"
     >
       <IdexalStartupLogoBadge />
+      {/* 官方横向组合标：遮罩是应用内唯一没有产品名文字的大尺寸品牌面，wordmark 在此补名而不是重复文字。 */}
+      <IdexalWordmarkLogo className="w-28" />
       {children}
     </div>
   );

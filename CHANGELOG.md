@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.15.3 (2026-09-26)
+
+### Features
+
+- **branding:** 官方 wordmark 落地到应用内启动遮罩
+  - `RootStartupLoading` 在品牌徽标下方渲染 `IdexalWordmarkLogo`（`w-28`，实测 112×37.5px），
+    这是应用内唯一没有产品名文字的大尺寸品牌面；登录页与引导页的方形深色 logo 壳按 DESIGN.md
+    “Brand icon backplates” 保留，其下已有 “Welcome to Idexal” 文案，塞横向组合标会变成重复。
+  - 生产构建复核：`mark-light/dark-*.png` 与 `logo-light/dark-*.png` 四张全部落盘并被主 JS chunk 引用，
+    此前 wordmark 因组件无调用方而被 tree-shaking 移出产物。
+
+### Bug Fixes
+
+- **branding:** 修复品牌位图深浅切换跟随操作系统而非应用主题
+  - 现象与实测：本仓没有 class 版 dark 变体（`packages/ui/src/styles.css` 只声明 platform 类变体，
+    `shadcn/dist/tailwind.css` 也没有），因此 `dark:` 编译为 `@media (prefers-color-scheme: dark)`，
+    见 `packages/desktop/out/renderer/assets/styles-*.css`。在浏览器里给祖先元素加 `.dark` 或改
+    `color-scheme: dark` 都不会让 `dark:hidden` 生效（实测 `matchMedia` 仍为 false、display 仍为 block）。
+  - 影响：桌面端因为 `desktopMainIpcPlatform.ts` 会写 `nativeTheme.themeSource`，媒体查询恰好跟应用主题一致，
+    问题被掩盖；Web/手机远控端在应用主题与系统偏好相反时会把深色墨压在深色底上，标志直接看不见。
+  - 修复：`IdexalWordmarkLogo`、`WindowsTopLeftLogo`、`IdexalEmptyStateLogo`、`WorkspaceSidebarCollapsedRail`
+    改为按 `useIdexalStore((s) => s.theme)` + `resolveTheme(theme)` 显式选图，与仓库既有的
+    `GlmMonochromeIcon`、`App.tsx` `appLogoUrl` 同一套做法，两个目标表现一致且不再依赖 CSS 变体。
+  - 同时更正 3.15.0 留下的错误注释（原文声称 `.dark` 类由主题系统切换、与 prefers-color-scheme 无关）。
+
 ## 3.15.2 (2026-09-26)
 
 ### Documentation
