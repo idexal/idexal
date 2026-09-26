@@ -425,6 +425,21 @@ const ar: Record<string, string> = {
   "remote.trigger": "اتصال عن بُعد",
   "settings.modelProvider.startPlan.balance.title": "رصيد اليوم",
   "workspace.openFolder": "فتح مجلد",
+
+  // ——— 崩溃屏 ErrorBoundary（appError.*） ———
+  "appError.title": "واجه التطبيق مشكلة",
+  "appError.description":
+    "تم التقاط خطأ الصفحة، فلا حاجة لعودة التطبيق إلى شاشة فارغة. جرّب إعادة المحاولة أولًا، وإن تكرّرت المشكلة فأعد تحميل التطبيق.",
+  "appError.retry": "إعادة المحاولة",
+  "appError.reload": "إعادة تحميل التطبيق",
+  "appError.hint": "تم تسجيل تفاصيل التشخيص للمساعدة في التحليل.",
+  "appError.details": "عرض مكدّس المكوّنات",
+  "appError.unknown": "خطأ غير معروف",
+  "appError.sectionTitle": "واجه هذا القسم مشكلة",
+  "appError.sectionDescription":
+    "الخطأ معزول في هذا القسم، لذا يمكن لبقية التطبيق متابعة العمل. جرّب إعادة المحاولة لهذا القسم أولًا، وإن تكرّرت المشكلة فأعد تحميل التطبيق.",
+  "appError.sectionRetry": "إعادة المحاولة لهذا القسم",
+  "appError.sectionHint": "تم تسجيل تفاصيل التشخيص للمساعدة في التحليل.",
 };
 
 export default ar;

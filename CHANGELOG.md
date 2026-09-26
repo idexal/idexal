@@ -1,5 +1,53 @@
 # Changelog
 
+## 3.16.4 (2026-09-26)
+
+### Changes
+
+- **fix(ui):** 崩溃屏跟随应用语言（含阿语 RTL），并纠正前三次发布报错的覆盖率数字
+  - **这是我改语言集时漏掉的一处缺陷**：`ErrorBoundary.tsx` 的 `resolveBoundaryLocale()`
+    把可接受的语言写死成 `storedPreference === "zh-CN" || "en-US"`，并在 `zhCN` / `enUS`
+    两张全量语言表之间二选一。`Locale` 扩到 ar/fr 之后，**选了阿拉伯语或法语的用户崩溃时
+    看到的是英文**（系统语言为中文时是中文）。崩溃屏恰恰是最需要看懂的时刻——上面是
+    "重试 / 重载应用 / 查看诊断"，看不懂可能导致用户误操作。
+    现在改走 shared 的 `isSupportedLocale` / `localeFromLanguageTag`，消息表按 `Locale` 索引，
+    并复刻 `createIntl` 的回退链（目标语言 → en-US → key）。
+    同时给应用级 fallback 卡片加了 `dir`：崩溃可能发生在 `IntlProvider` 之前，
+    那时 `documentElement.dir` 还没被写上，阿语崩溃屏会按 LTR 排版。
+    范围性卡片（`ScopedErrorBoundary`）不加 `dir`——它渲染在 provider 之后，方向已生效，
+    再加就是第二处状态来源。
+  - `appError.*` 共 11 个键在 ar/fr 里原本是 **0 个**（它不在我逐面补齐时扫到的任何组件里）。
+    已补齐，两份语言对称，`ar`/`fr` 各增至 **386 键**。
+  - **纠正已发布的错误数字**：3.16.1–3.16.3 三份 changelog 写的 `5859 / 208 / 317 / 371`
+    全部偏低。原因是我自己的校验脚本用正则数键名，字符集写成 `[A-Za-z0-9_.]`，
+    **静默跳过**了含连字符与非 ASCII 的键（`sidebar.settings.locale.en-US`、
+    `ssh.assetInstallMode.local-download-upload`、`feedback.severity.P1-高.label`），
+    en-US 漏 13 个、ar/fr 各漏 4 个。真实值是 **en-US 5872、zh-CN 5871、ar/fr 386**。
+    旧条目按历史保留不改，此处记录更正。
+    校验脚本改为**真正加载语言表模块**再 `Object.keys`（`locale-loader.mjs`），
+    写入器 `apply-translations.mjs` 的"是否已翻译"判断也换到同一来源，避免重复插入。
+    教训：门禁看不到它解析不到的东西时照样报绿灯。
+  - RTL 物理工具类的计数也从"≥400 处 / 197 文件"改为**逐类实测**：
+    合计 **743 处、250 个文件**（`pl/pr` 269、`text-left/right` 187、`left/right` 159、
+    `ml/mr` 76、`translate-x` 30、`rounded-l/r` 13、`border-l/r` 8、`space-x` 2）。
+    逻辑属性用量为 **0**：`ms-/me-/ps-/pe-`、`rounded-s/e-`、`border-s/e-`、`inset-inline` 全为 0；
+    `start-N/end-N` 的 30 处命中逐条核对后**全是 `col-start-*` / `row-start-*` 栅格线名**，
+    `text-start` 的 1 处在代码注释里——若直接引用这两个数就会把"零迁移"错报成"已开始迁移"。
+  - 新增 `docs/improvement-proposals.md`：基于当前检出代码（每条带 `文件:行号`，并区分
+    [已存在] / [确证缺失] / [已发现的缺陷]）整理的改进提案，覆盖测试与 CI 缺口、
+    凭据真加密、**模型/供应商 fallback**（确证：现在只有同模型内重试，
+    `retry-policy.ts:13` 上限 10 次，**没有任何代码路径会因模型 A 失败而换模型 B**）、
+    供应商与自定义模型的可控范围、ICU 复数、离线缓冲、三平台安装包与签名等。
+  - 验证：`pnpm typecheck` exit 0（`packages/ui`、`packages/shared` 都在门禁列表内，
+    这次是真的类型门禁覆盖到的代码改动）；`pnpm lint` 70 warnings / 0 errors；
+    `pnpm fmt:check` 通过；`architecture:check --changed` violations 0；
+    语言表校验 386/386、孤儿键 0、双向差集 0、占位符 0 处不匹配。
+    另单独确认 `isSupportedLocale` / `localeFromLanguageTag` / `resolveTextDirection`
+    在 `packages/shared/src/index.ts:30-36` 是**值再导出**而非 `export type`——
+    因为上次"静态全绿、运行时 `ReferenceError`"正是崩在这一类问题上，而崩溃屏自己若再崩就是白屏。
+    **仍未实跑渲染**：用户开发实例还在 `:9229`，起第二个 dev 实例会 `rmSync` 它正在监听的 `out/`。
+    崩溃屏的实际渲染是本次唯一没被任何自动化覆盖到的环节。
+
 ## 3.16.3 (2026-09-26)
 
 ### Changes

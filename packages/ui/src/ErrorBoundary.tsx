@@ -1,8 +1,15 @@
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import type { Locale } from "@idexal/shared";
-import { DEFAULT_LOCALE } from "@idexal/shared";
+import {
+  DEFAULT_LOCALE,
+  isSupportedLocale,
+  localeFromLanguageTag,
+  resolveTextDirection,
+} from "@idexal/shared";
 import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
+import arMessages from "@/i18n/locales/ar.js";
+import frMessages from "@/i18n/locales/fr.js";
 import zhCN from "@/i18n/locales/zh-CN.js";
 import enUS from "@/i18n/locales/en-US.js";
 import { logger } from "@/logger.js";
@@ -62,11 +69,24 @@ function serializeErrorForLog(error: Error): {
   };
 }
 
+const BOUNDARY_MESSAGE_TABLES: Record<Locale, Record<string, string>> = {
+  ar: arMessages,
+  fr: frMessages,
+  "zh-CN": zhCN,
+  "en-US": enUS,
+};
+
+/**
+ * 崩溃屏不能依赖 `IntlProvider`——它本身可能就是崩掉的那一层，所以这里自己判定语言。
+ * 判定必须走 shared 的 `isSupportedLocale` / `localeFromLanguageTag`：
+ * 原实现把可接受的语言写死成 `"zh-CN" || "en-US"`，界面语言扩到 ar/fr 之后，
+ * 选了阿拉伯语或法语的用户崩溃时会看到英文（系统语言为中文时甚至是中文）。
+ */
 function resolveBoundaryLocale(): Locale {
   if (typeof localStorage !== "undefined" && typeof localStorage.getItem === "function") {
     try {
       const storedPreference = localStorage.getItem(LOCALE_PREFERENCE_KEY);
-      if (storedPreference === "zh-CN" || storedPreference === "en-US") {
+      if (isSupportedLocale(storedPreference)) {
         return storedPreference;
       }
     } catch {
@@ -77,7 +97,7 @@ function resolveBoundaryLocale(): Locale {
   }
 
   if (typeof navigator !== "undefined") {
-    return navigator.language.toLowerCase().startsWith("zh") ? "zh-CN" : "en-US";
+    return localeFromLanguageTag(navigator.language, DEFAULT_LOCALE);
   }
 
   return DEFAULT_LOCALE;
@@ -85,8 +105,8 @@ function resolveBoundaryLocale(): Locale {
 
 function formatBoundaryMessage(id: string): string {
   const locale = resolveBoundaryLocale();
-  const messages = locale === "en-US" ? enUS : zhCN;
-  return messages[id] ?? id;
+  // 与 createIntl 同一套回退链：目标语言 → en-US → key，避免漏一个键就把内部标识渲染给用户。
+  return BOUNDARY_MESSAGE_TABLES[locale]?.[id] ?? enUS[id] ?? id;
 }
 
 function haveResetKeysChanged(
@@ -129,6 +149,9 @@ function ErrorFallback({
       <div className="flex h-full min-h-0 justify-center overflow-y-auto p-6">
         <div
           role="alert"
+          // 崩溃可能发生在 IntlProvider 之前，`documentElement.dir` 就还没被写上；
+          // 阿语崩溃屏若不自己声明方向，整张卡片会按 LTR 排版。
+          dir={resolveTextDirection(resolveBoundaryLocale())}
           // 错误信息和组件堆栈可能非常长，之前外层不可滚动会把内容挤出视口，
           // 用户既看不完堆栈，也点不到“重试/刷新”按钮。这里让 fallback 卡片固定从顶部开始，
           // 并配合外层纵向滚动，确保窗口再小也能完整访问全部操作。

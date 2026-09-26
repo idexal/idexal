@@ -438,6 +438,21 @@ const fr: Record<string, string> = {
   "remote.trigger": "Connexion à distance",
   "settings.modelProvider.startPlan.balance.title": "Solde du jour",
   "workspace.openFolder": "Ouvrir un dossier",
+
+  // ——— 崩溃屏 ErrorBoundary（appError.*） ———
+  "appError.title": "L’application a rencontré un problème",
+  "appError.description":
+    "L’erreur de page a été interceptée, l’application n’a donc pas besoin de retomber sur un écran vide. Réessayez d’abord, puis rechargez l’application si le problème persiste.",
+  "appError.retry": "Réessayer",
+  "appError.reload": "Recharger l’application",
+  "appError.hint": "Les détails de diagnostic ont été enregistrés pour faciliter l’analyse.",
+  "appError.details": "Afficher la pile de composants",
+  "appError.unknown": "Erreur inconnue",
+  "appError.sectionTitle": "Cette section a rencontré un problème",
+  "appError.sectionDescription":
+    "L’erreur est isolée à cette section, le reste de l’application peut donc continuer. Réessayez d’abord cette section, puis rechargez l’application si le problème persiste.",
+  "appError.sectionRetry": "Réessayer cette section",
+  "appError.sectionHint": "Les détails de diagnostic ont été enregistrés pour faciliter l’analyse.",
 };
 
 export default fr;
