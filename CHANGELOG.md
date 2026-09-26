@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.15.10 (2026-09-26)
+
+### Documentation
+
+- **docs:** 补齐 3.15.9 hook 修复的桌面端回归复核与两条测量陷阱
+  - 三个 service hook 桌面与 Web 共用，因此用 `pnpm dev:desktop` 全新构建冷启动后经 CDP 抓取渲染进程日志复核：
+    无 hook 顺序告警、无 `useTabStore 必须在 TabStoreProvider 内使用`、无错误边界接管；
+    主题为 `dark theme-zai-dark platform-windows-desktop` 时标题栏品牌图为 `mark-dark.png`（一致），
+    窗口标题 `Idexal`，侧栏与输入区正常渲染，截图确认无空白与文字压叠。
+  - 记录两个会制造假信号的测量陷阱：`pre-dev` 的 `rmSync('./out')` 会删掉**正在运行的**实例所依赖的
+    `out/preload/index.cjs`，从而抓到“preload ENOENT + window.idexal undefined”的假错误；
+    上一次 dev 的 vite 占用 5174 会让新实例直接启动失败，必须先确认端口空闲再归因。
+  - 新增已知非品牌问题条目：`[Root] 刷新 Provider Runtime 失败: Idexal Built-in cdn: invalid response`
+    来自 host 侧内置 provider release 下载失败，本机对外部 CDN 不可达（与 Electron 镜像 DNS 失效同源），
+    属环境限制；同环境下已登录会话仍可选用 `idexal/auto/best-coding` 正常执行任务，不能据此判定运行时不可用。
+
 ## 3.15.9 (2026-09-26)
 
 ### Bug Fixes

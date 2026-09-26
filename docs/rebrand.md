@@ -123,6 +123,8 @@
 - 发现并修复一个上游遗留的 Rules of Hooks 违规：`useIdexalSessionService`、`useIdexalAgentService`、`useIdexalTaskService` 都把 hook 写在三元分支里（`workspacePath ? useWorkspaceServices(...) : useServices()`）。`useWorkspaceServices` 展开为多次 store 读取，`useServices()` 只有一个 `useContext`，所以 `workspacePath` 由空变有的那次渲染会改变宿主组件的 hook 数量。Web 端首帧拿不到 `workspacePath`，因此必现：`OnboardingDialog` 第 8 个 hook 由 `useRef` 变 `useContext`，React 用错槽位比较依赖数组后抛 `Cannot read properties of undefined (reading 'length')`，整棵子树被 `ScopedErrorBoundary:onboarding-dialog` 接走。修复为两个 hook 无条件调用、只在取值时分派，从而保留“空 `workspacePath` 返回 context services 而非 base services”的原语义。
 - 判别“是 HMR 假信号还是真缺陷”的方法：换一个从未接收过热更新的端口冷加载。`createRoot() on a container that has already been passed to createRoot()` 只出现在被我热编辑过入口模块的旧页面上（`index.html` 仅一个 `#root` 与一个 module script，源码里只有一次 `createRoot`），冷启动不复现；hook 顺序崩溃在冷启动依旧复现，所以它是真缺陷。两者症状相同、结论相反，不能因为“看起来都像 dev 噪声”一起放过。
 - 修复后同一路径错误数 5 → 2，剩余 2 条是下方已记录的 `window-controller` 平台差异。`OnboardingDialog` 的 hook 列表在关闭态也会执行（Radix 只跳过 children 渲染），因此“挂载不再被错误边界接走”即为该崩溃已消除的直接证据；引导向导正文的实际展开需要用户主动打开，本轮未覆盖。
+- 桌面端回归复核（v3.15.10）：这三个 hook 是桌面与 Web 共用的，所以改完必须在桌面目标再跑一次。用 `pnpm dev:desktop` 全新构建冷启动后经 CDP 抓取渲染进程日志：无 hook 顺序告警、无 `useTabStore 必须在 TabStoreProvider 内使用`、无错误边界接管；`documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop` 且标题栏品牌图为 `mark-dark.png`（主题与位图一致），窗口标题 `Idexal`，侧栏与输入区均渲染。截图确认主壳可见、无空白与文字压叠。
+  - 复核过程中的两个测量陷阱，记录以免下次误判：`pnpm dev:desktop` 的 `pre-dev` 会 `rmSync('./out')`，若此时已有实例在跑，就会删掉它依赖的 `out/preload/index.cjs`，于是抓到“preload ENOENT + window.idexal undefined”三条假错误——那是我把被测产物删了，不是产品缺陷。另外端口 5174 被上一次 dev 的 vite 占用会让新实例直接启动失败（`Port 5174 is already in use`），必须先确认端口空闲再归因。
 
 ## 已知非品牌问题（记录以免被当成改名引入）
 
@@ -132,3 +134,4 @@
 - About 窗口以 `data:text/html` 加载且 CSP 为 `img-src data:`，无法引用打包后的图片文件，因此其品牌标志以内联 data URI 提供，见 `packages/desktop/src/main/aboutWindowLogo.ts`。
 - 未登录时 `idexal-agent.subscribeSessionsIndexV4` 返回 'Idexal Agent runtime is not running.' 属预期守卫：Agent 运行时在鉴权并挂载工作区之后才启动。
 - 桌面专属通道 `window-controller` 在 Web 目标中会超时，属平台差异，与品牌无关。
+- `[Root] 刷新 Provider Runtime 失败: Error: Idexal Built-in cdn: invalid response`：桌面与 Web 冷启动都会打印，来自 host 侧 `downloadIdexalBuiltinRelease` 拉取内置 provider release 失败。本机对外部 CDN 不可达（与 Electron 二进制镜像 DNS 失效同源），属网络环境限制而非代码缺陷；它解释的是内置 provider 目录无法刷新，不影响品牌与界面链路。同一环境下用户已登录会话仍可正常选择 `idexal/auto/best-coding` 并执行任务，所以不能把这条日志当成运行时不可用的证据。
