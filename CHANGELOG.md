@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.15.13 (2026-09-26)
+
+### Bug Fixes
+
+- **layout:** 修复手机 Web 冷启动时输入框 Send 按钮被裁出视口且无法触达
+  - 现象：390×844 冷启动 Web 目标进入主壳后，侧栏保持展开占 195px，
+    `.chat-composer-input-surface` 为 `x=216, width=271`（右边界 487）越出视口；卡片带
+    `overflow-hidden` 且 `documentElement.scrollWidth === 390`（无横向滚动可补救），于是
+    `Send`（`x=446..474`）、模型选择器、`On`、分支 chip 全部在屏外且无法触达。
+  - 根因：响应式收起逻辑本身正确且已实现，缺的只是挂载期那一次执行——
+    `runAutoCollapseForWindowResize` 只注册在 `window` 的 `resize` 监听
+    （`WorkspaceShellLayout.tsx:524`），从不随 mount 运行，页面“一打开就是窄视口”时无人触发。
+    判别依据是同一视口对照：390 冷加载 conversation 318（已低于阈值 360）却不收起；
+    同一 390 下任意一次 resize 后侧栏归零、`Send` 右边界 346 可达。
+  - 修复：注册 resize 监听后补一次挂载期执行，用双层 `requestAnimationFrame` 等首屏布局稳定再读宽度，
+    只跑一次且不引入 ResizeObserver，从而保留原注释声明的语义（只按 conversation 实际宽度收起、
+    不与用户手动打开面板对抗）。
+  - 验证：390 冷加载侧栏归零、surface 342、`Send` 位于 x=318..346 可达、错误数降为 2（仅已记录的
+    `window-controller`）；1280 冷加载无回归（侧栏 264、conversation 1010、`Send` 可达）；
+    `pnpm typecheck` 0 错误、oxlint 70 warnings / 0 errors、oxfmt 与 `architecture:check --changed` 通过。
+  - 同时纠正 3.15.11 / 3.15.12 对本条的判断：当时认定“需要产品先定方案的响应式设计缺口”故只记录不实现，
+    实际是初始化缺陷。两次误判（“移动端已实现只是没接线”“需新写渲染与状态逻辑”）与其证伪证据一并留在
+    `docs/rebrand.md`，并补上方法教训：断言“设计缺失”前先用同一视口做“冷加载 vs resize 后”对照，
+    不一致即说明布局逻辑存在且正确、只是未被触发。
+
 ## 3.15.12 (2026-09-26)
 
 ### Documentation

@@ -523,11 +523,26 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
 
     window.addEventListener("resize", handleWindowResize);
 
+    // 首屏也必须套用同一套收起策略：这里原先只注册 resize 监听，页面“一打开就是窄视口”
+    // （手机 Web 冷启动）时没有任何事件会触发它，于是侧栏保持展开，把 conversation 压到
+    // 比 composer 最小内容宽还窄，而 composer 卡片带 overflow-hidden、页面又不产生横向滚动，
+    // 结果 Send 被裁到视口外且无法触达。实测同一 390×844：冷加载时侧栏 195、conversation 318、
+    // Send 右边界 474 不可达；任意一次 resize 后侧栏归零、Send 右边界 346 可达。
+    // 说明响应式收起逻辑本身是对的，缺的只是挂载时的那一次执行。
+    // 用双层 rAF 等首屏布局稳定后再读宽度，且只跑一次、不引入 ResizeObserver，
+    // 因此完整保留“只按 conversation 实际宽度收起、不与用户手动打开面板对抗”的原意。
+    const initialAutoCollapseFrame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        runAutoCollapseForWindowResize();
+      });
+    });
+
     return () => {
       if (conversationAutoCollapseResizeTimerRef.current !== null) {
         window.clearTimeout(conversationAutoCollapseResizeTimerRef.current);
         conversationAutoCollapseResizeTimerRef.current = null;
       }
+      window.cancelAnimationFrame(initialAutoCollapseFrame);
       window.removeEventListener("resize", handleWindowResize);
     };
   }, [workspaceMainView]);

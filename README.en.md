@@ -20,6 +20,7 @@ Idexal is an AI coding workspace with desktop, browser, and terminal interfaces.
 
 ## Updates
 
+- 2026-9-26: Updated to Idexal v3.15.13, fixing the mobile-web cold-start case where the Send button was clipped off-screen and unreachable — the narrow-screen collapse only ran on resize and never on mount — and correcting the previous two entries that misjudged it as a design gap.
 - 2026-9-26: Updated to Idexal v3.15.12, root-causing the 390px composer defect (isMobileViewport is a dead prop; CollapsedRail is never rendered by the shell) and correcting the wrong assumptions in the previous entry.
 - 2026-9-26: Updated to Idexal v3.15.11, recording the measured mobile-web defect where the composer's Send button is clipped off-screen and unreachable at 390px, with two candidate fixes pending product alignment, plus the passing light-theme and onboarding walkthrough checks.
 - 2026-9-26: Updated to Idexal v3.15.10, adding the desktop cold-boot regression check for the 3.15.9 hook fix and recording that the Provider Runtime CDN refresh failure is an environment limit.
