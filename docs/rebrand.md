@@ -112,6 +112,11 @@
 - 消费方枚举（`assets/brand/`、`public/brand/`、`build/icon*`、`tray_icon`）显示渲染层 5 个组件（`App.tsx`、`WindowsTopLeftLogo`、`WorkspaceSidebarCollapsedRail`、`ConversationDraftEmptyState`、`IdexalAboutLogo`、`RootStartupLoading`）与两个 HTML 启动壳全部指向上表素材；主进程窗口/托盘/通知图标指向 `build/icon*.png` 与 `build/icon.ico`。没有指向仓外或旧品牌位图的路径。
 - 真机复核（CDP 截图后测合成像素）：登录页 40×40 品牌图在深色与浅色主题下都是官方 `mark-dark.png`，落在固定深色底板内（`DESIGN.md` 明确保留该底板），裁区亮度标准差 `99.0`，即高对比、可见。两主题裁片完全相同属预期——底板恒定深灰，选深底专用白墨 mark 正是设计意图。
 
+- 真机复核（CDP 截图后测合成像素）：登录页 40×40 品牌图在深浅两主题下均为官方深底白墨 mark，落在固定深色底板内（`DESIGN.md` 明确保留该底板），裁区亮度标准差 `99.0`，即高对比、可见。两主题裁片完全相同属预期——底板恒定深灰，选深底专用白墨 mark 正是设计意图。
+- 主界面品牌面实测（v3.15.7）：跳过鉴权进入桌面主壳后，`WindowsTopLeftLogo`（20×20）与 `ConversationDraftEmptyState`（400×320 水印）随应用主题正确换图（深 `mark-dark.png` / 浅 `mark-light.png`，`data-v4-draft-logo` 同步）。
+  - 同批发现并修复：水印的向下渐隐遮罩原先只在浅色主题生效，依据是一条我写在注释里的断言“深色位图自带渐隐”。逐行 alpha 实测否证了它——两张官方位图曲线完全一致（10%=103…98%=67），于是深色下标志保持满强度，与问候语 `14400px²` 的重叠区直接把文字压花。遮罩改为与主题无关后深色复核通过（`opacity:0.7`、`masked:true`）。
+  - 教训：为深浅两套位图做差异化视觉处理前，先量两张图的 alpha/像素分布；“另一个文件看起来更淡”不等于它自带渐隐，可能只是墨色不同。
+
 ## 已知非品牌问题（记录以免被当成改名引入）
 
 - 实测（v3.15.3，CDP 直连运行中的桌面应用）：应用主题为深色时 `documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)').matches` 仍为 `false`（系统为浅色）。因此仓库里全部 122 处 `dark:` 工具类在桌面端启动阶段和 Web 端都跟系统偏好走，而不是跟应用主题走：这是上游遗留的主题机制问题，不属于品牌重构，本版本只把品牌位图的选图改成读 store 主题以消除“标志看不见”的后果，没有全局改写 `dark` 变体语义（那会影响所有 shadcn 组件的既有表现，需要单独设计与验收）。
