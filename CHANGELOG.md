@@ -1,5 +1,35 @@
 # Changelog
 
+## 3.15.16 (2026-09-26)
+
+### Documentation
+
+- **docs:** 补测首启引导三步与打包依赖闭包，并纠正一条关于配置目录的错误结论
+  - 首启引导（`packages/ui/src/onboarding/`）此前从未实测，现以打包版 + 合成 `Ctrl+Shift+O`
+    （`shortcutCommands.ts:99` 默认键，监听在 `window` capture 阶段）打开并逐步量测：
+    三步文案品牌均已读作 Idexal（“How would you like Idexal to show its work?”、
+    “Let Idexal remember your preferences and work context.”），每步可见文本块重叠 0、
+    越界 0、无横向溢出、`Runtime.exceptionThrown` 全程 0；主视觉复用 `IdexalStartupLogoBadge`，
+    与启动闪屏同一组件，故深浅色选图与主界面同源。旧记录称其为 “OnboardingDialog” 有误，
+    仓库中不存在该标识符，真实入口是 `Root.tsx:1015` 常驻挂载的 `OccupationOnboarding`。
+  - 判定并保留一处第三方产品名：步骤 3 “Migrate conversation history from Claude Code” 是迁移功能
+    指向外部真实产品，不是 ZCode 旧品牌残留，改名会破坏语义。
+  - 记录一条无障碍观察（不改）：该全屏向导 DOM 中无 `role="dialog"` / `aria-modal`，
+    屏幕阅读器不会按模态处理；补语义属行为变更，按仓库约定需先改 spec。
+  - 复核构建日志 `[afterPack] missing runtime modules count=44`：确认是注入成功的信息行而非缺陷。
+    机制见 `electron-builder.config.js:304/359/364-397`（补齐 hoisted 运行时闭包，历史上漏 `undici`、
+    `pngjs`、`protobufjs` 会导致已安装应用主进程启动即崩）；构建期另有 `bundle.mjs:641` 无条件硬校验
+    （日志 `bundle:verify-runtime-dependencies end duration_ms=587`，无告警）。另做产物级独立复核：
+    对 `app.asar`（30630 条目）跑同一闭包逻辑，15 个闭包根展开 75 个模块，缺失 0、不可解析 0；
+    并用不存在的包名做反向对照（返回 false）与 4 个真实包名做正向对照（返回 true），
+    证明 “0 缺失” 不是空跑。
+  - **纠错**：v3.15.15 曾记“打包版与开发版共用同一配置目录，启动会恢复用户真实会话”。实测推翻：
+    `desktopRuntimeEnv.ts:61-66` 按形态给出 `Idexal Dev` / `Idexal Preview`，`main/index.ts:261` 据此
+    `app.setName`，两者默认 userData 目录不同；本次 `Idexal Preview` 被写入而 `Idexal Dev` 未变，
+    且打包版起来是未登录英文首启态。原结论最可能是把用户自己窗口的内容误记为打包版窗口。
+  - **机制纠正**：`--user-data-dir` 对打包版无效（主进程自行解析运行时数据路径），本次传入的目录
+    始终 0 字节即为反证；隔离要依赖 Dev / Preview 天然分离，而非该开关。
+
 ## 3.15.15 (2026-09-26)
 
 ### Documentation

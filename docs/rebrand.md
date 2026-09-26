@@ -132,7 +132,29 @@
 - **读 VersionInfo 必须在 electron-builder 完全结束后**：构建中途读同一个 exe 会得到 `ProductName=Electron / CompanyName=GitHub, Inc. / FileVersion=41.0.3`，因为 `afterPack` 的 “updating asar integrity executable resource” 与版本资源写入发生在文件已落盘之后。等日志停止增长（本例 `bundle:audit-bundle-size end`）后重读，才是 `ProductName=Idexal Preview`、`CompanyName=Idexal`、`FileDescription=Idexal Preview`、`FileVersion=3.15.14`、`ProductVersion=3.15.14.0`。这条与 v3.15.5 那次误报同源，再次记录以免重犯。
 - 直接运行打包 exe（用 `--remote-debugging-port=9230` 与用户已开实例的 9229 隔离）：UA 报 `IdexalPreview/3.15.14`，窗口标题 `Idexal`，`documentElement.className = dark theme-zai-dark platform-windows-desktop`，标题栏 20px 品牌图与草稿水印均取 `mark-dark-<hash>.png`（生产构建带 hash 的官方位图），水印 `alt="Idexal"`，输入框占位文案为 “Ask Idexal anything…”，模型选择器显示 `idexal/idexal-code`。截图确认深色下标志与问候语无压叠、渐隐生效。
 - 复核后只关闭自己启动的那个实例（对该实例的 CDP 端点发 `Browser.close`，并确认 9229 仍存活），不用 `taskkill`，因为本机同时存在其他 Electron 应用。
-- 需要注意的副作用：打包版与开发版共用同一配置目录，启动后会**恢复用户的真实会话**（侧栏直接出现用户自己的阿拉伯语任务）。因此“跑一下打包版”并非无副作用的只读验证，会在用户屏幕上多开一个窗口；验证完应立即关闭该实例。
+- 需要注意的副作用：启动打包版会在用户屏幕上多开一个窗口，因此“跑一下打包版”不是无副作用的只读验证；验证完应立即只关闭自己启动的那个实例。
+- 纠错记录（v3.15.16）：本条原文曾断言“打包版与开发版共用同一配置目录，启动后会恢复用户的真实会话”。该断言被 v3.15.16 的实测推翻：`desktopRuntimeEnv.ts:61-66` 按运行形态取 `runtimeApplicationName`（开发态 `Idexal Dev`、打包态 `Idexal Preview`），`main/index.ts:261` 用它 `app.setName(...)`，两者因此落在**不同**的默认 userData 目录（`%APPDATA%\Idexal Dev` 与 `%APPDATA%\Idexal Preview`）。判别证据是同一次运行里两者互不影响：`Idexal Preview` 目录 mtime 随本次打包版启动更新，`Idexal Dev` 未变；且打包版起来是**未登录的英文首启状态**（默认语言 en、无任何历史会话），若真共享受信配置就不可能如此。当初的“看到用户阿拉伯语会话”最可能是把用户自己那个窗口的内容误记成了打包版窗口。教训：多实例并存时，任何“某实例显示了 X”的结论都必须先确认量的是哪个 CDP 端点，跨端点读屏会把别人的窗口当成自己的证据。
+- 另一处机制纠正（v3.15.16）：`--user-data-dir` 对打包版**无效**——主进程自行解析并覆盖运行时数据路径（`main/index.ts:265-273` 在 `shouldUseElectronDefaultUserDataPath` 为假时才 `app.setPath("userData", ...)`，且 `app.setName` 已决定默认路径）。本次给打包版传 `--user-data-dir=<仓库>/z-work/profile-9231` 后该目录始终为 0 字节，而 `%APPDATA%\Idexal Preview` 被写入，即为反证。要隔离实例数据不能靠这个开关，得靠运行形态本身（Dev / Preview 已天然分离）。
+
+### 首启引导三步实测（v3.15.16）
+
+补上此前唯一未验证的界面：`packages/ui/src/onboarding/` 下的三步引导（旧记录里把它叫作 “OnboardingDialog” 是错的，仓库中不存在该标识符，实际入口是 `Root.tsx:1015` 常驻挂载的 `OccupationOnboarding`）。
+
+- 触发方式：默认快捷键 `CmdOrCtrl+Shift+O`（`shared/src/shortcutCommands.ts:99`，`channel: "window"`），监听在 `window` 的 capture 阶段（`OccupationOnboarding.tsx:150`），因此对打包版合成一个 `KeyboardEvent` 即可打开，不必碰用户实例。设置页也有“打开引导”按钮（`settingsPageHelpers.tsx:885`）。
+- 三步全部通过：步骤 1 “What do you do?” 职业网格 12 项；步骤 2 “Choose your UI mode”，文案 “How would you like **Idexal** to show its work?”；步骤 3 “Personalize your work assistant”，含 “Let **Idexal** remember your preferences and work context.”。中文版对应 `occupationOnboarding.modeTitle/modeDescription` 亦已读作 Idexal。
+- 几何与稳定性：每步可见叶子文本块 10 个、**重叠 0、越界 0、无横向溢出**、`Runtime.exceptionThrown` 全程 0。深色下标志取 `mark-dark-<hash>.png`（56px 徽标 + 右侧大图标）。
+- 品牌取自共享组件而非本地拷贝：右侧主视觉是 `IdexalStartupLogoBadge`（`OccupationOnboardingVisual.tsx:54`，与启动闪屏同一组件），因此深浅色选图逻辑与主界面一致，不存在“引导页漏改品牌”的可能；该装饰块带 `aria-hidden="true"`。窄屏下右栏 `hidden ... lg:flex` 收起，属既有响应式设计。
+- 一处需要产品确认而非改名的文案：步骤 3 的 “Migrate conversations / Migrate conversation history from **Claude Code**”。这是迁移功能指向第三方真实产品名（从 Claude Code 导入历史），不是 ZCode 旧品牌残留，改名会破坏语义，故保留并在此标注出处。
+- 无障碍观察（记录不修改）：该向导是全屏流程，DOM 中不存在 `role="dialog"` 或 `aria-modal="true"`（实测 `dialogCount: 0`），所以屏幕阅读器不会把它当作模态。是否补语义属于行为变更，按仓库约定需先改 spec 再动代码，本轮只记录。
+
+### 打包产物运行时依赖闭包复核（v3.15.16）
+
+针对构建日志里的 `[afterPack] missing runtime modules count=44` 给出结论：它是**注入成功**的信息行，不是缺陷。
+
+- 机制：`electron-builder.config.js:304` 先扫 `app.asar` 找出缺失的 hoisted 运行时包，`:359` 打印数量，随后 `:364-397` 解压、按 `package.json` 递归补齐依赖闭包、再重写 `app.asar`。注释里写明历史动因——漏 `module-details-from-path`、`@fiahfy/icns` 的 `pngjs`、`undici`、`protobufjs/minimal` 都会让**已安装应用主进程启动即 `Cannot find module` 崩溃**。
+- 构建期已有硬校验：`bundle.mjs:641` 的 `verifyPackagedRuntimeDependencies` 在 `main()` 中无条件执行（`:742-744`），任一模块缺失即 `throw`、`:760-763` 转成 `exit 1`。日志证据：`bundle:verify-runtime-dependencies start/end duration_ms=587`，且无 `runtime module not found` 告警、无 `缺少运行时依赖`。
+- 产物级独立复核（不依赖退出码）：直接对 `dist/win-unpacked/resources/app.asar` 跑同一套闭包逻辑，得 `asarEntries=30630`、闭包根 15 → 展开 75 个模块、`missingCount=0`、`unresolvable=0`。
+- 反向对照（证明该检查不是恒真）：同一匹配器对不存在的 `__idexal_surely_not_a_real_package__` 返回 `false`，对 `undici` / `pngjs` / `node-forge` / `@opentelemetry/sdk-metrics` 返回 `true`。因此 “0 missing” 是有判别力的结果，不是空跑。
 
 ## 已知非品牌问题（记录以免被当成改名引入）
 
