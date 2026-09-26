@@ -94,6 +94,24 @@
 - 打包机网络限制：本机对 `cdn.npmmirror.com` 与 `registry.npmmirror.com` 都是 `no such host`，而 `bundle.mjs` 的 binaries mirror 回退只在输出含 404 时触发、不覆盖 DNS 失败，所以前两轮 `electron-builder` 在 `building target=nsis` 处失败；Electron runtime 镜像也要显式给出（`ELECTRON_MIRROR=https://github.com/electron/electron/releases/download/`），因为 `mise.toml` 默认写的是 npmmirror。第三轮重试成功产出安装包。
 - 取证方法教训：第一次读该 exe 时后台重试构建正在覆写同一文件，拿到的是覆写中途的副本（`VersionInfo` 仍是 `Electron`、体积与 `electron.exe` 完全相同），据此一度误判“Windows 图标没换”。对正在被构建覆写的产物做取证，必须先确认构建进程退出，或先复制到稳定路径再测。
 
+### 品牌素材溯源与像素一致性（v3.15.6 实测）
+
+链路每一环都对官方素材做过像素比对，不是“看起来对”：
+
+| 仓内素材                                                                | 官方来源                       | 逐像素结果                                                               |
+| ----------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------ |
+| `packages/ui/src/assets/brand/mark-{dark,light}.png`                    | `{dark,light}_icon_idexal.png` | rgb/alpha 差 `0.000`，尺寸同为 377×380                                   |
+| `packages/ui/src/assets/brand/logo-{dark,light}.png`                    | `{dark,light}_logo_idexal.png` | rgb/alpha 差 `0.000`，尺寸同为 1136×380                                  |
+| `packages/{desktop/src/renderer,web}/public/brand/idexal-mark-dark.png` | `dark_icon_idexal.png`         | sha256 相同                                                              |
+| `packages/web/index.html` 内联 favicon（data URI）                      | `build/icons/32x32.png`        | 平均差 `0.000`                                                           |
+| `packages/web/public/favicon.ico`                                       | 同上                           | 平均差 `0.120`（同一素材的容器重编码）                                   |
+| `packages/desktop/build/icon.png`                                       | `master-macos-padded-1024.png` | 平均差 `0.000`                                                           |
+| `packages/desktop/build/icon_windows.png`、`icons/1024x1024.png`        | `master-fullbleed-1024.png`    | 裁剪内容归一化后平均差 `0.529`，即同一图形只是内边距不同，不是另一套设计 |
+
+- 归一化比对是必要的：直接比 `icon_windows.png` 与 `master-fullbleed-1024.png` 得到 `24.588`，看着像“素材不一致”，实际差异全部来自 Windows 与 full-bleed 画布的内边距比例；裁到内容外接框再缩放后只剩 `0.529`。做品牌一致性判断时先归一化，否则会把版式差异误报成换图。
+- 消费方枚举（`assets/brand/`、`public/brand/`、`build/icon*`、`tray_icon`）显示渲染层 5 个组件（`App.tsx`、`WindowsTopLeftLogo`、`WorkspaceSidebarCollapsedRail`、`ConversationDraftEmptyState`、`IdexalAboutLogo`、`RootStartupLoading`）与两个 HTML 启动壳全部指向上表素材；主进程窗口/托盘/通知图标指向 `build/icon*.png` 与 `build/icon.ico`。没有指向仓外或旧品牌位图的路径。
+- 真机复核（CDP 截图后测合成像素）：登录页 40×40 品牌图在深色与浅色主题下都是官方 `mark-dark.png`，落在固定深色底板内（`DESIGN.md` 明确保留该底板），裁区亮度标准差 `99.0`，即高对比、可见。两主题裁片完全相同属预期——底板恒定深灰，选深底专用白墨 mark 正是设计意图。
+
 ## 已知非品牌问题（记录以免被当成改名引入）
 
 - 实测（v3.15.3，CDP 直连运行中的桌面应用）：应用主题为深色时 `documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)').matches` 仍为 `false`（系统为浅色）。因此仓库里全部 122 处 `dark:` 工具类在桌面端启动阶段和 Web 端都跟系统偏好走，而不是跟应用主题走：这是上游遗留的主题机制问题，不属于品牌重构，本版本只把品牌位图的选图改成读 store 主题以消除“标志看不见”的后果，没有全局改写 `dark` 变体语义（那会影响所有 shadcn 组件的既有表现，需要单独设计与验收）。

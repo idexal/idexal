@@ -20,6 +20,7 @@ Idexal is an AI coding workspace with desktop, browser, and terminal interfaces.
 
 ## Updates
 
+- 2026-9-26: Updated to Idexal v3.15.6, replacing brand-consistency claims with pixel-level provenance: UI bitmaps diff 0.000 against the official assets, and the Windows icon is confirmed same-origin with the official master after padding normalization.
 - 2026-9-26: Updated to Idexal v3.15.5, with pixel-level proof that the Windows exe and the NSIS installer ship the official brand icon and Idexal file identity, plus the measured reason the About window keeps no wordmark.
 - 2026-9-26: Updated to Idexal v3.15.4, fixing the 3.15.3 startup-overlay crash caused by reading the store outside its provider, and giving the wordmark its intrinsic aspect ratio.
 - 2026-9-26: Updated to Idexal v3.15.3, placing the official wordmark on the in-app startup overlay and fixing brand bitmap light/dark selection so it follows the app theme instead of the OS preference.

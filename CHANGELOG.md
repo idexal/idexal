@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.15.6 (2026-09-26)
+
+### Documentation
+
+- **branding:** 把品牌素材的一致性从“看起来对”升级为逐像素溯源证明
+  - 四个 UI 位图与官方 `logo_idexal` 素材 rgb/alpha 差均为 `0.000` 且尺寸一致；两个 HTML 启动壳的
+    `/brand/idexal-mark-dark.png` 与官方深色 icon sha256 相同；Web 内联 favicon 与品牌 32px 帧差 `0.000`。
+  - `build/icon.png` 与 `master-macos-padded-1024.png` 差 `0.000`；`icon_windows.png` 与
+    `master-fullbleed-1024.png` 直接比是 `24.588`，裁到内容外接框归一化后只剩 `0.529`，
+    说明 Windows 图标是同一图形换内边距，不是另一套设计。记录该归一化步骤，避免下次把版式差异误报成换图。
+  - 枚举了渲染层 6 个品牌组件、2 个 HTML 启动壳与主进程窗口/托盘/通知图标的全部取图路径，均指向上表素材。
+  - 真机复核：登录页品牌图在深浅两主题下均为官方深底白墨 mark，裁区亮度标准差 `99.0`（高对比可见）。
+
 ## 3.15.5 (2026-09-26)
 
 ### Documentation
