@@ -20,8 +20,10 @@
    退避、按 30+ 个业务码分类），但**没有任何一处代码会因为一个模型失败而换到另一个模型**。
    所以正确做法不是"再写一套重试"，而是给现有分类器的结论加一个"是否该换模型"的判定，
    并在已有的执行器里消费它。见 §3。
-3. **没有任何自动化测试与 CI**，而这是 agent 产品最贵的一类风险：代码改坏只能靠人肉发现。
-   本仓库自己就撞过两次（渲染进程 `import` 漏写导致启动白屏，静态门禁全绿）。见 §1.1。
+3. **没有 CI，测试入口刚刚才有。** `pnpm test:unit`（3.16.8）现在能跑 6 个文件 / 33 个用例，
+   并且已经挂进 `pnpm verify:pre-push`；但 `.github/` 仍不存在，所以这道门禁只在本地有人跑时
+   生效。而这是 agent 产品最贵的一类风险：代码改坏只能靠人肉发现。本仓库自己就撞过两次
+   （渲染进程 `import` 漏写导致启动白屏，静态门禁全绿）。见 §1.1。
 4. **凭据是"混淆"而不是"加密"。** 默认密钥由 `sha256("idexal-credential-fallback:" + platform + homedir + username)`
    派生——这三项全部可枚举，等于密钥就在机器上。见 §2.1。
 
@@ -29,25 +31,44 @@
 
 ## 1. P0：先补住"改一下就静默坏掉"
 
-### 1.1 [确证缺失] 端到端可运行的测试入口
+### 1.1 [部分完成 · 3.16.8] 端到端可运行的测试入口
 
-现状：全仓只有 4 个 `node:test` 文件
+现状（提案时）：全仓只有 4 个 `node:test` 文件
 （`packages/services/test/{importedClaudeRecovery,nonCliAcpRetirement,providerConfigMigration}.test.ts`、
 `packages/ui/test/nonCliAcpRetirement.test.ts`），**没有任何 package.json 里有 test 脚本**，
 `.github/` 目录不存在。唯一的崩溃类断言是 `scripts/idexal-distribution-smoke.mjs:64`，
 它只跑 CLI tarball / TUI / 服务端 HTML，**从不启动 Electron 渲染进程**。
 
-提案（按投入产出排序，前两项各约半天）：
+**已落地（3.16.8）**：`pnpm test:unit` → `scripts/run-unit-tests.mjs`，用 Node 自带的
+`node:test` 加仓库已有的 `tsx`，**没有引入任何新依赖**。上面那 4 个从未被执行过的文件
+现在真的在跑了（`packages/ui/test/nonCliAcpRetirement.test.ts` 单独跑会报
+`Cannot find package '@/lib'`——它依赖 `packages/ui/tsconfig.json` 的 `paths` 别名，
+而 tsx 默认只认启动目录那一份配置，所以入口按"每个测试所属包最近的 tsconfig"分组执行）。
+当前规模：6 个文件 / 33 个用例，已挂进 `pnpm verify:pre-push`。
 
-1. **渲染进程启动冒烟测试**（最高优先）。不要求完整 E2E：用 `electron --version` 级的方式加载
-   `out/renderer/index.html`，等待 `#root` 下出现首个可交互节点，断言
-   `window.__IDEXAL_BOOT_ERROR__` 为空，并抓一次 `unhandledrejection`。
-   验收：**故意在一个 UI 模块里删掉一个 import，这条冒烟必须失败**。
-   这一条直接消灭"全绿但白屏"这类缺陷。
-2. **语言表一致性门禁**（见 §1.3），比测试更便宜，因为它纯静态。
-3. 把已有 4 个 `node:test` 文件接进 `pnpm test`，先让"有测试"这件事可运行，再谈覆盖率。
-4. `.github/workflows/`：只跑 `typecheck + lint + architecture:check + 冒烟`。
-   顺带解决 macOS/Linux 安装包无法在本机产出的问题（见 §4.5）。
+新增的第一批回归用例钉的是模型失败分类与重试预算（
+`apps/idexal-cli/packages/adapters/src/model/{failure-classifier,retry-policy}.test.ts`），
+理由是 §3 的 fallback 只能读 `reason` 与 `retryable` 这两个结构化字段；分类映射一旦改动，
+fallback 触发矩阵必须立刻在这里暴露，而不是等线上换错模型。
+
+判别力验证（每条都实测过）：把 529 的分类改成 `server_error` → 1 个用例失败、退出码 1；
+把默认重试次数 10 改成 5 → 1 个用例失败；在测试文件里注入类型错误 →
+`tsc --noEmit` 报 TS2322；临时移走全部测试文件 → 入口报"没有匹配到任何测试文件"并退出 1
+（**空匹配绝不能算通过**）；往测试里加一条必然失败的用例 → `verify:pre-push` 退出 1。
+
+测试文件不进产物：`tsconfig.json` 继续 `include: src/**/*`，所以测试受 typecheck 覆盖；
+发包用的 `tsconfig.build.json` 只排除 `src/**/*.test.ts`。这一步是实测出来的——
+不带该排除时 dist 里会多出 6 个 `.test.js/.d.ts/.map`。
+
+**仍未完成（原提案第 1 项，优先级最高）**：渲染进程启动冒烟测试。不要求完整 E2E：加载
+`out/renderer/index.html`，等待 `#root` 下出现首个可交互节点，断言
+`window.__IDEXAL_BOOT_ERROR__` 为空，并抓一次 `unhandledrejection`。
+验收：**故意在一个 UI 模块里删掉一个 import，这条冒烟必须失败**。
+这一条直接消灭"全绿但白屏"这类缺陷，也是 §1.2 那次崩溃界面事故真正缺的防线。
+
+**仍未完成（原提案第 4 项）**：`.github/workflows/`：只跑
+`typecheck + lint + architecture:check + test:unit + 冒烟`。顺带解决 macOS/Linux
+安装包无法在本机产出的问题（见 §4.5）。
 
 **不要做**：不要一上来追求组件单测覆盖率。当前最大风险是"起不来"和"接错线"，不是"算错值"。
 
@@ -302,7 +323,10 @@ devDependencies（根 `package.json:73`）但没有任何配置文件；gitleaks
 - **已有工具执行 → 不换模型，改为失败上抛**。这一条不要试图聪明：
   幂等性无法由模型层推断，宁可让用户点重试。
 - 实现时**必须以"工具只执行一次"为验收条件**，用一个故意在第 2 个 token 后 5xx 的假供应商打测试，
-  确认已执行的工具不会二次调用。
+  确认已执行的工具不会二次调用。这条测试现在有地方放了：`pnpm test:unit`（§1.1，3.16.8）。
+  落点是 `turn-model-step.ts:264-288` —— 那里已经有"同模型 stream 恢复"的单一入口
+  （`streamingToolCoordinator.recoverFromModelFailure`），并且**已经在用 `state.toolCallCount`
+  判断恢复前是否执行过工具**（`:276`、`:284`），fallback 必须复用同一个判据，不能另立一套。
 
 ### 3.5 用户可控的部分（对应"控制自定义供应商与模型"）
 

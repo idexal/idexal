@@ -1,5 +1,62 @@
 # Changelog
 
+## 3.16.8 (2026-09-26)
+
+### Changes
+
+- **feat(test):** 仓库第一次有了能跑的测试入口 `pnpm test:unit`，并挂进 `pnpm verify:pre-push`
+  - 新增 `scripts/run-unit-tests.mjs`：用 Node 自带的 `node:test` 加仓库已有的 `tsx` 运行，
+    **没有引入任何新依赖**（`packages/*/package.json` 与 CLI 各包此前都没有 `test` 脚本，
+    turbo 只编排 build/typecheck/lint）。
+  - **顺带救活四个从未执行过的测试**：`packages/services/test/` 三个与 `packages/ui/test/` 一个
+    `node:test` 文件一直躺在仓库里没有入口能跑到它们。其中
+    `packages/ui/test/nonCliAcpRetirement.test.ts` 单独执行会报
+    `Cannot find package '@/lib'`——它依赖 `packages/ui/tsconfig.json` 里的 `paths` 别名，
+    而 tsx 默认只认从启动目录能找到的一份配置。入口因此**按"每个测试所属包最近的 tsconfig"
+    分组执行**并逐组传入 `TSX_TSCONFIG_PATH`。现在 6 个文件 / 33 个用例全部在跑。
+  - **空匹配必须判红**：找不到任何测试文件时报错退出 1，而不是"没有测试所以通过"。
+    实测把两个测试文件临时移走后，入口打印"没有匹配到任何测试文件"并 exit 1。
+  - 新增第一批回归用例 `apps/idexal-cli/packages/adapters/src/model/{failure-classifier,retry-policy}.test.ts`
+    （11 + 6 个）。选它们不是凑覆盖率：§3 的模型 fallback 只能读分类器输出的
+    `reason` 与 `retryable` 两个结构化字段（仓库规范也禁止靠错误文本判断流程），
+    所以分类映射一旦被改动，fallback 触发矩阵必须当场在这里暴露，而不是等线上换错模型。
+    覆盖 429 / `retry-after` 解析 / 529 / 5xx / 401·403 / 400 / 上下文超长 / 408 /
+    流空闲 / 用户取消 / 未知，以及重试预算的默认值、env 次数↔尝试数换算、非法 env 的退路。
+  - **验证的是判别力，不是绿灯**：把 529 的分类改成 `server_error` → 1 个用例失败、exit 1；
+    把默认重试次数 10 改成 5 → 1 个用例失败、exit 1；往测试文件注入一个类型错误 →
+    `tsc --noEmit` 报 TS2322；往测试里加一条必然失败的用例 → `verify:pre-push` exit 1。
+    逐项还原后恢复通过，被改文件用 sha256 与 git status 确认回到原样。
+  - **测试不进产物**：包的 `tsconfig.json` 继续 `include: src/**/*`，所以测试文件受 typecheck
+    覆盖；发包改用新增的 `tsconfig.build.json`（只排除 `src/**/*.test.ts`）。这是实测决定的——
+    不加排除时 `dist/model/` 会多出 6 个 `.test.js / .test.d.ts / .test.map`。
+- **fix(repo):** `.gitattributes` 增加 `*.ts`、`*.tsx` 的 `text eol=lf`
+  - 现象：`pnpm fmt:check` 会对一个**没有任何改动**的文件报失败。`ar.ts` 在索引里是 LF
+    （blob 里 0 个 CR），但 `core.autocrlf=true` 在检出时把它展开成 CRLF（工作区 445 个 CR），
+    而 oxfmt 按字节比较换行符。`git status` 却显示干净，于是"文件没改但门禁红"。
+    本次会话早前那个反复出现的幽灵 `M ar.ts` 是同一个根因。
+  - 与文件里已有的 `*.mjs text eol=lf` 同一理由（一处是 shebang，一处是格式门禁的可复现性）。
+  - 影响面实测：`git add --renormalize .` 只碰到本次改动的 3 个文件，没有引发全库重写；
+    `ar.ts` 从此不再出现在脏文件列表里。
+  - `verify:pre-push` 现为 `lint && architecture:check --changed && check-i18n && test:unit`。
+  - `AGENTS.md` 命令表加上 `pnpm test:unit`，并把"不假定存在统一的单测命令"改写为实际入口与
+    它的两个约束（测试与源码同包所以受 typecheck 覆盖、发包配置排除测试）。
+  - 提案文档同步：§1.1 由"确证缺失"改为"部分完成 · 3.16.8"，写清已落地的部分、
+    仍缺的渲染进程启动冒烟测试（原提案第 1 项，最高优先），以及 §0 结论第 3 条现在只欠 CI；
+    §3.4 补上 fallback 那条"工具只执行一次"验收测试现在有了落点，并指明它必须复用
+    `turn-model-step.ts:264-288` 已有的 `state.toolCallCount` 判据而不是另立一套。
+  - 门禁：`pnpm test:unit` 33/33 通过；`verify:pre-push` exit 0；`pnpm typecheck` exit 0；
+    `pnpm --dir apps/idexal-cli typecheck` 27/27 个任务通过；`pnpm lint` 70 warnings / 0 errors
+    （与基线一致）；`pnpm fmt:check` 通过；`architecture:check --changed` violations 0 / new 0；
+    `licenses check` 通过（改了 `adapters/package.json` 与根 `package.json`，
+    按门禁要求用 `licenses.mjs notices` 重新生成，`inventory.json` 只有那两条哈希变化，
+    `THIRD-PARTY-NOTICES.md` 与 `NOTICE.md` 未被改写）。
+  - 环境限制如实记录：`pnpm --dir apps/idexal-cli typecheck` 直接执行会报
+    `'turbo' is not recognized`（`turbo` 只在仓库根的 `node_modules/.bin`，子目录的 pnpm 运行
+    不会向上继承 PATH），本次是把根 `.bin` 加进 PATH 后跑通的。
+  - 未验证范围（不写成通过）：本轮没有构建桌面产物、没有启动应用，因此渲染层与安装包
+    仍是未验证面；`pnpm knip` 仍为失败且属基线问题（33 个"unused files"里本就包含
+    那四个已存在的测试文件——它把测试当未使用文件，不是本次引入）。
+
 ## 3.16.7 (2026-09-26)
 
 ### Changes

@@ -11,20 +11,25 @@
 
 以下命令从仓库根目录执行：
 
-| 用途             | 命令                                      |
-| ---------------- | ----------------------------------------- |
-| 类型检查         | `pnpm typecheck`                          |
-| Lint             | `pnpm lint` / `pnpm lint:fix`             |
-| 格式检查         | `pnpm fmt:check`                          |
-| 桌面开发         | `pnpm dev:desktop`                        |
-| Web 开发         | `pnpm dev:web`                            |
-| 提交前检查       | `pnpm verify:pre-push`（Lint 与架构检查） |
-| 架构检查         | `pnpm architecture:check --changed`       |
-| 模块阅读包       | `pnpm architecture:context <module-id>`   |
-| 未使用依赖与导出 | `pnpm knip`                               |
-| 导出引用查询     | `pnpm dep:refs --list-exports <file>`     |
+| 用途             | 命令                                             |
+| ---------------- | ------------------------------------------------ |
+| 类型检查         | `pnpm typecheck`                                 |
+| Lint             | `pnpm lint` / `pnpm lint:fix`                    |
+| 格式检查         | `pnpm fmt:check`                                 |
+| 桌面开发         | `pnpm dev:desktop`                               |
+| Web 开发         | `pnpm dev:web`                                   |
+| 提交前检查       | `pnpm verify:pre-push`（Lint、架构、i18n、单测） |
+| 单元测试         | `pnpm test:unit`                                 |
+| 架构检查         | `pnpm architecture:check --changed`              |
+| 模块阅读包       | `pnpm architecture:context <module-id>`          |
+| 未使用依赖与导出 | `pnpm knip`                                      |
+| 导出引用查询     | `pnpm dep:refs --list-exports <file>`            |
 
-测试入口以目标包当前的 `package.json` 和实际测试文件为准，不假定存在统一的单测或 E2E 命令。
+`pnpm test:unit`（`scripts/run-unit-tests.mjs`）是仓库统一的单测入口，用 Node 自带
+`node:test` 加已有的 `tsx` 运行 `packages/*/{src,test}/**/*.test.ts` 与
+`apps/idexal-cli/packages/*/{src,test}/**/*.test.ts`；测试文件与源码同包，因此受该包
+`tsc --noEmit` 覆盖，而发包用的 `tsconfig.build.json` 只排除 `*.test.ts`。仍然不存在
+统一的 E2E 命令，交互变更需要按下面的要求另行验证。
 
 - `packages/desktop`：Electron main、host、renderer。
 - `packages/web`、`packages/server`：Web 客户端与服务端。
