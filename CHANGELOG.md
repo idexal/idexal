@@ -1,5 +1,60 @@
 # Changelog
 
+## 3.16.6 (2026-09-26)
+
+### Changes
+
+- **fix(desktop):** 桌面主进程的界面文案改为按语言穷尽查表，并修掉退出对话框残留的旧品牌名
+  - 收敛 3.16.5 提案 §1.6 列出的 **7 处**"应用自己的文字只认 `zh-CN`/`en-US`"，形态统一为
+    `Record<Locale, Copy>` + `?? [FALLBACK_LOCALE]`，与 `desktopMenu.ts:61` 既有房内模式一致：
+    联合类型再加语言时，缺条目会变成编译错误而不是静默英文。
+    涉及：强制更新对话框（`forceUpdateGuard.ts:197`）、强制更新进度窗全部 22 条文案
+    （`forceUpdatePrompt.ts:41`）、架构不匹配提示（`desktopArchitectureGuard.ts:69`）、
+    退出确认（`index.ts:1310`）、内嵌浏览器 `alert`/`confirm` 按钮与其来源标签
+    （`embeddedBrowserJavaScriptDialog.ts:64`）、打开外部文件夹确认框
+    （`desktopOAuthDeepLink.ts:139`，顺带完成该处早已写下的 `TODO(i18n)`）、
+    无可安装更新提示（`autoUpdater.ts:348`）。
+  - **修掉一处品牌残留**：退出确认的消息原本是 `"Quit Z Code?"` / `"确认退出 Z Code?"`
+    —— 全站 ZCode→Idexal 改名把它漏在了生产环境才会弹出的对话框里（只有带运行中会话退出时触发）。
+    全仓复查 `Z[ -]?Code` 现在只剩 3 处，且都是**发给模型网关的 `X-Title` 请求头**
+    （`packages/shared/src/idexal-source-headers.ts:6,50`、
+    `apps/idexal-cli/packages/bootstrap/src/model-config.ts:59`）：同一份 header 里
+    `User-Agent` 与 `HTTP-Referer` 已经是 Idexal，只有 `X-Title` 还是旧名。
+    **这条没有动**——机器可读标识可能是上游限额/统计的键，属于对外契约，
+    换它是产品决策而不是清理，需要与网关确认后一起做。
+  - **按钮顺序是机器契约，不是文案习惯**，已在代码注释里逐处钉住：
+    退出框 `defaultId/cancelId = 1` 且 `result === 0` 才退出 ⇒ 必须 `[退出, 取消]`；
+    内嵌浏览器 confirm 是 `[取消, 确定]` 且 `defaultId: 1, cancelId: 0` ⇒ 回车触发的是"确定"，
+    与前者顺序**相反**；打开外部文件夹框 `defaultId/cancelId = 1` ⇒ 索引 0 才是"打开"。
+    按本地习惯调换顺序会让确认框的默认动作变成"打开一个陌生文件夹"。
+  - 强制更新进度窗的 HTML 原本写 `lang` 却不写 `dir`，阿语内容会按 LTR 基线排版；
+    补 `dir="${resolveTextDirection(locale)}"`（返回值是 `"rtl" | "ltr"` 闭集，无需转义）。
+  - **过程中自己制造并抓到一处同类缺陷**：`forceUpdateGuard.ts` 的阿语初稿写成了
+    `"لا يمكن继续使用 الإصدار الحالي"`——阿语句子里夹了中文。正是 3.16.2 那条教训的现场复现，
+    所以这次给新写的 7 个文件补了一条机器扫描：任何一行同时含阿拉伯文与 CJK 即报错，
+    修复后结果为 7 个文件全 0。
+  - **验证方式（因为 `packages/desktop/src/main` 不在 `pnpm typecheck` 的 11 个项目里，
+    且 `tsconfig.main.json` 有既有错误基线，不能当门禁）**：改用
+    `npx tsc -p packages/desktop/tsconfig.main.json --noEmit` 对 **HEAD 基线做逐条身份比对**，
+    本次改动后仍为 **87 条、新增 0、消失 0**。并且**反向证明过这条比对有判别力**：
+    故意把 `fr` 改成 `fr1`，计数立刻升到 88 并报
+    `TS2353: 'fr1' does not exist in type 'Record<Locale, ForceUpdatePromptMessages>'`，随后还原。
+    缺 import（`FALLBACK_LOCALE` / `resolveTextDirection`）也会被同一比对抓到——本次确实抓到一次。
+  - **一处刻意没做**：`windowsCuaOperationIndicatorContent.ts:15` 的提示条文案与
+    **手填像素宽度绑在同一分支**（中文 234 / 英文 308），卡片是 `white-space: nowrap` 且
+    `html, body { overflow: hidden }`，窗口宽度必须 ≥ 文本渲染宽度，否则居中裁切。
+    阿语需要字体整形才能算准，裸 Node 没有度量手段，凭感觉填数字就是把"漏译"换成"截断"。
+    因此这次不动它：阿/法用户在该提示条上看到英文，是**已记录的已知缺口**；
+    结束它需要的动作是关掉开发实例、实测两种语言下卡片的实际文本宽度。
+  - 剩余 `=== "zh-CN"` 仅 4 处：3 处是官网 `/cn` 与 `/cn/changelog` 前缀分流
+    （`desktopArchitectureGuard.ts:58`、`desktopCommandHandlers.ts:455`、
+    `forceUpdateGuard.ts:192`），属于分享站/官网只有 `/cn` 与裸路径两种形状的外部契约，
+    按 `docs/i18n-rtl.md` 保持窄类型；第 4 处即上面那条 CUA 提示条。
+  - 门禁：`pnpm typecheck` exit 0；`pnpm lint` 70 warnings / 0 errors；`pnpm fmt:check` 通过；
+    `architecture:check --changed` violations 0 / new 0；`licenses check` 通过。
+    语言相关既有校验（键集对称、占位符一致）本次不涉及，未重复跑。
+    **仍未实跑渲染**：用户 `:9229` 实例在跑，起第二实例的 `pre-dev` 会 `rmSync` 同一份 `out/`。
+
 ## 3.16.5 (2026-09-26)
 
 ### Changes

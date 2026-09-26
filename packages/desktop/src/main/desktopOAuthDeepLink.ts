@@ -4,6 +4,7 @@ import { isAbsolute, resolve } from "node:path";
 import { app, BrowserWindow, dialog } from "electron";
 import type { WebContents } from "electron";
 import {
+  FALLBACK_LOCALE,
   type Locale,
   type OAuthProviderId,
   type OAuthStateRegistration,
@@ -136,27 +137,48 @@ export function isNetworkWorkspacePath(path: string): boolean {
   return normalized.startsWith("\\\\") || /^\\\\\?\\UNC\\/iu.test(normalized);
 }
 
-export function resolveExternalWorkspaceOpenDialogCopy(
-  locale: Locale,
-): ExternalWorkspaceOpenDialogCopy {
-  // TODO(i18n): 新增 Locale 时把这里收敛成完整 Record<Locale, ...>，
-  // 避免未覆盖语言静默回退英文。
-  if (locale === "zh-CN") {
-    return {
-      buttons: ["打开文件夹", "取消"],
-      title: "打开外部 Idexal 链接？",
-      message: "是否在 Idexal 中打开此文件夹？",
-      detail: (path) => `${path}\n\n只打开你信任来源的文件夹。项目设置可能影响 agent runtime。`,
-    };
-  }
-
-  return {
+/**
+ * `buttons` 的顺序是机器契约：调用方固定 `defaultId: 1, cancelId: 1`，
+ * 即索引 1 才是"取消"、索引 0 才是"打开"。换语言只换字面量，
+ * 按本地习惯调换顺序会把确认框的默认动作变成"打开陌生文件夹"。
+ */
+const EXTERNAL_WORKSPACE_OPEN_DIALOG_COPY: Record<Locale, ExternalWorkspaceOpenDialogCopy> = {
+  "zh-CN": {
+    buttons: ["打开文件夹", "取消"],
+    title: "打开外部 Idexal 链接？",
+    message: "是否在 Idexal 中打开此文件夹？",
+    detail: (path) => `${path}\n\n只打开你信任来源的文件夹。项目设置可能影响 agent runtime。`,
+  },
+  "en-US": {
     buttons: ["Open folder", "Cancel"],
     title: "Open external Idexal link?",
     message: "Open this folder in Idexal?",
     detail: (path) =>
       `${path}\n\nOnly open folders from sources you trust. Project settings may affect the agent runtime.`,
-  };
+  },
+  ar: {
+    buttons: ["فتح المجلد", "إلغاء"],
+    title: "هل تريد فتح رابط Idexal خارجي؟",
+    message: "هل تريد فتح هذا المجلد في Idexal؟",
+    detail: (path) =>
+      `${path}\n\nافتح فقط المجلدات من مصادر تثق بها. قد تؤثر إعدادات المشروع على تشغيل الوكيل.`,
+  },
+  fr: {
+    buttons: ["Ouvrir le dossier", "Annuler"],
+    title: "Ouvrir un lien Idexal externe ?",
+    message: "Ouvrir ce dossier dans Idexal ?",
+    detail: (path) =>
+      `${path}\n\nN’ouvrez que des dossiers provenant de sources fiables. Les paramètres du projet peuvent influer sur l’exécution de l’agent.`,
+  },
+};
+
+export function resolveExternalWorkspaceOpenDialogCopy(
+  locale: Locale,
+): ExternalWorkspaceOpenDialogCopy {
+  return (
+    EXTERNAL_WORKSPACE_OPEN_DIALOG_COPY[locale] ??
+    EXTERNAL_WORKSPACE_OPEN_DIALOG_COPY[FALLBACK_LOCALE]
+  );
 }
 
 export function confirmExternalWorkspaceOpen(

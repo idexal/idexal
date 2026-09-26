@@ -2,6 +2,7 @@
 import type { ISettingService } from "@idexal/services";
 import {
   DEFAULT_LOCALE,
+  FALLBACK_LOCALE,
   DEFAULT_IDEXAL_ENDPOINT_ORIGIN,
   desktopMenuMessageIds,
   formatDesktopMenuMessage,
@@ -345,10 +346,18 @@ function notifyForceAutoUpdate(state: ForceAutoUpdateState) {
   activeForceAutoUpdateListener?.(state);
 }
 
+const FORCE_AUTO_UPDATE_NO_UPDATE_MESSAGE: Record<Locale, string> = {
+  "zh-CN": "未找到可安装更新，请使用手动升级。",
+  "en-US": "No installable update was found. Use manual update instead.",
+  ar: "لم يُعثر على تحديث قابل للتثبيت. استخدم التحديث اليدوي بدلًا من ذلك.",
+  fr: "Aucune mise à jour installable trouvée. Utilisez la mise à jour manuelle.",
+};
+
 function getForceAutoUpdateNoUpdateMessage(): string {
-  return menuLocale === "zh-CN"
-    ? "未找到可安装更新，请使用手动升级。"
-    : "No installable update was found. Use manual update instead.";
+  return (
+    FORCE_AUTO_UPDATE_NO_UPDATE_MESSAGE[menuLocale] ??
+    FORCE_AUTO_UPDATE_NO_UPDATE_MESSAGE[FALLBACK_LOCALE]
+  );
 }
 
 function normalizeProgressPercent(progress: unknown): string | undefined {

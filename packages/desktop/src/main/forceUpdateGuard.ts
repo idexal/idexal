@@ -1,5 +1,6 @@
 import {
   DEFAULT_IDEXAL_ENDPOINT_ORIGIN,
+  FALLBACK_LOCALE,
   IDEXAL_VERSION,
   buildIdexalEndpointUrls,
   getForceUpdateMinimalVersionFromConfig,
@@ -191,29 +192,50 @@ function resolveForceUpdateDownloadUrl(
   return locale === "zh-CN" ? `${origin}/cn` : `${origin}/en`;
 }
 
-function formatForceUpdateDialogText(
-  requirement: ForceUpdateRequirement,
-  locale: Locale,
-): ForceUpdateDialogText {
-  if (locale === "zh-CN") {
-    return {
-      title: "需要升级 Idexal",
-      message: "当前版本无法继续使用",
-      detail: `当前版本：v${requirement.currentVersion}\n最低可用版本：v${requirement.minimalVersion}`,
-      autoUpdateButton: "自动升级",
-      manualUpdateButton: "手动升级",
-      quitButton: "退出",
-    };
-  }
-
-  return {
+const FORCE_UPDATE_DIALOG_TEXT: Record<
+  Locale,
+  (requirement: ForceUpdateRequirement) => ForceUpdateDialogText
+> = {
+  "zh-CN": (requirement) => ({
+    title: "需要升级 Idexal",
+    message: "当前版本无法继续使用",
+    detail: `当前版本：v${requirement.currentVersion}\n最低可用版本：v${requirement.minimalVersion}`,
+    autoUpdateButton: "自动升级",
+    manualUpdateButton: "手动升级",
+    quitButton: "退出",
+  }),
+  "en-US": (requirement) => ({
     title: "Update Idexal",
     message: "The current version can no longer be used",
     detail: `Current version: v${requirement.currentVersion}\nMinimum supported version: v${requirement.minimalVersion}`,
     autoUpdateButton: "Auto update",
     manualUpdateButton: "Manual update",
     quitButton: "Quit",
-  };
+  }),
+  ar: (requirement) => ({
+    title: "يجب تحديث Idexal",
+    message: "لا يمكن استخدام الإصدار الحالي",
+    detail: `الإصدار الحالي: v${requirement.currentVersion}\nأقل إصدار قابل للاستخدام: v${requirement.minimalVersion}`,
+    autoUpdateButton: "تحديث تلقائي",
+    manualUpdateButton: "تحديث يدوي",
+    quitButton: "إنهاء",
+  }),
+  fr: (requirement) => ({
+    title: "Mettre à jour Idexal",
+    message: "La version actuelle ne peut plus être utilisée",
+    detail: `Version actuelle : v${requirement.currentVersion}\nVersion minimale requise : v${requirement.minimalVersion}`,
+    autoUpdateButton: "Mise à jour auto",
+    manualUpdateButton: "Mise à jour manuelle",
+    quitButton: "Quitter",
+  }),
+};
+
+function formatForceUpdateDialogText(
+  requirement: ForceUpdateRequirement,
+  locale: Locale,
+): ForceUpdateDialogText {
+  const build = FORCE_UPDATE_DIALOG_TEXT[locale] ?? FORCE_UPDATE_DIALOG_TEXT[FALLBACK_LOCALE];
+  return build(requirement);
 }
 
 export async function maybeBlockStartupForForceUpdate(

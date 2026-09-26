@@ -1,6 +1,6 @@
 import { BrowserWindow, dialog, nativeImage, webContents } from "electron";
 import type { WebContents } from "electron";
-import type { Locale } from "@idexal/shared";
+import { FALLBACK_LOCALE, type Locale } from "@idexal/shared";
 
 const DEFAULT_AUTOMATION_GRACE_MS = 3_000;
 const USER_BROWSER_TAB_PREFIX = "browser:";
@@ -39,34 +39,88 @@ function parseEmbeddedBrowserDialogRequest(value: unknown): EmbeddedBrowserDialo
   return { type: candidate.type, message: candidate.message };
 }
 
-function resolveEmbeddedBrowserDialogSource(frameUrl: string, guestUrl?: string): string {
+/**
+ * 来源标签由网页控制不了的部分拼成：只有解析成功的 http(s) host 才会出现在文案里，
+ * 其余情况一律用中性标签，避免页面伪造"来自可信站点"的措辞。
+ */
+const EMBEDDED_BROWSER_DIALOG_SOURCE_COPY: Record<
+  Locale,
+  { withHost: (host: string) => string; unknown: string }
+> = {
+  "zh-CN": {
+    withHost: (host) => `${host} 提示`,
+    unknown: "此页面提示",
+  },
+  "en-US": {
+    withHost: (host) => `${host} says`,
+    unknown: "This page says",
+  },
+  ar: {
+    withHost: (host) => `يقول ${host}`,
+    unknown: "تقول هذه الصفحة",
+  },
+  fr: {
+    withHost: (host) => `${host} indique`,
+    unknown: "Cette page indique",
+  },
+};
+
+function resolveEmbeddedBrowserDialogHost(frameUrl: string, guestUrl?: string): string | null {
   for (const candidate of [frameUrl, guestUrl]) {
     if (!candidate) continue;
     try {
       const parsed = new URL(candidate);
       if ((parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.host) {
-        return `${parsed.host} says`;
+        return parsed.host;
       }
       if (parsed.protocol === "blob:" && parsed.origin) {
         const origin = new URL(parsed.origin);
         if ((origin.protocol === "http:" || origin.protocol === "https:") && origin.host) {
-          return `${origin.host} says`;
+          return origin.host;
         }
       }
     } catch {
       // 继续尝试 Chromium 维护的下一层可信 URL。
     }
   }
-  // 非法或无 host URL 统一使用不可伪造的中性来源标签。
-  return "This page says";
+  return null;
 }
+
+function resolveEmbeddedBrowserDialogSource(
+  locale: Locale,
+  frameUrl: string,
+  guestUrl?: string,
+): string {
+  const copy =
+    EMBEDDED_BROWSER_DIALOG_SOURCE_COPY[locale] ??
+    EMBEDDED_BROWSER_DIALOG_SOURCE_COPY[FALLBACK_LOCALE];
+  const host = resolveEmbeddedBrowserDialogHost(frameUrl, guestUrl);
+  // 非法或无 host URL 统一使用不可伪造的中性来源标签。
+  return host ? copy.withHost(host) : copy.unknown;
+}
+
+/**
+ * 数组顺序是机器契约，不是文案偏好：调用方固定用 `defaultId: type === "alert" ? 0 : 1`
+ * 与 `cancelId: 0`，所以 confirm 必须是 [取消, 确定]、alert 必须是 [确定]。
+ * 换语言时只换字面量，不能按本地习惯调换顺序，否则回车触发的会是"取消"。
+ */
+const EMBEDDED_BROWSER_DIALOG_BUTTONS: Record<
+  Locale,
+  { alert: [string]; confirm: [string, string] }
+> = {
+  "zh-CN": { alert: ["确定"], confirm: ["取消", "确定"] },
+  "en-US": { alert: ["OK"], confirm: ["Cancel", "OK"] },
+  ar: { alert: ["موافق"], confirm: ["إلغاء", "موافق"] },
+  fr: { alert: ["OK"], confirm: ["Annuler", "OK"] },
+};
 
 function resolveEmbeddedBrowserDialogButtons(
   locale: Locale,
   type: EmbeddedBrowserDialogRequest["type"],
 ): string[] {
-  if (type === "alert") return [locale === "zh-CN" ? "确定" : "OK"];
-  return locale === "zh-CN" ? ["取消", "确定"] : ["Cancel", "OK"];
+  const buttons =
+    EMBEDDED_BROWSER_DIALOG_BUTTONS[locale] ?? EMBEDDED_BROWSER_DIALOG_BUTTONS[FALLBACK_LOCALE];
+  return type === "alert" ? [...buttons.alert] : [...buttons.confirm];
 }
 
 /**
@@ -140,7 +194,11 @@ export class EmbeddedBrowserJavaScriptDialogController {
         cancelId: 0,
         // 同源 iframe 的可信 frame URL 可能是 about:blank；该 URL 没有
         // 可展示 host，必须继续使用 Chromium 维护的 guest 主文档 URL。
-        message: resolveEmbeddedBrowserDialogSource(frameUrl, registration.guest.getURL()),
+        message: resolveEmbeddedBrowserDialogSource(
+          this.options.getLocale(),
+          frameUrl,
+          registration.guest.getURL(),
+        ),
         detail: request.message,
         noLink: true,
         normalizeAccessKeys: true,

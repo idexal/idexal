@@ -71,6 +71,7 @@ import {
   IDEXAL_PRODUCT_FLAVOR,
   DEFAULT_IDEXAL_ENDPOINT_ORIGIN,
   DEFAULT_LOCALE,
+  FALLBACK_LOCALE,
   IDEXAL_VERSION,
   IDEXAL_TELEMETRY_ENABLED,
   IDEXAL_ARMS_RUM_ENDPOINT,
@@ -1308,20 +1309,55 @@ function shouldConfirmAppQuit() {
   return IDEXAL_ENV === "production" && getRunningAgentSessionCount() > 0;
 }
 
+interface AppQuitDialogCopy {
+  /** 顺序是机器契约：`defaultId/cancelId` 固定为 1，返回值 `result === 0` 才表示退出，
+   *  所以每种语言都必须是 [退出, 取消]，不能按本地习惯调换。 */
+  buttons: [string, string];
+  title: string;
+  message: string;
+  runningSessions: (count: number) => string;
+}
+
+const APP_QUIT_DIALOG_COPY: Record<Locale, AppQuitDialogCopy> = {
+  "zh-CN": {
+    buttons: ["退出", "取消"],
+    title: "退出确认",
+    message: "确认退出 Idexal?",
+    runningSessions: (count) => `正在进行的会话：${count} 个，退出后会被中断。`,
+  },
+  "en-US": {
+    buttons: ["Quit", "Cancel"],
+    title: "Confirm Quit",
+    message: "Quit Idexal?",
+    runningSessions: (count) =>
+      `In-progress sessions: ${count}. They will be interrupted after quitting.`,
+  },
+  ar: {
+    buttons: ["إنهاء", "إلغاء"],
+    title: "تأكيد الخروج",
+    message: "هل تريد إنهاء Idexal؟",
+    runningSessions: (count) => `الجلسات الجارية: ${count}. سيؤدي الخروج إلى مقاطعتها.`,
+  },
+  fr: {
+    buttons: ["Quitter", "Annuler"],
+    title: "Confirmer la fermeture",
+    message: "Quitter Idexal ?",
+    runningSessions: (count) =>
+      `Sessions en cours : ${count}. Elles seront interrompues après la fermeture.`,
+  },
+};
+
 function confirmAppQuit(originWindow?: BrowserWindow | null) {
   if (!shouldConfirmAppQuit()) {
     logger.info(`[app-quit] quit confirmation skipped in ${IDEXAL_ENV}`);
     return true;
   }
 
-  const isZh = currentApplicationLocale === "zh-CN";
+  const copy =
+    APP_QUIT_DIALOG_COPY[currentApplicationLocale] ?? APP_QUIT_DIALOG_COPY[FALLBACK_LOCALE];
   const runningAgentSessionCount = getRunningAgentSessionCount();
   const detailLines = [
-    runningAgentSessionCount > 0
-      ? isZh
-        ? `正在进行的会话：${runningAgentSessionCount} 个，退出后会被中断。`
-        : `In-progress sessions: ${runningAgentSessionCount}. They will be interrupted after quitting.`
-      : null,
+    runningAgentSessionCount > 0 ? copy.runningSessions(runningAgentSessionCount) : null,
   ].filter((line): line is string => line !== null);
   const targetWindow =
     originWindow && !originWindow.isDestroyed()
@@ -1331,11 +1367,11 @@ function confirmAppQuit(originWindow?: BrowserWindow | null) {
         null);
   const dialogOptions = {
     type: "question" as const,
-    buttons: isZh ? ["退出", "取消"] : ["Quit", "Cancel"],
+    buttons: [...copy.buttons],
     defaultId: 1,
     cancelId: 1,
-    title: isZh ? "退出确认" : "Confirm Quit",
-    message: isZh ? "确认退出 Z Code?" : "Quit Z Code?",
+    title: copy.title,
+    message: copy.message,
     detail: detailLines.join("\n"),
     icon: nativeImage.createFromPath(iconPath),
   };

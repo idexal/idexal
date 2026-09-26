@@ -1,6 +1,7 @@
 import type { BrowserWindow, NativeImage } from "electron";
 import {
   DEFAULT_IDEXAL_ENDPOINT_ORIGIN,
+  FALLBACK_LOCALE,
   buildIdexalEndpointUrls,
   type Locale,
 } from "@idexal/shared";
@@ -65,25 +66,25 @@ interface ArchitectureMismatchDialogText {
   dismissButton: string;
 }
 
-function formatArchitectureMismatchDialogText(
-  mismatch: ArchitectureMismatch,
-  locale: Locale,
-): ArchitectureMismatchDialogText {
-  const isZh = locale === "zh-CN";
-  if (isZh) {
-    return {
-      title: "架构不匹配",
-      message: "当前安装的不是适配本机的版本",
-      detail:
-        `你正在运行 ${mismatch.binaryArch} 版本，但本机是 ${mismatch.nativeArch}（Apple 芯片）架构，` +
-        `当前通过系统转译运行，会更慢、更耗电。\n\n` +
-        `建议前往官网下载并安装 ${mismatch.nativeArch} 原生版本以获得最佳性能。`,
-      downloadButton: "前往下载",
-      dismissButton: "暂不处理",
-    };
-  }
-
-  return {
+/**
+ * `detail` 里 `Apple 芯片` 只出现在中文版，是因为该守卫跑在 macOS 且提示的是 Rosetta 转译；
+ * 其余语言沿用同一事实描述，不额外承诺架构名称。
+ */
+const ARCHITECTURE_MISMATCH_DIALOG_TEXT: Record<
+  Locale,
+  (mismatch: ArchitectureMismatch) => ArchitectureMismatchDialogText
+> = {
+  "zh-CN": (mismatch) => ({
+    title: "架构不匹配",
+    message: "当前安装的不是适配本机的版本",
+    detail:
+      `你正在运行 ${mismatch.binaryArch} 版本，但本机是 ${mismatch.nativeArch}（Apple 芯片）架构，` +
+      `当前通过系统转译运行，会更慢、更耗电。\n\n` +
+      `建议前往官网下载并安装 ${mismatch.nativeArch} 原生版本以获得最佳性能。`,
+    downloadButton: "前往下载",
+    dismissButton: "暂不处理",
+  }),
+  "en-US": (mismatch) => ({
     title: "Architecture Mismatch",
     message: "The installed build does not match your machine",
     detail:
@@ -92,7 +93,36 @@ function formatArchitectureMismatchDialogText(
       `Please download and install the native ${mismatch.nativeArch} build for the best performance.`,
     downloadButton: "Download",
     dismissButton: "Not now",
-  };
+  }),
+  ar: (mismatch) => ({
+    title: "عدم توافق البنية",
+    message: "الإصدار المثبّت لا يطابق بنية هذا الجهاز",
+    detail:
+      `أنت تستخدم إصدار ${mismatch.binaryArch}، بينما بنية هذا الجهاز ${mismatch.nativeArch}. ` +
+      `يعمل التطبيق حالياً عبر الترجيم من النظام، وهو أبطأ ويستنزف طاقة أكبر.\n\n` +
+      `يُنصح بتنزيل وتثبيت ${mismatch.nativeArch} الأصلي للحصول على أفضل أداء.`,
+    downloadButton: "تنزيل",
+    dismissButton: "لاحقًا",
+  }),
+  fr: (mismatch) => ({
+    title: "Architecture incompatible",
+    message: "La version installée ne correspond pas à cette machine",
+    detail:
+      `Vous exécutez la version ${mismatch.binaryArch}, alors que cette machine est ${mismatch.nativeArch}. ` +
+      `Elle tourne actuellement via la traduction système, ce qui est plus lent et plus énergivore.\n\n` +
+      `Téléchargez et installez la version native ${mismatch.nativeArch} pour de meilleures performances.`,
+    downloadButton: "Télécharger",
+    dismissButton: "Plus tard",
+  }),
+};
+
+function formatArchitectureMismatchDialogText(
+  mismatch: ArchitectureMismatch,
+  locale: Locale,
+): ArchitectureMismatchDialogText {
+  const build =
+    ARCHITECTURE_MISMATCH_DIALOG_TEXT[locale] ?? ARCHITECTURE_MISMATCH_DIALOG_TEXT[FALLBACK_LOCALE];
+  return build(mismatch);
 }
 
 interface ArchitectureGuardLogger {
