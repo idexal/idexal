@@ -20,6 +20,7 @@ Idexal is an AI coding workspace with desktop, browser, and terminal interfaces.
 
 ## Updates
 
+- 2026-9-26: Updated to Idexal v3.15.20: audited the published releases (tags and releases match 1:1, naming and states consistent) and recorded the real gap — no release carries a downloadable artifact — along with why the existing unsigned `_TEST` installer can't simply be attached.
 - 2026-9-26: Updated to Idexal v3.15.19: end-to-end testing of the production build in a real browser showed the previous prefers-color-scheme icon selection never actually took effect (a light OS plus the app's default dark theme put dark strokes on a dark tab), so the icon is now chosen by the app theme in the bootstrap script, verified in both directions.
 - 2026-9-26: Updated to Idexal v3.15.18, fixing the web browser tab icon using the wrong brand variant: it embedded the light-mode artwork (dark strokes on a transparent background) while the app declares a dark color scheme, so the logo's main stroke blended into the tab bar and the mark looked broken. Dark and light variants are now served per system color scheme.
 - 2026-9-26: Updated to Idexal v3.15.17, splitting leftover brand-domain strings into "endpoints consumed by programs — keep" versus "links clicked by people — pending a decision", locating two places where the public share page download button and the in-app Docs menu still point at the upstream domain, and explaining why rewriting them before idexal.com is live would only trade a branding problem for a broken link.

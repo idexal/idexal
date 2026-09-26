@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.15.20 (2026-09-26)
+
+### Documentation
+
+- **docs:** 审计已发布的 Releases 一致性，并记下"所有 release 都没有可下载产物"这一事实
+  - 用 `git credential fill` 取本机凭据（不使用聊天里粘贴过的 token）调 GitHub Releases API 逐个比对：
+    本地 `v3.15.*` 标签 20 个、GitHub releases 20 个，`tagsWithoutRelease` 与 `releasesWithoutTag`
+    均为空，即标签与发布一一对应、无孤儿；全部 `draft=false`、`prerelease=false`，
+    命名统一为 `Idexal vX.Y.Z`，正文长度 481–1581 字符，`latest` 指向 v3.15.19。
+  - 发现的真实缺口：**20 个 release 的 assets 全部为 0**，也就是从 GitHub 上下载不到任何安装包。
+    构建产物确实存在（`packages/desktop/dist/Idexal Preview-3.15.14-win-x64_TEST.exe`，150,462,088 字节），
+    但从未上传。
+  - 不擅自上传的理由（记录以免被当成遗漏后随手补上）：产物未签名；文件名带 `_TEST`
+    （来自 `desktopArtifactEnvSuffix`，是后端环境标记而非品牌残留），是否以该形态对外发布属产品决策；
+    且现存产物对应 3.15.14，落后于当前 3.15.19，直接上传会发布一个与最新代码不符的安装包。
+    上传 150MB 二进制到公开仓库也是对外可见、体量大的动作，需先确认。
+  - 同时记录一条测试环境结论：用无后端的静态服务器托管 `packages/web/dist` 时，控制台必然出现
+    `WebSocket connection to 'ws://127.0.0.1:4179/ws' failed: Unexpected response code: 200`——
+    静态服务器把 `/ws` 当 SPA 回退返回了 index.html。这是测试装置缺后端所致，不是产品缺陷；
+    生产包本身加载、挂载、标题与图标选择均正常。
+
 ## 3.15.19 (2026-09-26)
 
 ### Bug Fixes

@@ -216,6 +216,22 @@
   深色主题下可读的 dark 变体。要与主题彻底解耦，需给标志加自有深色圆角底板（即应用图标那种形态），
   属品牌样式决策，先定方案再改。
 
+### 已发布 Releases 的产物缺口（v3.15.20 审计）
+
+- 一致性没问题：本地 `v3.15.*` 标签 20 个 ↔ GitHub releases 20 个，双向都没有孤儿，
+  全部非 draft、非 prerelease，命名统一 `Idexal vX.Y.Z`，`latest` 指向最新发布。
+  审计脚本用 `git credential fill` 取本机凭据，不使用聊天中粘贴过的 token。
+- **缺口：20 个 release 的 assets 全为 0**，即 GitHub 上下载不到安装包。
+  本地产物是有的（`packages/desktop/dist/Idexal Preview-3.15.14-win-x64_TEST.exe`，约 150MB），
+  但从未上传。
+- 为什么先不传：未签名；文件名 `_TEST` 是后端环境标记（`desktopArtifactEnvSuffix`）而非品牌残留，
+  以什么形态对外发布属产品决策；且现存产物是 3.15.14 的，落后于当前版本，
+  直接上传等于发布一个与最新代码不一致的安装包。需要的是"重新出当前版本包 + 决定是否签名 + 确认命名"，
+  而不是把旧文件挂上去。
+- 测试装置结论（避免误判为缺陷）：把 `packages/web/dist` 用无后端静态服务器托管时，
+  必然报 `ws://…/ws` 握手失败、`Unexpected response code: 200`——静态服务器把 `/ws` 按 SPA 回退
+  返回了 index.html。属测试环境缺后端，不是产品问题。
+
 ## 已知非品牌问题（记录以免被当成改名引入）
 
 - 实测（v3.15.3，CDP 直连运行中的桌面应用）：应用主题为深色时 `documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)').matches` 仍为 `false`（系统为浅色）。因此仓库里全部 122 处 `dark:` 工具类在桌面端启动阶段和 Web 端都跟系统偏好走，而不是跟应用主题走：这是上游遗留的主题机制问题，不属于品牌重构，本版本只把品牌位图的选图改成读 store 主题以消除“标志看不见”的后果，没有全局改写 `dark` 变体语义（那会影响所有 shadcn 组件的既有表现，需要单独设计与验收）。
