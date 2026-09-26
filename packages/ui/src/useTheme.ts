@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useSyncExternalStore, useState } from "react";
 
 export type Theme = "light" | "dark" | "zai-light" | "zai-dark" | "system";
 export type ResolvedTheme = "light" | "dark";
@@ -70,15 +70,32 @@ export function applyTheme(theme: Theme) {
 }
 
 /**
- * 供 StoreProvider 之外渲染的表面（启动遮罩、HTML 壳接管后的首屏）推断当前主题。
+ * 品牌位图这类"必须跟已生效主题严格一致"的表面只能有一个事实来源。
  *
- * 这些表面在 Root 的 isStartupRenderBlocked 分支里渲染，位置低于 <StoreProvider>，
- * 读 store 会抛 "useIdexalStore 必须在 StoreProvider 内使用"；而 applyTheme 已经把
- * 解析后的主题写成 .dark 类，所以类名是此处唯一可用且与背景同源的事实。
+ * store 里的 theme 可能是 "system"，而 resolveTheme("system") 会在渲染期再查一次
+ * matchMedia('(prefers-color-scheme: dark)')。桌面端该媒体值由主进程按 nativeTheme
+ * 异步回推，和 applyTheme 写 .dark 类的时机不同步，于是出现"页面已经是浅色、
+ * 位图还选深色墨"的组合（实测：App theme=System 且系统为浅色时，
+ * documentElement 为 theme-zai-light 而三处品牌图仍为 mark-dark.png，刷新后依旧）。
+ * applyTheme 已经把解析结果落到 .dark 类上，所以订阅这个类才是与 CSS 同源的事实。
+ *
+ * 订阅 DOM 类顺带解决了渲染边界：启动遮罩走 Root 的 isStartupRenderBlocked 分支，
+ * 位置低于 <StoreProvider>，读 store 会抛 "useIdexalStore 必须在 StoreProvider 内使用"。
  */
-export function inferAppliedTheme(): Theme {
-  if (typeof document === "undefined") return "zai-dark";
-  return document.documentElement.classList.contains("dark") ? "zai-dark" : "zai-light";
+export function isDarkThemeApplied(): boolean {
+  if (typeof document === "undefined") return true;
+  return document.documentElement.classList.contains("dark");
+}
+
+function subscribeAppliedTheme(onStoreChange: () => void): () => void {
+  if (typeof document === "undefined") return () => {};
+  const observer = new MutationObserver(onStoreChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  return () => observer.disconnect();
+}
+
+export function useIsDarkThemeApplied(): boolean {
+  return useSyncExternalStore(subscribeAppliedTheme, isDarkThemeApplied, () => true);
 }
 
 function isTheme(value: string | null): value is Theme {

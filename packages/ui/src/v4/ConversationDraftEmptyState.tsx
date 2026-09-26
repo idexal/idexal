@@ -11,8 +11,7 @@ import { cn } from "@/components/lib/utils.js";
 import { useIdexalIntl } from "@/i18n/IntlProvider.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { logger } from "@/logger.js";
-import { useIdexalStoreWithDefault } from "@/store/StoreProvider.js";
-import { inferAppliedTheme, resolveTheme } from "@/useTheme.js";
+import { useIsDarkThemeApplied } from "@/useTheme.js";
 
 const GREETING_BOUNDARY_HOURS = [5, 9, 12, 14, 18, 23] as const;
 const GREETING_MIN_FONT_SIZE_PX = 20;
@@ -214,12 +213,12 @@ export function ConversationDraftEmptyState({ className }: { className?: string 
 
 function IdexalEmptyStateLogo({ className }: { className?: string }) {
   // 修复：两套资源都是官方标志位图，不再依赖 currentColor，必须显式选图。
-  // 这里按应用主题（Zustand `theme`）选，不用 Tailwind `dark:`——本仓没有 class 版 dark 变体，
-  // `dark:` 编译成 @media (prefers-color-scheme: dark)，Web 目标只跟系统偏好，会和应用主题相反。
+  // 选图依据是 applyTheme 写到 <html> 的 .dark 类（与 CSS 同源），不在渲染期重查 store 的
+  // "system" 偏好或 prefers-color-scheme：桌面端该媒体值由主进程异步回推，会与类名先后不一致，
+  // 实测出现过页面已是 theme-zai-light 而位图仍选深色墨白标的组合。
   // 渐隐遮罩与深浅无关：实测两张官方位图的逐行 alpha 曲线完全一致（10%=103…98%=67），
   // 深色件并没有自带渐隐，之前把遮罩限定在浅色导致深色主题下问候语压在满强度标志上看不清。
-  const theme = useIdexalStoreWithDefault((state) => state.theme, inferAppliedTheme());
-  const isDark = resolveTheme(theme) === "dark";
+  const isDark = useIsDarkThemeApplied();
   return (
     <img
       aria-hidden="true"

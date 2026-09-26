@@ -244,7 +244,7 @@
     "apps/idexal-cli/packages/tui/package.json": "bf4d9d82f1fe3b89439684d6f523bebd53b68d401d00663f7fc62daa4d4e9404",
     "apps/idexal-cli/tools/prompt-trajectory/package.json": "b9a1074500bf58045b23227fbac68756a3b3087998847649a79355d2d6be69fb",
     "apps/idexal-cli/tools/typescript/package.json": "805b36f3c53ea095587da9bc719b143b55226d33a8d3c45ee2eebc2fa31dc9b3",
-    "package.json": "fc13f5e25d8e2aecade798987289fdd1ea6471fdaa5cbc148c0a4c8c6780e398",
+    "package.json": "ba819f8e79af1e8bead6e9ae963ef9a608a410e26d7664bc8150d16ffdc0b2f9",
     "packages/client/package.json": "b3e3308b700e75af5d2718f80037a3f23fba051c343770a96f056defa4314e42",
     "packages/desktop/package.json": "94be4c6de51fd70eb9ed8d5a0a23895b437e85f82f133bcfc1698c088c454717",
     "packages/desktop/src/renderer/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
@@ -1492,7 +1492,7 @@
     "packages/ui/src/components/ui/GlmMonochromeIcon.tsx": "0298f074de8fb66c39704c8c39bd414575e2bdc2c87be156fc47c979804a956e",
     "packages/ui/src/components/ui/highlighted-lightweight-diff-preview.tsx": "c04bb6009683ab74cb72ff8f1e1157ffbdd06be4a46dc3c725c63e0bc43fea72",
     "packages/ui/src/components/ui/hover-card.tsx": "28e49fb55a3fd4f5bfc5d61f336854304bc92c5a7098305b208274913b226f3d",
-    "packages/ui/src/components/ui/IdexalAboutLogo.tsx": "957e31a57034a5e2b37c068e5cff960d8858be409a2886c6a537218fe7d9b8af",
+    "packages/ui/src/components/ui/IdexalAboutLogo.tsx": "12ccb040df33a73cf76c5c440a8888133a182b50d49edbf99d907e8966685238",
     "packages/ui/src/components/ui/input-group.tsx": "72e8c0775e55525efe49dfa42ecba7b9244836a78c31be0dd576d52640d4c3c9",
     "packages/ui/src/components/ui/input.tsx": "946d37bdf07c81e70ad13242b904c27618d5d09f7c17a74f6b6c8cb613fa93dc",
     "packages/ui/src/components/ui/kbd.tsx": "a7fabb33892c759337ae5c936d3b62f27fb2356a5a6340dbff8bfbac6f0a359f",
@@ -19405,7 +19405,7 @@
         },
         {
           "file": "packages/ui/src/components/ui/IdexalAboutLogo.tsx",
-          "sha256": "957e31a57034a5e2b37c068e5cff960d8858be409a2886c6a537218fe7d9b8af"
+          "sha256": "12ccb040df33a73cf76c5c440a8888133a182b50d49edbf99d907e8966685238"
         },
         {
           "file": "packages/ui/src/components/ui/README.md",

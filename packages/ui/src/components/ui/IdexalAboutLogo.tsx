@@ -2,8 +2,7 @@ import { cn } from "@/components/lib/utils.js";
 import brandLogoDarkUrl from "@/assets/brand/logo-dark.png";
 import brandLogoLightUrl from "@/assets/brand/logo-light.png";
 import brandMarkDarkUrl from "@/assets/brand/mark-dark.png";
-import { useIdexalStoreWithDefault } from "@/store/StoreProvider.js";
-import { inferAppliedTheme, resolveTheme } from "@/useTheme.js";
+import { useIsDarkThemeApplied } from "@/useTheme.js";
 
 /**
  * 品牌方形标志（"IX" mark）。
@@ -30,16 +29,16 @@ export function IdexalAboutLogo({ className }: { className?: string }) {
  * 品牌横向组合标（mark + "idexal" 字标，约 3:1）。
  *
  * 修复：原先是拼写旧品牌名的内联 SVG，用 currentColor 自适应；位图资源自带明暗两套配色，
- * 必须显式选图。这里按应用主题（Zustand `theme`）选墨色，不用 Tailwind `dark:`：
- * 本仓没有 class 版 dark 变体，`dark:` 编译成 `@media (prefers-color-scheme: dark)`，
- * 桌面端靠 nativeTheme 看起来正确，Web 端却只跟系统偏好，应用主题与系统相反时深色底会压深色墨。
+ * 必须显式选图。选图依据是 applyTheme 落到 <html> 的 .dark 类（与 CSS 同源），不用 Tailwind
+ * `dark:`（本仓没有 class 版 dark 变体，它编译成 prefers-color-scheme），也不在渲染期重查
+ * store 里的 "system" 偏好——那会和 applyTheme 的写入时机抢先后。
  * 默认宽度沿用旧 SVG 的 244px 内在宽度，调用方可用 className 覆盖。
  */
 export function IdexalWordmarkLogo({ className }: { className?: string }) {
-  const theme = useIdexalStoreWithDefault((state) => state.theme, inferAppliedTheme());
+  const isDark = useIsDarkThemeApplied();
   return (
     <img
-      src={resolveTheme(theme) === "dark" ? brandLogoDarkUrl : brandLogoLightUrl}
+      src={isDark ? brandLogoDarkUrl : brandLogoLightUrl}
       alt=""
       aria-hidden="true"
       draggable={false}

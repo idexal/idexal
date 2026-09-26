@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.15.8 (2026-09-26)
+
+### Bug Fixes
+
+- **branding:** 修复 App theme 选 “System” 时品牌位图与已生效主题不匹配
+  - 现象：桌面端把应用主题设为 System（系统为浅色）时，`documentElement` 已是
+    `theme-zai-light`，而标题栏 logo、侧栏收起栏与草稿页水印三处品牌图仍取 `mark-dark.png`，
+    等于把白色标志画在浅色底上；刷新后依旧，属稳态问题不是过渡闪烁。
+  - 原因：品牌选图走 `resolveTheme(store.theme)`，`"system"` 会在 React 渲染期再查一次
+    `matchMedia('(prefers-color-scheme: dark)')`；桌面端该媒体值由主进程按 nativeTheme 异步回推，
+    与 `applyTheme` 写 `.dark` 类的时机不同步。同一“当前主题”存在两个判定入口，就会互相不一致。
+  - 修复：新增 `useIsDarkThemeApplied()`，用 `useSyncExternalStore` 订阅 `<html>` 的 `.dark` 类，
+    让品牌选图与 CSS 共用同一事实来源；五处消费方（`App.tsx` 顶栏 logo 与主题切换目标、
+    `WindowsTopLeftLogo`、`WorkspaceSidebarCollapsedRail`、`IdexalWordmarkLogo`、
+    `ConversationDraftEmptyState`）全部改用该 hook，并删掉被它取代的 `inferAppliedTheme`。
+    订阅 DOM 类同时消除了 StoreProvider 渲染边界问题，启动遮罩不再需要容错式 store 读取。
+  - 复核：三种偏好逐一实测“类名 vs 实际取图”一致性——`zai-dark` → `dark` 类 + `mark-dark.png`、
+    `zai-light` → 浅色类 + `mark-light.png`、`system` → 浅色类 + `mark-light.png`，
+    三者 `mismatchCount` 均为 0，0 运行时异常、无横向溢出；验证后已把主题偏好还原为 `zai-dark`。
+
 ## 3.15.7 (2026-09-26)
 
 ### Bug Fixes

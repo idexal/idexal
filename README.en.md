@@ -20,6 +20,8 @@ Idexal is an AI coding workspace with desktop, browser, and terminal interfaces.
 
 ## Updates
 
+- 2026-9-26: Updated to Idexal v3.15.8, fixing brand bitmaps disagreeing with the applied theme when App theme is System (white logo on a light page); bitmap choice now subscribes to the .dark class only.
+
 - 2026-9-26: Updated to Idexal v3.15.7, fixing the dark-theme draft page where the full-strength brand watermark sat under the greeting and made it unreadable; the fade no longer branches on theme.
 
 - 2026-9-26: Updated to Idexal v3.15.6, replacing brand-consistency claims with pixel-level provenance: UI bitmaps diff 0.000 against the official assets, and the Windows icon is confirmed same-origin with the official master after padding normalization.

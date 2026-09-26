@@ -49,7 +49,7 @@ import { runWorkspaceVisibleCommand } from "@/lib/workspaceVisibleCommand.js";
 import { IDEXAL_PRODUCT_DOCS_URL } from "@/lib/productDocs.js";
 import brandMarkDarkUrl from "@/assets/brand/mark-dark.png";
 import brandMarkLightUrl from "@/assets/brand/mark-light.png";
-import { resolveTheme } from "@/useTheme.js";
+import { useIsDarkThemeApplied } from "@/useTheme.js";
 import { WorkspaceShellLayout } from "@/app-shell/WorkspaceShellLayout.js";
 import { useAppChromeState } from "@/app-shell/useAppChromeState.js";
 import { useWorkspaceSessionReload } from "@/app-shell/useWorkspaceSessionReload.js";
@@ -356,11 +356,14 @@ export function App({
   });
   const theme = useIdexalStore((s) => s.theme);
   const setTheme = useIdexalStore((s) => s.setTheme);
+  const isDarkApplied = useIsDarkThemeApplied();
   // 修复：桌面顶栏 app logo 之前借用 Z.ai provider 图标（logo-zai.svg），并不是本品牌标志。
   // 官方标志是位图、不吃 currentColor，而 DesktopTopOverlay 只接收一个字符串 src，
-  // 无法在组件内部用 dark: 切换两张图，故在此按已解析主题显式选图（同 GlmMonochromeIcon 的做法）。
+  // 无法在组件内部用 dark: 切换两张图，故在此显式选图。
+  // 选图依据是 applyTheme 落到 <html> 的 .dark 类（与 CSS 同源），不在渲染期重查 store 的
+  // "system" 偏好——桌面端 prefers-color-scheme 由主进程异步回推，会与类名先后不一致。
   // 顶栏是 20px 方形槽位，使用方形 mark，不放约 3:1 的横向组合标。
-  const appLogoUrl = resolveTheme(theme) === "dark" ? brandMarkDarkUrl : brandMarkLightUrl;
+  const appLogoUrl = isDarkApplied ? brandMarkDarkUrl : brandMarkLightUrl;
   const {
     isMacFullscreen,
     desktopWindowChromeState,
@@ -689,7 +692,7 @@ export function App({
   const handleOpenProductDocs = useCallback(() => {
     platform.openExternal(IDEXAL_PRODUCT_DOCS_URL);
   }, [platform]);
-  const themeTarget = resolveTheme(theme) === "dark" ? "light" : "dark";
+  const themeTarget = isDarkApplied ? "light" : "dark";
   const handleSwitchTheme = useCallback(() => {
     setTheme(themeTarget);
   }, [setTheme, themeTarget]);
