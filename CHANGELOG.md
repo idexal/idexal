@@ -1,187 +1,35 @@
-# Changelog — Idexal (Ecosystem)
+# Changelog
 
-## [2.9.0] — 2026-08-26
+## 3.15.0 (2026-09-26)
 
-**IDE 2.9.0 “AES-GCM + Billing Live”** + **CLI 2.9.0 “Router + Collab”**
+### Features
 
-- **IDE**: Cloud Sync now `AES-GCM (PBKDF2 100k, 256-bit, 12-byte IV)` with `idexal-sync-salt` + `xor:` fallback + `hasLocalChanges`/`conflict` flag + `hasLocalChanges` warning; `pluginStoreService` billing live (`verify`/`purchase` 70%, `stripePriceId`, `revenue`, `getBilling`/`getRevenueSummary`) + `billingService.ts` Stripe stub (`checkout` `cs_*`, `idexal-purchases`); Marketplace **My Plugins** panel (local store list with Verify/Buy, live refresh via storage event) + Settings → Data **Plugin Billing** card (Stripe connect/disconnect, summary)
-- **CLI**: `modelRouter.ts` deterministic router (`IDEXA gateway auto/best-coding` → `OPENAI gpt-4o/mini` → `Anthropic` → `local qwen` → fallback) used by `ask --model auto` and `do --model auto` (prints `router: provider → model (reason)`); `collab.ts` offline file rooms `~/.idexa/collab/<room>/` (`create --task`/`join` live tail via chokidar+stdin/`list`/`leave` NDJSON); registered as `idexa collab`
-- **Build**: CLI PE 37.8MB + tgz 225K (259 files), IDE Setup 95M + Portable 95M + Zip 128M + asar 26M; `vite 21s` + `90/90` + `29/29`; live launch `win-unpacked 12s EXIT 124` + `collab create/list` verified
+- **branding:** 完成从上游 ZCode 到 Idexal 的全量品牌重构
+  - 产品名 `ZCode` → `Idexal`，根包名 `zcode` → `idexal`，桌面窗口标题、设置页与*about* 展示统一为 Idexal。
+  - 官网切换为 `https://idexal.com`，仓库切换为 `https://github.com/idexal/idexal`，官方联系邮箱统一为 `contact@idexal.com`。
+  - npm scope `@zcode/*` → `@idexal/*`，覆盖全部 workspace 包名与跨包导入路径。
+  - 数据目录 `~/.zcode`、`.zcode/`、`.zcode-plugin/` → `~/.idexal`、`.idexal/`、`.idexal-plugin/`；插件 manifest 按 `.idexal-plugin/plugin.json` 发现。
+  - 环境变量前缀 `ZCODE_*` → `IDEXAL_*`。
+  - Electron appId `dev.zcode.app` → `dev.idexal.app`（Preview 为 `dev.idexal.app.preview`）；Linux 可执行名与包名固定为 `idexal`，保证 `Icon=idexal` 与 hicolor 图标命中一致。
+  - CLI 与安装器命令 `zcode` → `idexal`；协议与模块标识 `zcode-protocol`、`zcode-*` → `idexal-protocol`、`idexal-*`；工作区包 `@zcode/zcode-cua` → `@idexal/idexal-cua`。
+  - 本次为品牌级功能变更，按 minor 版本发布，不作为补丁版本推出。
+- **desktop:** 更换 Idexal 图标与标识集
+  - 新增 artwork 源目录 `logo_idexal/`：`light_logo_idexal.png` / `dark_logo_idexal.png` 为 wordmark（分别用于浅色与深色背景），`light_icon_idexal.png` / `dark_icon_idexal.png` 为独立标识。
+  - 覆盖桌面安装器图标（macOS `icon.icns`、Windows `icon.ico`、Linux PNG 尺寸集）、托盘图标、macOS Dock 图标、Web favicon 与站点图标，以及应用内品牌 chrome。
+  - 旧 ZCode 图标视觉在本版本整体替换，不再作为独立任务延后。
 
-## [2.8.0] — 2026-08-26
+### Chores
 
-**IDE 2.8.0 “Callbacks + On-Device”** + **CLI 2.8.0 “Watch + Real Publish”**
+- **release:** 发行元数据与版本来源保持单一
+  - `electron-builder` 的 `author.email` 与 Linux `maintainer` 由占位地址改为对外地址 `contact@idexal.com`，随 deb / rpm / pacman 包元数据一并发布。
+  - 版本号仍只写在根 `package.json`：经 `packages/desktop/scripts/build-metadata.mjs` 得出 `appVersion`，再注入构建期常量 `__IDEXAL_VERSION__`（即 `IDEXAL_VERSION`）与 electron-builder `extraMetadata.version`，源码中不另写版本常量。
+  - `apps/idexal-cli` 使用自身 `.release-it.json` 独立发版，不参与桌面应用版本对齐。
+  - 保留上游契约 token 不改名：`zcode.z.ai`、`cdn-zcode.z.ai`、`/zcode/electron/releases/`、`zcode-plan`、`zcode-plugins-official`、`zcode-cua`、`zcode-artifact://`、`zcode-team-api-key`、`zcode_official`、`zcodejwttoken` 与 `X-ZCode-*` / `x-zcode-*` 请求头。这些字符串的远端对端不在本仓库内，改名会直接打断登录、网关、插件市场与自动更新。
+  - `LICENSE` 的 `Copyright 2026 Z.AI Co., Ltd` 与 `THIRD-PARTY-NOTICES.md` 的事实性内容保持上游原值。
 
-- **IDE**: Protocol v2 callbacks live (`ide_open_file`/`ide_show_diff` via NDJSON `request`), `onDeviceModelService` distilled n-gram + optional transformers WASM (offline ghost-text fallback Ollama → LM Studio → on-device), Settings → Tab Autocomplete → On-Device panel (`onDeviceEnabled`/`onDeviceModel` in `idexal-settings`), `open-file` IPC accepts path + `show-diff` IPC, `preload` exposes `idexaCancel`/`showDiff`
-- **CLI**: `do --watch` (chokidar 1200ms debounce, auto `.idexa/index.json` rebuild, `⚡ Change detected`), `ask --index --stream` fully wired, `plugins publish` real `npm publish --access public` with staging fallback, new tools `ide_open_file`/`ide_show_diff` for bridge callbacks
-- **Build**: CLI PE 37.8MB + tgz 218K, IDE Setup 95M + Portable 95M + Zip 128M + asar 26M; `vite 20s` + `90/90` + `29/29`; hotfix 2.7.1 clean-install retained
+### Documentation
 
-## [2.7.1] — 2026-08-26 — HOTFIX: standalone binary + clean-install
-
-### Fixed
-- **CLI v2.7.1** hotfix: binaries/idexa-win-x64.exe was a JS text file with .exe extension — failed on clean Windows without Node. Now a real PE32+ via pkg (Node 18 embedded, 37.8MB). Verified: file PE32+ and timeout 12 --help passes. 29/29 tests.
-- **IDE v2.7.1** hotfix: electron-builder omitted electron-updater/electron-is-dev — app never opened on fresh machines (MODULE_NOT_FOUND). Fixed files + asarUnpack **.node/.dll/.exe + public/** + zip target (Idexal-IDE-2.7.1-Windows-x64.zip 128M fallback for SmartScreen). Verified: vite + 90/90 + Setup 95M + Portable 95M + Zip 128M + app.asar 26M; win-unpacked stays alive 12s.
-
-## [2.7.0] — 2026-08-26
-
-### Changed
-- **IDE v2.7.0** released: cloud sync live (encrypted Gist, token input + Sync/Pull, XOR→AES-ready) + marketplace publish form (pluginStoreService staging, 70% share); Windows installers attached
-- **CLI v2.7.0** released: `idexa ask --stream` live streaming + `idexa plugins publish <path>` staging (manifest validation, --dry-run, 70% share); 29 tests, tarball (214K) + binary (3.9MB) attached
-
-## [2.6.0] — 2026-08-26
-
-### Changed
-- **IDE v2.6.0** released: multi-workspace tabs (pill bar, 8 recent, `workspaceTabsService`) + Plugin Store banner (70% revenue stub, Publish CTA); Windows installers attached
-- **CLI v2.6.0** released: `idexa ask` single-shot Q&A (--model/--json) + `idexa do --index` workspace-index auto-injection; 29 tests, tarball (212K) + binary (3.9MB) attached
-
-## [2.5.0] — 2026-08-26
-
-### Changed
-- **IDE v2.5.0** released: Team Skill Packs (share/import/apply) + Agent Protocol v2 (typed envelope + Cancel); Windows installers attached
-- **CLI v2.5.0** released: `idexa index` workspace cache (--refresh/--json/--watch) + `mcp tools --stream/--timeout`; 29 tests, tarball + binary attached
-
-## [2.4.0] — 2026-08-26
-
-### Changed
-- **IDE v2.4.0** released: 🎙️ voice input in Chat (Web Speech live transcript + Whisper-ready) + Sync panel in Settings → Data; Windows installers attached
-- **CLI v2.4.0** released: `idexa search <query>` workspace search (ripgrep + fallback) + binary refresh; 29 tests, tarball + binary attached
-
-## [2.3.0] — 2026-08-26
-
-### Changed
-- **IDE v2.3.0 "Streaming Inline Edit"** released: Ctrl+K now streams token-by-token
-  with live preview widget + Autocomplete settings panel; Windows installers attached
-- **CLI v2.3.0** released: single-exec binary (3.8 MB) + `--files` scoped context;
-  29 tests, tarball + binary attached
-
-## [2.2.0] — 2026-08-26
-
-### Changed
-- **IDE v2.2.0 "Local Autocomplete"** released: ghost-text tab-completion via
-  Ollama/LM Studio, fully private; Windows installers attached
-- **CLI v2.2.0** released: `mcp tools` list + direct invocation; 29 tests,
-  tarball attached
-
-## [2.1.0] — 2026-08-26
-
-### Changed
-- **IDE v2.1.0 "Per-Hunk Apply"** released: partial diff apply via line
-  selection; Windows installers attached
-- **CLI v2.1.0** released: npm publish readiness verified; tarball attached
-
-## [2.0.0] — 2026-08-26
-
-### Changed
-- **IDE v2.0.0 "One Platform"** released: skills catalog browser with
-  one-click install; Windows installers attached
-- **CLI v2.0.0 "Registry"** released: MCP tools surfaced to the agent loop;
-  npm registry metadata; 29 tests, tarball attached
-
-### Milestone
-The IDE and CLI now ship as ONE platform — same agent, same tools, same
-skills, connected by the NDJSON bridge.
-
-## [1.9.0] — 2026-08-26
-
-### Changed
-- **IDE v1.9.0 "Skills Fetch"** released: install any skill from the
-  idexal-skills repo by id, instantly; Windows installers attached
-- **CLI v1.9.0 "MCP Client"** released: `mcp connect/list/remove` with
-  validated JSON-RPC stdio connections; 29 tests, tarball attached
-
-### Added
-- ROADMAP re-baselined: v2.0.0 = IDE "One Platform" + CLI "Registry"
-
-## [1.8.0] — 2026-08-26
-
-### Changed
-- **IDE v1.8.0 "Wire the Bridge"** released: Terminal Agent panel runs the
-  idexa CLI live with real-time progress; Windows installers attached
-- **CLI v1.8.0 "Depth"** released: `idexa models` local runtime detection
-  (Ollama/LM Studio) with `--use` switching; 29 tests, tarball attached
-
-### Added
-- The IDE↔CLI bridge is live — one platform, one agent, everywhere
-
-## [1.7.0] — 2026-08-26
-
-### Changed
-- **IDE v1.7.0 "Inline Edit"** released: Cursor-style Ctrl+K in-editor AI
-  editing with Accept/Reject bar; Windows installers attached
-- **CLI v1.7.0 "Bridge"** released: NDJSON event protocol (`--json-events`)
-  + shell completions; 29 tests, npm tarball attached
-
-### Added
-- ROADMAP re-baselined: v1.8.0 = IDE "Wire the Bridge" + CLI "Depth"
-
-## [1.6.0] — 2026-08-26
-
-### Changed
-- **IDE v1.6.0 "Skills Marketplace"** released: enable/disable toggles with
-  persistence in the Skills browser; Windows installers attached
-- **CLI v1.6.0 "Polish"** released: resumable agent sessions
-  (`do --continue` / `--resume <id>`); 29 tests, npm tarball attached
-
-### Added
-- ROADMAP re-baselined: v1.7.0 = IDE "Inline" + CLI "Bridge"
-
-## [1.5.0] — 2026-08-26
-
-### Changed
-- **IDE v1.5.0 "Diff Review + @folder"** released: folder context expansion,
-  checkpoints on every Apply path; Windows installers attached
-- **CLI v1.5.0 "Ship"** released: atomic `idexa refactor` (all-or-nothing),
-  `idexa hook install` pre-commit AI review; 29 tests, npm tarball attached
-
-### Added
-- ROADMAP re-baselined: v1.6.0 = IDE "Marketplace" + CLI "Polish"
-
-## [1.4.0] — 2026-08-26
-
-### Changed
-- **IDE v1.4.0 "Agent Does + Undo"** released: checkpoints before every applied
-  action + one-click Undo button in chat; Windows installers attached
-- **CLI v1.4.0 "Reach"** released: `idexa watch` background agent (debounced,
-  ext-filtered, read-only default), 29 tests passing, npm tarball attached
-
-### Added
-- ROADMAP re-baselined: v1.5.0 = IDE "Diff Review" + CLI "Ship"
-
-## [1.3.0] — 2026-08-26
-
-### Changed
-- **IDE v1.3.0 "@-Context"** released: @file references pull real file contents
-  into agent context; Windows Setup+Portable installers attached
-- **CLI v1.3.0 "Deep Workspace"** released: checkpoints & `idexa undo`,
-  29 tests passing, npm tarball attached
-
-### Added
-- ROADMAP re-baselined: v1.4.0 = IDE "Agent Does" + CLI "Reach"
-
-## [1.2.0] — 2026-08-26
-
-### Changed
-- **IDE v1.2.0 "Agent Transparency"** released: provider metadata in chat,
-  bounded skill injection, Windows Setup+Portable installers attached
-- **CLI v1.2.0 "Agent Loop"** released: autonomous `idexa do` with permission gate,
-  headless `idexa -p`, session continuity (`--continue`/`--resume`), gateway env config
-
-### Added
-- ROADMAP.md re-baselined: v1.3.0 targets are IDE "Real Tool Loop" and CLI "Deep Workspace"
-
-## [1.1.0] — 2026-08-26
-
-### Changed
-- Repository restructured: the monorepo was split into **4 standalone repos**:
-  - [idexal-ide](https://github.com/idexal/idexal-ide) v1.1.0
-  - [idexal-cli](https://github.com/idexal/idexal-cli) v1.1.0
-  - [idexal-skills](https://github.com/idexal/idexal-skills) v1.1.0
-  - [idexal-website](https://github.com/idexal/idexal-website) v0.9.0
-- This repository is now the ecosystem overview (umbrella)
-
-### Added
-- Ecosystem README with quick-start per component and roadmap
-- Continuous development master plan: `ROADMAP.md`
-
-[Unreleased]: https://github.com/idexal/idexal/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/idexal/idexal/releases/tag/v1.1.0
+- **rebrand:** 同步品牌重构 spec 与对外文档
+  - `docs/rebrand.md` 补充联系邮箱身份项，新增「品牌视觉」章节并撤销「图标视觉更换为独立任务」的旧约定，验收清单增加邮箱与版本一致性检查。
+  - `README.md` / `README.en.md` 增加 Idexal wordmark 横幅与官网、仓库、Issues、联系邮箱入口，修正已不存在的 `third-party/README.md` 引用，并补齐中英文缺失章节使两边结构一致。
+  - `NOTICE.md` 新增「联系方式」章节，登记官方邮箱、仓库与官网。

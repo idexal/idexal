@@ -1,0 +1,1170 @@
+/* eslint-disable max-lines -- 通信频道和请求响应映射必须集中定义，避免跨进程 channel 字符串散落。 */
+import type {
+  ResourceUsageSnapshot,
+  LoadCliMcpFromUserDirectoryRequest,
+  LoadCliMcpFromUserDirectoryResult,
+  MigrateLegacyCommonMcpRequest,
+  MigrateLegacyCommonMcpResult,
+  SaveCliMcpToUserDirectoryRequest,
+} from "./index.js";
+import type { OAuthStateRegistration } from "./oauth.js";
+import type { AppSettings, Locale } from "./protocol.js";
+import type { StorageCleanRequest, StorageCleanResult, StorageUsageSnapshot } from "./storage.js";
+import type {
+  ArmsCustomEventPayload,
+  ConfigureFinalArmsCustomEventE2ERequest,
+  FinalArmsCustomEventE2EEntry,
+  RendererTelemetryEventPayload,
+  TelemetryRendererContext,
+} from "./telemetry.js";
+import type {
+  RendererActionTraceBatchV1,
+  RendererActionTraceConfigV1,
+} from "./rendererActionTrace.js";
+import type { RendererHeapSample } from "./validation.js";
+import type {
+  CancelPendingRemoteConnectionRequest,
+  BindRemoteWorkspaceSessionContextRequest,
+  BotRemoteWorkspaceReconnectedEvent,
+  BrowserViewScreenshotSurfacePreparePayload,
+  BrowserViewScreenshotSurfaceReadyPayload,
+  BrowserViewScreenshotSurfaceReleasePayload,
+  BrowserViewCloseTabNotification,
+  BrowserViewCloseTabRequest,
+  BrowserViewResidencyReportPayload,
+  BrowserViewResidencyTransitionPayload,
+  BrowserViewRestoredTabShell,
+  BrowserViewRestoreTabsRequest,
+  BrowserViewViewportChangedPayload,
+  ConnectRemoteRequest,
+  DesktopCommandId,
+  DesktopTitleBarTheme,
+  DockerContainerInfo,
+  EmbeddedBrowserOpenUrlRequest,
+  EditorInfo,
+  CreateTempTextAttachmentRequest,
+  CreateTempTextAttachmentResult,
+  SaveFileRequest,
+  SaveFileResult,
+  PrintPageToPdfResult,
+  OpenInEditorOptions,
+  PostUpdateReleaseNotesPayload,
+  RemoteSessionClosedEvent,
+  SSHConfigAliasOption,
+  TaskNotificationPayload,
+  WSLDistro,
+  UpdateCheckResultPayload,
+  UpdateStatePayload,
+  DesktopZoomState,
+  DesktopWindowChromeState,
+  WindowControlsOverlayMetrics,
+  WindowControlsOverlayReadyPayload,
+} from "./platform.js";
+import type { BrowserViewportSize } from "./browser-use/command-metadata.js";
+import type {
+  CuaAccessibilitySettingsResult,
+  OpenCuaPermissionOnboardingOptions,
+  PrepareCuaHelperPermissionDragResult,
+} from "./cuaAccessibilitySettings.js";
+
+// ============================================================================
+// RPC 服务频道 —— 通过 ChannelServer/ChannelClient 传输
+// ============================================================================
+
+/** RPC 服务频道名。与 ServiceDescriptor.channelName 对应。 */
+export const ServiceChannels = {
+  File: "file",
+  MediaPreview: "media-preview",
+  System: "system",
+  Terminal: "terminal",
+  /** Git 服务 */
+  Git: "git",
+  /** Git checkpoint 服务 */
+  GitCheckpoint: "git-checkpoint",
+  Setting: "setting",
+  /** 凭据管理（从 main IPC 迁移到 host RPC） */
+  Credential: "credential",
+  /** Computer Use Helper macOS 权限服务 */
+  CuaPermission: "cua-permission",
+  /** producer-owned PiP session presentation client */
+  CuaPipSession: "cua-pip-session",
+  /** 跨窗口广播 */
+  Broadcast: "broadcast",
+  /** Idexal task wrapper 服务 */
+  IdexalTask: "idexal-task",
+  /** 窗口 Host 聚合 workspace/task 投影与列表写路由 */
+  WindowController: "window-controller",
+  /** Idexal Protocol agent 服务 */
+  IdexalAgent: "idexal-agent",
+  /** Idexal session 应用服务 */
+  IdexalSession: "idexal-session",
+  /** 会话分享发布、预览与 continuation API 编排 */
+  ConversationShare: "conversation-share",
+  /** 文件系统监视服务 */
+  FileWatcher: "file-watcher",
+  /** OAuth 认证服务 */
+  OAuth: "oauth",
+  /** 新 Provider Config 的设置读写 Facade */
+  ProviderSettings: "provider-settings",
+  /** 新 Provider Registry 的模型选择 Facade */
+  ModelSelection: "model-selection",
+  /** 远端 Environment 内部 Provider Provisioning target */
+  ProviderProvisioningTarget: "provider-provisioning-target",
+  /** 本地 usage 统计服务 */
+  UsageStats: "usage-stats",
+  /** Coding Plan 订阅购买服务 */
+  CodingPlanSubscription: "coding-plan-subscription",
+  ClientConfig: "client-config",
+  /** Idexal 客户端场景配置服务 */
+  ClientScenes: "client-scenes",
+  /** Skills 管理服务 */
+  Skills: "skills",
+  /** SSH 远程 skills 同步服务 */
+  SkillSync: "skill-sync",
+  /** SSH 远程 MCP 同步服务 */
+  McpSync: "mcp-sync",
+  /** SSH 远程 plugin 同步服务 */
+  PluginSync: "plugin-sync",
+  /** 插件管理服务 */
+  Plugins: "plugins",
+  /** 设置页插件管理服务（UI 平台能力面收敛，不再直触 idexalAgentService） */
+  PluginManagement: "plugin-management",
+  /** Subagents 管理服务 */
+  Subagents: "subagents",
+  /** Commands 管理服务 */
+  Commands: "commands",
+  /** Hooks 管理服务 */
+  Hooks: "hooks",
+  /** Memory 管理服务 */
+  Memory: "memory",
+  /** 首次启动设置同步服务 */
+  SettingsSync: "settings-sync",
+  /** Bots 远程聊天控制服务 */
+  Bots: "bots",
+  /** 用户反馈工单服务 */
+  Feedback: "feedback",
+  /** Composer 附件在 host-local 与 remote runtime 之间的预传服务 */
+  PromptAttachmentTransfer: "prompt-attachment-transfer",
+  /** 闲时任务管理服务（与 automation 服务面独立） */
+  OffPeakTask: "off-peak-task",
+  /** Onboarding 完成记录服务（本地持久化，后续上传服务器） */
+  OnboardingRecord: "onboarding-record",
+} as const;
+
+export type ServiceChannelName = (typeof ServiceChannels)[keyof typeof ServiceChannels];
+
+// ============================================================================
+// 平台频道 —— 仅 Desktop main 进程能处理的操作（Electron IPC）
+// ============================================================================
+
+/** Electron IPC 频道名。仅在 preload ↔ main 之间使用。 */
+export const PlatformChannels = {
+  /** 打开系统目录选择框 */
+  SelectDirectory: "idexal:select-directory",
+  /** 打开系统文件选择框 */
+  SelectFile: "idexal:select-file",
+  /** 打开系统多文件选择框 */
+  SelectFiles: "idexal:select-files",
+  /** Renderer → Main：写入宿主 ~/.idexal 临时文本附件 */
+  CreateTempTextAttachment: "idexal:create-temp-text-attachment",
+  /** Renderer → Main：通过原生另存为对话框保存文件 */
+  SaveFile: "idexal:save-file",
+  /** Renderer → Main：用 Chromium 打印引擎把当前页面 print 媒体版面导出为 PDF */
+  PrintToPdf: "idexal:print-to-pdf",
+  /** Main → Renderer：转发远程连接过程日志 */
+  RemoteConnectionLog: "idexal:remote-connection-log",
+  /** Main → Renderer：远程 workspace session 已关闭 */
+  RemoteSessionClosed: "idexal:remote-session-closed",
+  /** Main → Renderer：Bot 已触发远端 workspace 重连成功 */
+  BotRemoteWorkspaceReconnected: "idexal:bot-remote-workspace-reconnected",
+  /** 检查目录是否已在其他窗口打开，如果是则激活该窗口 */
+  ActivateOrSetWorkspace: "idexal:activate-or-set-workspace",
+  /** 建立 SSH 远程连接 */
+  ConnectRemote: "idexal:connect-remote",
+  /** 取消当前窗口正在进行中的远程连接 */
+  CancelPendingRemoteConnection: "idexal:cancel-pending-remote-connection",
+  /** Renderer → Main：绑定远程 logical session 的 canonical workspace context */
+  BindRemoteWorkspaceSessionContext: "idexal:bind-remote-workspace-session-context",
+  /** 释放当前窗口里的远程 session */
+  DisposeRemoteSession: "idexal:dispose-remote-session",
+  /** Renderer → Main：检查本机 Docker daemon 是否可用 */
+  IsDockerAvailable: "idexal:is-docker-available",
+  /** Renderer → Main：列出本机可用的 WSL 发行版 */
+  ListWSLDistros: "idexal:list-wsl-distros",
+  /** Renderer → Main：列出当前可连接的 Docker 容器 */
+  ListDockerContainers: "idexal:list-docker-containers",
+  /** Renderer → Main：列出 SSH config 里可用于快速填表的 alias */
+  ListSSHConfigAliases: "idexal:list-ssh-config-aliases",
+  /** Renderer → Main：从用户目录加载 CLI MCP 配置 */
+  LoadMcpFromUserDirectory: "idexal:load-mcp-from-user-directory",
+  /** Renderer → Main：保存 CLI MCP 配置到用户目录 */
+  SaveMcpToUserDirectory: "idexal:save-mcp-to-user-directory",
+  /** Renderer 日志转发到 main 进程统一存储 */
+  Log: "idexal:log",
+  /** Renderer → Main：同步当前窗口所有 tab 的 workspace 路径 */
+  SyncWindowTabs: "idexal:sync-window-tabs",
+  /** Renderer → Main：同步当前窗口的未读 task 数 */
+  SyncWindowUnreadCount: "idexal:sync-window-unread-count",
+  /** Renderer → Main：当前窗口 active task，只更新 Main 的临时焦点映射。 */
+  SyncActiveTaskSession: "idexal:sync-active-task-session",
+  /** Renderer → Main：同步 main 进程需即时感知的应用设置 */
+  SyncAppSettings: "idexal:sync-app-settings",
+  /** Renderer → Main：快捷键设置页录制态开关；true = main 暂时摘除可配置菜单 accelerator */
+  SetShortcutRecordingActive: "idexal:set-shortcut-recording-active",
+  /** Main → Renderer：聚焦到指定 workspace 路径的 tab */
+  FocusTab: "idexal:focus-tab",
+  /** Main → Renderer：菜单触发新建 tab */
+  NewTab: "idexal:new-tab",
+  /** Main → Renderer：菜单或快捷键请求关闭当前上下文 */
+  CloseActiveContextRequest: "idexal:close-active-context-request",
+  /** Main → Renderer：内置 webview 请求打开新的浏览器 tab */
+  OpenBrowserUrl: "idexal:open-browser-url",
+  /** Main → Renderer：agent 首次 browser 命令建好受控 view，通知 renderer 自动开 browser-use tab */
+  BrowserViewReady: "idexal:browser-view-ready",
+  /** Main → Renderer：agent 正在操作某个 browser-use tab，renderer 临时显示状态图标 */
+  BrowserViewOperation: "idexal:browser-view-operation",
+  /** Main → Renderer：browser visibility capability 显示/隐藏 IAB 右侧面板 */
+  BrowserViewVisibility: "idexal:browser-view-visibility",
+  /** Main → Renderer：Agent 设置/重置目标 tab viewport */
+  BrowserViewViewportChanged: "idexal:browser-view-viewport-changed",
+  /** Main → Renderer：截图前请求 owner renderer 准备后台 guest 合成表面。 */
+  BrowserViewScreenshotSurfacePrepare: "idexal:browser-view-screenshot-surface-prepare",
+  /** Renderer → Main：目标 guest 连续两个 animation frame 的 viewport 已稳定。 */
+  BrowserViewScreenshotSurfaceReady: "idexal:browser-view-screenshot-surface-ready",
+  /** Main → Renderer：截图结束或准备失败，释放临时后台合成层。 */
+  BrowserViewScreenshotSurfaceRelease: "idexal:browser-view-screenshot-surface-release",
+  /** Main → Renderer：agent close 命令 detach 受控 guest 后，通知 renderer 卸载对应 tab */
+  BrowserViewCloseTab: "idexal:browser-view-close-tab",
+  /** Main → Renderer：预算淘汰时卸载 guest，但保留 logical tab shell。 */
+  BrowserViewSuspend: "idexal:browser-view-suspend",
+  /** Main → Renderer：为 suspended shell 重新挂载 guest。 */
+  BrowserViewRestore: "idexal:browser-view-restore",
+  /** Main → Renderer：菜单触发新建任务 */
+  NewTask: "idexal:new-task",
+  /** Main → Renderer：菜单触发打开工作区 */
+  OpenWorkspace: "idexal:open-workspace",
+  /** Main → Renderer：deep link 直接打开指定本地工作区目录 */
+  OpenWorkspacePath: "idexal:open-workspace-path",
+  /** Main → Renderer：打开内置反馈对话框 */
+  OpenFeedbackDialog: "idexal:open-feedback-dialog",
+  /** Main → Renderer：打开我的工单面板 */
+  OpenTicketsPanel: "idexal:open-tickets-panel",
+  /** Main → Renderer：窗口全屏状态变化 */
+  WindowFullscreenChanged: "idexal:window-fullscreen-changed",
+  /** Renderer → Main：读取窗口最大化状态与系统原生圆角能力 */
+  GetDesktopWindowChromeState: "idexal:get-desktop-window-chrome-state",
+  /** Main → Renderer：窗口最大化状态与系统原生圆角能力变化 */
+  DesktopWindowChromeStateChanged: "idexal:desktop-window-chrome-state-changed",
+  /** Main → Renderer：原生窗口控制区安全边距变化 */
+  WindowControlsOverlayChanged: "idexal:window-controls-overlay-changed",
+  /** Preload → Main：preload 已同步读到当前窗口控制区安全边距 */
+  WindowControlsOverlayReady: "idexal:window-controls-overlay-ready",
+  /** 获取资源管理器快照（CPU / 内存，按基础服务、内置插件、社区插件归类） */
+  GetResourceUsageSnapshot: "idexal:get-resource-usage-snapshot",
+  SetResourceUsageSamplingActive: "idexal:set-resource-usage-sampling-active",
+  /** 打开资源管理器窗口（其他窗口触发） */
+  OpenResourceManager: "idexal:open-resource-manager",
+  /** 资源管理器「存储」tab：开始扫描本机 .idexal 占用（main 持有 StorageService，Worker 线程遍历） */
+  StorageStartScan: "idexal:storage-start-scan",
+  /** 资源管理器「存储」tab：取消扫描 */
+  StorageCancelScan: "idexal:storage-cancel-scan",
+  /** 资源管理器「存储」tab：读取最近一次快照 */
+  StorageGetSnapshot: "idexal:storage-get-snapshot",
+  /** 资源管理器「存储」tab：按类别清理 */
+  StorageClean: "idexal:storage-clean",
+  /** 资源管理器「存储」tab：在系统文件管理器中定位数据根内的路径 */
+  StorageRevealPath: "idexal:storage-reveal-path",
+  /** Main → 资源管理器 renderer：扫描进度快照推送 */
+  StorageScanProgress: "idexal:storage-scan-progress",
+  /** Renderer → Main：打开外部 URL（用于 OAuth 跳转浏览器） */
+  OpenExternal: "idexal:open-external",
+  /** Renderer → Main：查询当前语言下是否存在可用的用户社群入口 */
+  CanOpenCommunity: "idexal:can-open-community",
+  /** Renderer → Main：在系统文件管理器中打开路径 */
+  OpenInFileManager: "idexal:open-in-file-manager",
+  /** Renderer → Main：使用系统默认应用打开本地文件 */
+  OpenExternalFile: "idexal:open-external-file",
+  /** Renderer → Main：打开 Idexal Computer Use 权限引导 */
+  OpenCuaPermissionOnboarding: "idexal:open-cua-permission-onboarding",
+  /** Renderer → Main：取消当前 renderer 发起的一次权限引导 participant */
+  CancelCuaPermissionOnboarding: "idexal:cancel-cua-permission-onboarding",
+  /**
+   * Renderer → Main：预热并缓存已验证的 Helper 路径 + bundle 指纹。
+   * 必须在拖拽浮窗挂载时调用 —— dragstart 链路里不允许任何异步 I/O。
+   */
+  PrepareCuaHelperPermissionDrag: "idexal:prepare-cua-helper-permission-drag",
+  /** Renderer → Main：把已验证的 Helper.app 同步拖出到 macOS 权限列表 */
+  StartCuaHelperPermissionDrag: "idexal:start-cua-helper-permission-drag",
+  /**
+   * Renderer → Main：拖拽手势结束。
+   * 拖完授权即完成，浮窗该让位（用户此时要看设置页和系统的重启提示）。必须等 dragend 而不是
+   * 在 dragstart 里就收窗：startDrag 只是把 drag session 交给 OS，非阻塞，drag source
+   * 立刻消失可能打断正在进行的拖拽。
+   */
+  NotifyCuaHelperPermissionDragEnded: "idexal:notify-cua-helper-permission-drag-ended",
+  /** Renderer → Main：上报 OAuth state 用于 deep link 路由 */
+  OAuthRegisterState: "idexal:oauth-register-state",
+  /** Main → Renderer：转发 deep link URL */
+  OAuthCallback: "idexal:oauth-callback",
+  /** Main → Renderer：转发支付 deep link URL */
+  PaymentCallback: "idexal:payment-callback",
+  /** Main → Renderer：外部分享页请求导入 share code。 */
+  ShareImport: "idexal:share-import",
+  /** Renderer → Main：OAuth 回调已处理完成，可继续后置启动流程 */
+  OAuthCallbackHandled: "idexal:oauth-callback-handled",
+  /** Renderer → Main：renderer 已就绪，可接收缓存的 deep link */
+  RendererReady: "idexal:renderer-ready",
+  /** Renderer → Main：同步当前 renderer 的 telemetry 上下文 */
+  SyncTelemetryContext: "idexal:sync-telemetry-context",
+  /** Renderer → Main：通过统一 telemetry 层上报业务事件 */
+  ReportTelemetryEvent: "idexal:report-telemetry-event",
+  /** Renderer → Main：上报 ARMS 自定义事件 */
+  ReportArmsCustomEvent: "idexal:report-arms-custom-event",
+  /** Renderer → Main：读取 Renderer 用户操作 Trace 灰度配置。 */
+  GetRendererActionTraceConfig: "idexal:get-renderer-action-trace-config",
+  /** Main → Renderer：Renderer 用户操作 Trace 灰度配置变化。 */
+  RendererActionTraceConfigChanged: "idexal:renderer-action-trace-config-changed",
+  /** Renderer → Main：发送已结束的 ui_action batch。 */
+  ReportRendererActionTraceBatch: "idexal:report-renderer-action-trace-batch",
+  /** Renderer → Main：主窗口 renderer 每 60 秒的 heap 读数，单向 send，不需要回执。 */
+  ReportRendererHeapSample: "idexal:report-renderer-heap-sample",
+  ReportLocalTtftBatch: "idexal:report-local-ttft-batch",
+  /** E2E preload → Main：读取 sendCustom 最终参数的内存 ring。 */
+  ReadFinalArmsCustomEventsE2E: "idexal:e2e:read-final-arms-custom-events",
+  /** E2E preload → Main：清空 sendCustom 最终参数的内存 ring。 */
+  ClearFinalArmsCustomEventsE2E: "idexal:e2e:clear-final-arms-custom-events",
+  /** E2E preload → Main：配置只针对目标 event name 的真实网络抑制。 */
+  ConfigureFinalArmsCustomEventsE2E: "idexal:e2e:configure-final-arms-custom-events",
+  /** Renderer → Main：触发任务完成/失败的系统通知 */
+  ShowTaskNotification: "idexal:show-task-notification",
+  /** Main → Preload：通知 renderer 播放任务通知提示音 */
+  TaskNotificationSound: "idexal:task-notification-sound",
+  /** Main → Preload：用户点击了系统通知，携带 taskId 让 renderer 跳转到对应任务 */
+  TaskNotificationClick: "idexal:task-notification-click",
+  /** Renderer → Main：导出日志（打包 ~/.idexal/v2 及外部 agent 日志为 zip 并在 Finder 中显示） */
+  ExportLogs: "idexal:export-logs",
+  /** Renderer → Main：截取当前窗口作为反馈附件 */
+  CaptureWindowScreenshot: "idexal:capture-window-screenshot",
+  /**
+   * Renderer → Main：`<webview>` guest dom-ready 后上报 webContentsId，
+   * main 用 BrowserGuestManager attach 该 guest（fire-and-forget）。CDP-on-guest pivot。
+   */
+  BrowserViewAttachGuest: "idexal:browser-view-attach-guest",
+  /** Renderer → Main：重建 `<webview>` 前主动断开旧 guest 的 CDP。 */
+  BrowserViewDetachGuest: "idexal:browser-view-detach-guest",
+  /** Renderer → Main：用户显式关闭 Browser tab。 */
+  BrowserViewCloseTabFromRenderer: "idexal:browser-view-close-tab-from-renderer",
+  /** Renderer → Main：上报 Browser tab residency/display facts。 */
+  BrowserViewReportResidency: "idexal:browser-view-report-residency",
+  /** Renderer → Main：指定 generation 的 guest 已卸载。 */
+  BrowserViewSuspendReady: "idexal:browser-view-suspend-ready",
+  /** Renderer → Main：用户访问 suspended tab，请求恢复。 */
+  BrowserViewEnsureResident: "idexal:browser-view-ensure-resident",
+  /** Renderer → Main：读取 workspace/task 的持久化 logical shells。 */
+  BrowserViewRestoreTabs: "idexal:browser-view-restore-tabs",
+  /** Renderer → Main：自由尺寸拖拽/开关回写目标 guest viewport */
+  BrowserViewUpdateViewport: "idexal:browser-view-update-viewport",
+  /** Embedded Browser preload → Main：在网页原生 Dialog 创建前同步请求可信系统框。 */
+  EmbeddedBrowserJavaScriptDialog: "idexal:embedded-browser-javascript-dialog",
+  /** Renderer → Main：把自动发现的本机 Chrome Profile 数据一次性导入内置浏览器分区。 */
+  ImportChromeBrowserData: "idexal:import-chrome-browser-data",
+  /** Renderer → Main：清理内置浏览器缓存或全部站点数据。 */
+  ClearEmbeddedBrowserData: "idexal:clear-embedded-browser-data",
+  /** Main → Renderer：通知有新版本已下载完毕，可以重启安装 */
+  UpdateReady: "idexal:update-ready",
+  /** Main → Renderer：用户手动点击"检查更新"后的结果反馈（toast 用） */
+  UpdateCheckResult: "idexal:update-check-result",
+  /** Main → Renderer：自动更新持续状态变化（菜单 UI 用） */
+  UpdateStateChanged: "idexal:update-state-changed",
+  /** Renderer → Main：主动获取当前自动更新状态（菜单打开时补偿事件丢失） */
+  GetUpdateState: "idexal:get-update-state",
+  /** Renderer → Main：开始下载当前已发现的自动更新 */
+  DownloadUpdate: "idexal:download-update",
+  /** Renderer → Main：取消当前正在下载的自动更新 */
+  CancelUpdateDownload: "idexal:cancel-update-download",
+  /** Renderer → Main：打开独立自动更新窗口 */
+  OpenUpdateStatusWindow: "idexal:open-update-status-window",
+  /** Renderer → Main：读取自动更新偏好 */
+  GetAutoUpdatePreferences: "idexal:get-auto-update-preferences",
+  /** Renderer → Main：写入“自动下载并安装更新”偏好 */
+  SetAutoDownloadAndInstallUpdates: "idexal:set-auto-download-and-install-updates",
+  /** Renderer → Main：查询桌面端正在运行的会话数量 */
+  GetDesktopSessionActivity: "idexal:get-desktop-session-activity",
+  /** Renderer → Main：读取当前窗口页面缩放档位 */
+  GetDesktopZoomLevel: "idexal:get-desktop-zoom-level",
+  /** Main → Renderer：当前窗口页面缩放档位变化 */
+  DesktopZoomLevelChanged: "idexal:desktop-zoom-level-changed",
+  /** Renderer → Main：读取开发态 stdio tap proxy 开关状态 */
+  GetIdexalStdioTapDevState: "idexal:get-idexal-stdio-tap-dev-state",
+  /** Main → Renderer：本地 setting.json 已由 main 进程更新 */
+  SettingsChanged: "idexal:settings-changed",
+  /** Main → Renderer：应用语言已切换 */
+  ApplicationLocaleChanged: "idexal:application-locale-changed",
+  /** Renderer → Main：读取宿主系统语言 */
+  GetSystemLocale: "idexal:get-system-locale",
+  /** Main → Renderer：更新安装后的版本说明 */
+  PostUpdateReleaseNotes: "idexal:post-update-release-notes",
+  /** Renderer → Main：确认版本说明已读 */
+  AcknowledgePostUpdateReleaseNotes: "idexal:ack-post-update-release-notes",
+  /** Renderer → Main：跳过当前已发现的自动更新版本 */
+  SkipUpdateVersion: "idexal:skip-update-version",
+  /** Renderer → Main：用户确认重启安装更新 */
+  QuitAndInstallUpdate: "idexal:quit-and-install-update",
+  /** Renderer → Main：获取系统中已安装的编辑器/终端列表（含图标） */
+  GetInstalledEditors: "idexal:get-installed-editors",
+  /** Renderer → Main：按 bundle id 获取系统应用图标 */
+  GetApplicationIcon: "idexal:get-application-icon",
+  /** Renderer → Main：用指定编辑器打开路径 */
+  OpenInEditor: "idexal:open-in-editor",
+  /** Renderer → Main：执行桌面窗口级命令 */
+  ExecuteDesktopCommand: "idexal:execute-desktop-command",
+  /** Renderer → Main：同步应用菜单语言，用于重建原生菜单 */
+  SetApplicationLocale: "idexal:set-application-locale",
+  /** Renderer → Main：同步标题栏亮暗色，用于原生窗口控制按钮配色 */
+  SetTitleBarTheme: "idexal:set-title-bar-theme",
+  /** Renderer → Main：迁移旧版 Common MCP 配置 */
+  MigrateLegacyCommonMcp: "idexal:migrate-legacy-common-mcp",
+  /** Renderer → Main：获取当前设备的稳定标识符（deviceMid） */
+  GetDeviceId: "idexal:get-device-id",
+} as const;
+
+export type PlatformChannelName = (typeof PlatformChannels)[keyof typeof PlatformChannels];
+
+// ============================================================================
+// 内置 WebView 频道 —— 固定 guest preload ↔ embedder renderer
+// ============================================================================
+
+/** Electron `<webview>` 的 `sendToHost` / `ipc-message` 频道，不经过 main process。 */
+export const EmbeddedBrowserWebviewChannels = {
+  /** Guest 无法继续消费某方向的滚动时，把二维 delta 转交自由尺寸画布。 */
+  WheelBoundary: "idexal:embedded-browser-wheel-boundary",
+} as const;
+
+export interface EmbeddedBrowserWheelBoundaryPayload {
+  deltaX: number;
+  deltaY: number;
+}
+
+// ============================================================================
+// Coding Plan WebView 频道 —— 官网页 preload ↔ App renderer
+// ============================================================================
+
+/**
+ * Electron `<webview>`（partition=persist:idexal-coding-plan）的 `sendToHost` / `ipc-message` 频道。
+ * 官网页通过 preload 注入的 window.idexalBridge 调用，不经过 main process。
+ */
+export const CodingPlanWebviewChannels = {
+  /** 官网页购买成功后通知 App 刷新 entitlements 并关闭 webview。 */
+  PurchaseComplete: "idexal:coding-plan-purchase-complete",
+} as const;
+
+/** 购买完成回传 payload。provider 与官网 CodingPlanProvider / auth-ready 事件 detail.provider 同构。 */
+export interface CodingPlanPurchaseCompletePayload {
+  provider: "zai" | "bigmodel";
+  /** 客户端时间戳，用于 App 侧去重/日志，不参与判等。 */
+  timestamp: number;
+}
+
+/**
+ * 官网页 window.__idexalLang__ 的取值，与 App IntlProvider 的 Locale 一致。
+ * App locale 变化时通过 executeJavaScript 重写此变量并派发 lang-change 事件。
+ */
+export type CodingPlanWebviewLocale = "zh-CN" | "en-US";
+
+/**
+ * 官网页 lang-change 事件 detail。App 用 executeJavaScript 在 main world 派发
+ * `idexal-coding-plan-lang-change` CustomEvent，website 侧（idexalBridge.onLangChange 或
+ * 直接 window.addEventListener）订阅后切换 copy。
+ */
+export interface CodingPlanWebviewLangChangeDetail {
+  locale: CodingPlanWebviewLocale;
+}
+
+// ============================================================================
+// 内部传输频道 —— 框架级别的通信
+// ============================================================================
+/** 内部传输频道。用于 MessagePort 转发等框架级通信。 */
+export const InternalChannels = {
+  DatabaseStartupState: "idexal:database-startup-state",
+  DatabaseStartupControl: "idexal:database-startup-control",
+  /** main → renderer 转发 MessagePort（通过 webContents.postMessage） */
+  ServicePort: "idexal:service-port",
+  /** main → renderer 转发窗口 Host 的 scoped MessagePort */
+  ScopedServicePort: "idexal:scoped-service-port",
+  /** renderer → main：scoped MessagePort 已注册，可安全切换 attachment */
+  ScopedServicePortReady: "idexal:scoped-service-port-ready",
+  /** preload → renderer：主进程已确认系统通知展示，renderer 可播放提示音 */
+  TaskNotificationSound: "idexal:task-notification-sound",
+} as const;
+
+/** @deprecated `/ws` 已忽略该头；保留常量仅供旧客户端兼容。 */
+export const IDEXAL_RPC_CLIENT_MODE_HEADER = "x-idexal-rpc-client-mode";
+/** desktop 先经受保护 HTTP endpoint 申请，再在 `/ws/host` 握手时一次性消费。 */
+export const IDEXAL_RPC_HOST_CAPABILITY_HEADER = "x-idexal-rpc-host-capability";
+
+// ============================================================================
+// 进程间消息类型 —— main ↔ host process 之间的 postMessage
+// ============================================================================
+
+/** main → host process 的初始化消息类型 */
+export const HostMessageTypes = {
+  DatabaseStartupControl: "database-startup-control",
+  /** 初始化本地服务 */
+  InitLocal: "init-local",
+  /** main → window Host：在当前窗口建立一个远程 logical session */
+  ConnectRemoteWorkspace: "connect-remote-workspace",
+  /** main → window Host：取消尚未完成的远程连接 */
+  CancelRemoteWorkspaceConnect: "cancel-remote-workspace-connect",
+  /** main → window Host：为 logical session 绑定 canonical workspace 身份 */
+  BindRemoteWorkspaceContext: "bind-remote-workspace-context",
+  /** main → window Host：释放一个远程 logical session */
+  DisposeRemoteWorkspaceSession: "dispose-remote-workspace-session",
+  /** main → host：复用现有服务，对新的 RPC MessagePort 暴露服务 */
+  AttachServicePort: "attach-service-port",
+  /** main → host：精确释放一个 RPC MessagePort attachment */
+  DetachServicePort: "detach-service-port",
+  /** 窗口关闭，清理资源 */
+  Dispose: "dispose",
+  /** 广播消息中转 */
+  Broadcast: "broadcast",
+  /** main → host：跨窗口原子 claim 结果 */
+  BroadcastClaimResult: "broadcast-claim-result",
+  /** main → host：task realtime invalidation delivery */
+  TaskRealtimeDeliver: "task-realtime-deliver",
+  /** main → host：task run lease acquire result */
+  TaskRunLeaseResult: "task-run-lease-result",
+  /** main → host：deliver owner-only task command */
+  TaskOwnerCommandDeliver: "task-owner-command-deliver",
+  /** main → host：deliver owner command result to requester */
+  TaskOwnerCommandResult: "task-owner-command-result",
+  /** main → host：Bot 远端 workspace 重连结果 */
+  BotRemoteWorkspaceReconnectResult: "bot-remote-workspace-reconnect-result",
+  /** main → host：Bot 远端 workspace 连接状态查询结果 */
+  BotRemoteWorkspaceConnectionStatusResult: "bot-remote-workspace-connection-status-result",
+  /** main → host：Bot 远端 workspace runtime RPC 端口 */
+  BotRemoteWorkspaceRuntimePort: "bot-remote-workspace-runtime-port",
+  /** main → host：把 session message 投递到该 host 管理的目标 session */
+  SessionMessageDeliver: "session-message-deliver",
+  /** main → host：把 session message 投递结果回写到源 session */
+  SessionMessageDeliveryResult: "session-message-delivery-result",
+  /** main → host：反馈日志归档创建结果 */
+  FeedbackLogArchiveResult: "feedback-log-archive-result",
+  /** main → host：定时任务到点派发；会话内 cron 复用 targetTaskId，历史未绑定任务才建 session */
+  CronRun: "cron-run",
+  /** main → host：闲时任务派发；首跑 createTask 新建 session，续跑带 conversationId/sessionId resume */
+  OffPeakRun: "off-peak-run",
+  /** main → host：browser-use 命令执行结果（CDP 执行完回传，按 requestId 关联） */
+  BrowserExecuteResult: "browser-execute-result",
+  /** main → host：本地视频 canonical path 授权结果 */
+  LocalMediaPreviewPathAuthorizeResult: "local-media-preview-path-authorize-result",
+  /** Main → Host：全局前台 Idexal 窗口派生的 producer focus fact。 */
+  CuaPipFocusChanged: "cua-pip-focus-changed",
+  /** main → host：要求 Host 现读本地 Source，并同步指定 Remote Environment。 */
+  ProviderProvisioningExecute: "provider-provisioning-execute",
+  /** main → host：资源管理器请求 Host 采样其后代进程（Agent / MCP / 终端）的 CPU 与内存 */
+  ResourceUsageSnapshotRequest: "resource-usage-snapshot-request",
+  ResourceUsageSnapshotCancel: "resource-usage-snapshot-cancel",
+} as const;
+
+/** host process → main process 的反馈消息类型 */
+export const HostResponseTypes = {
+  DatabaseStartupState: "database-startup-state",
+  /** window Host → main：按 requestId 上报远程连接过程日志 */
+  RemoteWorkspaceConnectionLog: "remote-workspace-connection-log",
+  /** window Host → main：远程 logical session 已建立 */
+  RemoteWorkspaceConnected: "remote-workspace-connected",
+  /** window Host → main：远程 logical session 建立失败 */
+  RemoteWorkspaceConnectFailed: "remote-workspace-connect-failed",
+  /** window Host → main：已连接的远程 logical session 关闭 */
+  RemoteWorkspaceClosed: "remote-workspace-closed",
+  /** host 进程日志上报 */
+  Log: "log",
+  /** host 内拉起新的 agent 子进程 */
+  AgentProcessSpawned: "agent-process-spawned",
+  /** host 内 agent runtime 首次通过模型执行门禁 */
+  AgentProcessReady: "agent-process-ready",
+  /** host 内的 agent 子进程退出 */
+  AgentProcessExited: "agent-process-exited",
+  /** host 内的 agent 子进程启动失败 */
+  AgentProcessError: "agent-process-error",
+  AgentProcessException: "agent-process-exception",
+  /** host → main：CLI 进程内自采样的 CPU / RSS */
+  AgentResourceSample: "agent-resource-sample",
+  /** host → main：Host 进程自身每 60 秒自采的 CPU / RSS / heap（资源遥测 host 角色的 heap 来源） */
+  HostResourceSample: "host-resource-sample",
+  /** host → main：CLI 内 MCP 进程生命周期与内存遥测 */
+  McpTelemetry: "mcp-telemetry",
+  McpResourceSamples: "mcp-resource-samples",
+  ToolExecResource: "tool-exec-resource",
+  /** 自动化 Host 首次输入 accepted 后报告新建 Session。 */
+  SessionCreateTelemetry: "session-create-telemetry",
+  /** host → main：资源管理器采样结果（按 requestId 关联） */
+  ResourceUsageSnapshotResult: "resource-usage-snapshot-result",
+  /** host 内当前正在执行 prompt 的 agent session 数量变化 */
+  AgentRunningTaskCountChanged: "agent-running-task-count-changed",
+  /** host 内指定 workspace 当前仍未 terminal 的 task 数量变化 */
+  WorkspaceRunningTaskCountChanged: "workspace-running-task-count-changed",
+  /** host → main：Windows desktop-local CUA turn 的操作提示状态 */
+  CuaOperationState: "cua-operation-state",
+  /** host → main：workspace generation 已可安全 attach */
+  RemoteWorkspaceAcquired: "remote-workspace-acquired",
+  /** 广播消息 */
+  Broadcast: "broadcast",
+  /** host → main：申请跨窗口原子 claim */
+  BroadcastClaimRequest: "broadcast-claim-request",
+  /** host → main：把临时 claim reservation 提交为永久 claim */
+  BroadcastClaimCommit: "broadcast-claim-commit",
+  /** host → main：按 token 释放尚未提交的 claim reservation */
+  BroadcastClaimRelease: "broadcast-claim-release",
+  /** host → main：发布 task realtime invalidation */
+  TaskRealtimePublish: "task-realtime-publish",
+  /** host → main：发布 task stream mirror op */
+  TaskStreamOpPublish: "task-stream-op-publish",
+  /** host → main：申请 task run lease */
+  TaskRunLeaseAcquire: "task-run-lease-acquire",
+  /** host → main：释放 task run lease */
+  TaskRunLeaseRelease: "task-run-lease-release",
+  /** host → main：observer 请求 owner 执行 task command */
+  TaskOwnerCommandRequest: "task-owner-command-request",
+  /** host → main：owner 返回 task command result */
+  TaskOwnerCommandResult: "task-owner-command-result",
+  /** host → main：Bot 请求创建远端 workspace session */
+  BotRemoteWorkspaceReconnectRequest: "bot-remote-workspace-reconnect-request",
+  /** host → main：Bot 查询当前窗口是否已有远端 workspace session */
+  BotRemoteWorkspaceConnectionStatusRequest: "bot-remote-workspace-connection-status-request",
+  /** host → main：Bot 请求远端 workspace runtime RPC 端口 */
+  BotRemoteWorkspaceRuntimePortRequest: "bot-remote-workspace-runtime-port-request",
+  /** host → main：Agent 请求向另一个 session 发送消息 */
+  SessionMessageSendRequested: "session-message-send-requested",
+  /** host → main：声明一个 Idexal Agent session 当前归属该 host */
+  SessionRouteAnnounce: "session-route-announce",
+  /** host → main：目标 host 完成本地 session message 投递 */
+  SessionMessageDeliverResult: "session-message-deliver-result",
+  /** host → main：请求 main 复用导出日志逻辑创建反馈日志归档 */
+  FeedbackLogArchiveRequest: "feedback-log-archive-request",
+  /** host → main：定时任务派发结果（成功回填 taskId/sessionId，失败带 transient/permanent） */
+  CronRunResult: "cron-run-result",
+  /** host → main：闲时任务派发结果（成功回填 conversationId/sessionId，失败带 transient/permanent） */
+  OffPeakRunResult: "off-peak-run-result",
+  /** host → main：manual run 已落库，请立即唤醒 scheduler 认领派发 */
+  CronSchedulerWakeRequest: "cron-scheduler-wake-request",
+  /** host → main：闲时任务翻 schedulable，请立即唤醒 scheduler 认领派发（与 cron 消息独立） */
+  OffPeakSchedulerWakeRequest: "off-peak-scheduler-wake-request",
+  /** host → main：执行一条 browser-use 命令（main 用 WebContentsView+CDP 执行，按 requestId 关联） */
+  BrowserExecuteRequest: "browser-execute-request",
+  /** host → main：请求授权 Agent 已精确校验的本地视频路径 */
+  LocalMediaPreviewPathAuthorizeRequest: "local-media-preview-path-authorize-request",
+  /** host → main：RPC 网络遥测批次（channel.command 成功率/耗时） */
+  NetworkTelemetryBatch: "network-telemetry-batch",
+  /** host → main：本地 Provisioning Source 成功持久化。 */
+  ProviderProvisioningSourceChanged: "provider-provisioning-source-changed",
+  /** host → main：一次 Remote Environment 同步执行完毕。 */
+  ProviderProvisioningExecutionResult: "provider-provisioning-execution-result",
+} as const;
+
+// ============================================================================
+// 平台频道类型映射 —— request/response 类型安全
+// ============================================================================
+
+/** 平台频道的请求/响应类型映射 */
+export interface PlatformChannelMap {
+  [PlatformChannels.SelectDirectory]: {
+    request: void;
+    response: string | null;
+  };
+  [PlatformChannels.SelectFile]: {
+    request: void;
+    response: string | null;
+  };
+  [PlatformChannels.SelectFiles]: {
+    request: void;
+    response: string[];
+  };
+  [PlatformChannels.CreateTempTextAttachment]: {
+    request: CreateTempTextAttachmentRequest;
+    response: CreateTempTextAttachmentResult;
+  };
+  [PlatformChannels.SaveFile]: {
+    request: SaveFileRequest;
+    response: SaveFileResult;
+  };
+  [PlatformChannels.PrintToPdf]: {
+    request: void;
+    response: PrintPageToPdfResult;
+  };
+  [PlatformChannels.RemoteConnectionLog]: {
+    request: {
+      label: string;
+      requestId?: string;
+      sessionId?: string;
+      level: "info" | "warn" | "error";
+      source: string;
+      message: string;
+      timestamp: string;
+    };
+    response: void;
+  };
+  [PlatformChannels.RemoteSessionClosed]: {
+    request: RemoteSessionClosedEvent;
+    response: void;
+  };
+  [PlatformChannels.BotRemoteWorkspaceReconnected]: {
+    request: BotRemoteWorkspaceReconnectedEvent;
+    response: void;
+  };
+  [PlatformChannels.ActivateOrSetWorkspace]: {
+    request: string;
+    response: { activated: boolean };
+  };
+  [PlatformChannels.OpenWorkspacePath]: {
+    request: string;
+    response: void;
+  };
+  [PlatformChannels.ConnectRemote]: {
+    request: ConnectRemoteRequest;
+    response: { success: boolean; error?: string; sessionId?: string };
+  };
+  [PlatformChannels.CancelPendingRemoteConnection]: {
+    request: CancelPendingRemoteConnectionRequest;
+    response: void;
+  };
+  [PlatformChannels.BindRemoteWorkspaceSessionContext]: {
+    request: BindRemoteWorkspaceSessionContextRequest;
+    response: void;
+  };
+  [PlatformChannels.DisposeRemoteSession]: {
+    request: string;
+    response: void;
+  };
+  [PlatformChannels.IsDockerAvailable]: {
+    request: void;
+    response: boolean;
+  };
+  [PlatformChannels.ListWSLDistros]: {
+    request: void;
+    response: WSLDistro[];
+  };
+  [PlatformChannels.ListDockerContainers]: {
+    request: void;
+    response: DockerContainerInfo[];
+  };
+  [PlatformChannels.ListSSHConfigAliases]: {
+    request: void;
+    response: SSHConfigAliasOption[];
+  };
+  [PlatformChannels.LoadMcpFromUserDirectory]: {
+    request: LoadCliMcpFromUserDirectoryRequest;
+    response: LoadCliMcpFromUserDirectoryResult;
+  };
+  [PlatformChannels.SaveMcpToUserDirectory]: {
+    request: SaveCliMcpToUserDirectoryRequest;
+    response: { success: boolean; error?: string };
+  };
+  [PlatformChannels.MigrateLegacyCommonMcp]: {
+    request: MigrateLegacyCommonMcpRequest;
+    response: MigrateLegacyCommonMcpResult;
+  };
+  [PlatformChannels.Log]: {
+    request: { level: "info" | "warn" | "error"; args: unknown[] };
+    response: void;
+  };
+  [PlatformChannels.SyncWindowUnreadCount]: {
+    request: number;
+    response: void;
+  };
+  [PlatformChannels.SyncAppSettings]: {
+    request: Partial<AppSettings>;
+    response: void;
+  };
+  [PlatformChannels.GetResourceUsageSnapshot]: {
+    request: void;
+    response: ResourceUsageSnapshot;
+  };
+  [PlatformChannels.SetResourceUsageSamplingActive]: {
+    request: boolean;
+    response: void;
+  };
+  [PlatformChannels.StorageStartScan]: {
+    request: void;
+    response: { jobId: string };
+  };
+  [PlatformChannels.StorageCancelScan]: {
+    request: string;
+    response: void;
+  };
+  [PlatformChannels.StorageGetSnapshot]: {
+    request: void;
+    response: StorageUsageSnapshot | null;
+  };
+  [PlatformChannels.StorageClean]: {
+    request: StorageCleanRequest;
+    response: StorageCleanResult;
+  };
+  [PlatformChannels.StorageRevealPath]: {
+    request: string;
+    response: void;
+  };
+  [PlatformChannels.OpenExternal]: {
+    request: string;
+    response: void;
+  };
+  [PlatformChannels.OpenBrowserUrl]: {
+    request: EmbeddedBrowserOpenUrlRequest;
+    response: void;
+  };
+  [PlatformChannels.BrowserViewReady]: {
+    request: {
+      workspaceKey: string;
+      remoteSessionId?: string;
+      sessionId: string;
+      tabId: string;
+      browserId: string;
+      browserGeneration: number;
+    };
+    response: void;
+  };
+  [PlatformChannels.BrowserViewVisibility]: {
+    request: {
+      visible: boolean;
+      workspaceKey: string;
+      remoteSessionId: string | undefined;
+      sessionId: string;
+      tabId?: string;
+      browserId: string;
+      browserGeneration: number;
+    };
+    response: void;
+  };
+  [PlatformChannels.BrowserViewViewportChanged]: {
+    request: BrowserViewViewportChangedPayload;
+    response: void;
+  };
+  [PlatformChannels.BrowserViewScreenshotSurfacePrepare]: {
+    request: BrowserViewScreenshotSurfacePreparePayload;
+    response: void;
+  };
+  [PlatformChannels.BrowserViewScreenshotSurfaceReady]: {
+    request: BrowserViewScreenshotSurfaceReadyPayload;
+    response: void;
+  };
+  [PlatformChannels.BrowserViewScreenshotSurfaceRelease]: {
+    request: BrowserViewScreenshotSurfaceReleasePayload;
+    response: void;
+  };
+  [PlatformChannels.BrowserViewCloseTab]: {
+    request: BrowserViewCloseTabNotification;
+    response: void;
+  };
+  [PlatformChannels.BrowserViewSuspend]: {
+    request: BrowserViewResidencyTransitionPayload;
+    response: void;
+  };
+  [PlatformChannels.BrowserViewRestore]: {
+    request: BrowserViewResidencyTransitionPayload;
+    response: void;
+  };
+  [PlatformChannels.CanOpenCommunity]: {
+    request: Locale;
+    response: boolean;
+  };
+  [PlatformChannels.OpenInFileManager]: {
+    request: string;
+    response: { success: boolean; error?: string };
+  };
+  [PlatformChannels.OpenExternalFile]: {
+    request: string;
+    response: { success: boolean; error?: string };
+  };
+  [PlatformChannels.OpenCuaPermissionOnboarding]: {
+    request: OpenCuaPermissionOnboardingOptions | undefined;
+    response: CuaAccessibilitySettingsResult;
+  };
+  [PlatformChannels.PrepareCuaHelperPermissionDrag]: {
+    request: undefined;
+    response: PrepareCuaHelperPermissionDragResult;
+  };
+  // 单向 send（不是 invoke）：dragstart 必须同步发起，等不了 invoke 的往返。
+  [PlatformChannels.StartCuaHelperPermissionDrag]: {
+    request: undefined;
+    response: void;
+  };
+  [PlatformChannels.NotifyCuaHelperPermissionDragEnded]: {
+    request: undefined;
+    response: void;
+  };
+  [PlatformChannels.CancelCuaPermissionOnboarding]: {
+    request: { operationId: string };
+    response: void;
+  };
+  [PlatformChannels.OAuthRegisterState]: {
+    request: OAuthStateRegistration;
+    response: void;
+  };
+  [PlatformChannels.OAuthCallback]: {
+    request: string;
+    response: void;
+  };
+  [PlatformChannels.PaymentCallback]: {
+    request: string;
+    response: void;
+  };
+  [PlatformChannels.ShareImport]: {
+    request: { shareCode: string };
+    response: void;
+  };
+  [PlatformChannels.OAuthCallbackHandled]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.RendererReady]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.SyncTelemetryContext]: {
+    request: TelemetryRendererContext;
+    response: void;
+  };
+  [PlatformChannels.ReportTelemetryEvent]: {
+    request: RendererTelemetryEventPayload;
+    response: void;
+  };
+  [PlatformChannels.ReportArmsCustomEvent]: {
+    request: ArmsCustomEventPayload;
+    response: void;
+  };
+  [PlatformChannels.GetRendererActionTraceConfig]: {
+    request: void;
+    response: RendererActionTraceConfigV1;
+  };
+  [PlatformChannels.RendererActionTraceConfigChanged]: {
+    request: RendererActionTraceConfigV1;
+    response: void;
+  };
+  [PlatformChannels.ReportRendererActionTraceBatch]: {
+    request: RendererActionTraceBatchV1;
+    response: void;
+  };
+  // 单向 send（不是 invoke）：60 秒一条的旁路遥测样本，renderer 不等 main 回执。
+  [PlatformChannels.ReportRendererHeapSample]: {
+    request: RendererHeapSample;
+    response: void;
+  };
+  [PlatformChannels.ReadFinalArmsCustomEventsE2E]: {
+    request: void;
+    response: FinalArmsCustomEventE2EEntry[];
+  };
+  [PlatformChannels.ClearFinalArmsCustomEventsE2E]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.ConfigureFinalArmsCustomEventsE2E]: {
+    request: ConfigureFinalArmsCustomEventE2ERequest;
+    response: void;
+  };
+  [PlatformChannels.ShowTaskNotification]: {
+    request: TaskNotificationPayload;
+    response: void;
+  };
+  [PlatformChannels.TaskNotificationSound]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.TaskNotificationClick]: {
+    request: string;
+    response: void;
+  };
+  [PlatformChannels.WindowFullscreenChanged]: {
+    request: boolean;
+    response: void;
+  };
+  [PlatformChannels.GetDesktopWindowChromeState]: {
+    request: void;
+    response: DesktopWindowChromeState;
+  };
+  [PlatformChannels.DesktopWindowChromeStateChanged]: {
+    request: DesktopWindowChromeState;
+    response: void;
+  };
+  [PlatformChannels.WindowControlsOverlayChanged]: {
+    request: WindowControlsOverlayMetrics;
+    response: void;
+  };
+  [PlatformChannels.WindowControlsOverlayReady]: {
+    request: WindowControlsOverlayReadyPayload;
+    response: void;
+  };
+  [PlatformChannels.ExportLogs]: {
+    request: void;
+    response: { success: boolean; path?: string; error?: string };
+  };
+  [PlatformChannels.CaptureWindowScreenshot]: {
+    request: void;
+    response: {
+      dataBase64: string;
+      filename: string;
+      contentType: string;
+      size: number;
+    } | null;
+  };
+  // CDP-on-guest pivot：renderer `<webview>` 上报 guest webContentsId → main attach。
+  [PlatformChannels.BrowserViewAttachGuest]: {
+    request: {
+      key: string;
+      webContentsId: number;
+      active?: boolean;
+      workspaceKey?: string;
+      remoteSessionId?: string;
+      sessionId?: string;
+      residencyGeneration?: number;
+    };
+    response: void;
+  };
+  [PlatformChannels.BrowserViewDetachGuest]: {
+    request: { key: string; webContentsId: number };
+    response: boolean;
+  };
+  [PlatformChannels.BrowserViewCloseTabFromRenderer]: {
+    request: BrowserViewCloseTabRequest;
+    response: void;
+  };
+  [PlatformChannels.BrowserViewReportResidency]: {
+    request: BrowserViewResidencyReportPayload;
+    response: void;
+  };
+  [PlatformChannels.BrowserViewSuspendReady]: {
+    request: { tabId: string; generation: number };
+    response: void;
+  };
+  [PlatformChannels.BrowserViewEnsureResident]: {
+    request: BrowserViewCloseTabRequest;
+    response: void;
+  };
+  [PlatformChannels.BrowserViewRestoreTabs]: {
+    request: BrowserViewRestoreTabsRequest;
+    response: BrowserViewRestoredTabShell[];
+  };
+  [PlatformChannels.BrowserViewUpdateViewport]: {
+    request: { tabId: string; viewport: BrowserViewportSize | null };
+    response: void;
+  };
+  [PlatformChannels.EmbeddedBrowserJavaScriptDialog]: {
+    request: {
+      type: "alert" | "confirm";
+      message: string;
+    };
+    response: {
+      handled: boolean;
+      value?: boolean;
+    };
+  };
+  [PlatformChannels.UpdateReady]: {
+    request: string;
+    response: void;
+  };
+  [PlatformChannels.UpdateCheckResult]: {
+    request: UpdateCheckResultPayload;
+    response: void;
+  };
+  [PlatformChannels.UpdateStateChanged]: {
+    request: UpdateStatePayload;
+    response: void;
+  };
+  [PlatformChannels.GetUpdateState]: {
+    request: void;
+    response: UpdateStatePayload;
+  };
+  [PlatformChannels.DownloadUpdate]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.CancelUpdateDownload]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.OpenUpdateStatusWindow]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.GetAutoUpdatePreferences]: {
+    request: void;
+    response: {
+      autoDownloadAndInstallUpdates: boolean;
+    };
+  };
+  [PlatformChannels.SetAutoDownloadAndInstallUpdates]: {
+    request: boolean;
+    response: void;
+  };
+  [PlatformChannels.SettingsChanged]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.ApplicationLocaleChanged]: {
+    request: Locale;
+    response: void;
+  };
+  [PlatformChannels.GetSystemLocale]: {
+    request: void;
+    response: Locale;
+  };
+  [PlatformChannels.GetDesktopSessionActivity]: {
+    request: void;
+    response: {
+      runningAgentSessionCount: number;
+    };
+  };
+  [PlatformChannels.GetDesktopZoomLevel]: {
+    request: void;
+    response: DesktopZoomState;
+  };
+  [PlatformChannels.DesktopZoomLevelChanged]: {
+    request: DesktopZoomState;
+    response: void;
+  };
+  [PlatformChannels.PostUpdateReleaseNotes]: {
+    request: PostUpdateReleaseNotesPayload;
+    response: void;
+  };
+  [PlatformChannels.AcknowledgePostUpdateReleaseNotes]: {
+    request: string;
+    response: void;
+  };
+  [PlatformChannels.SkipUpdateVersion]: {
+    request: string;
+    response: void;
+  };
+  [PlatformChannels.QuitAndInstallUpdate]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.GetInstalledEditors]: {
+    request: void;
+    response: EditorInfo[];
+  };
+  [PlatformChannels.GetApplicationIcon]: {
+    request: string | import("./platform.js").ApplicationIconRequest;
+    response: import("./platform.js").ApplicationIconInfo | null;
+  };
+  [PlatformChannels.OpenInEditor]: {
+    request: { editorId: string; path: string; options?: OpenInEditorOptions };
+    response: { success: boolean; error?: string };
+  };
+  [PlatformChannels.CloseActiveContextRequest]: {
+    request: void;
+    response: void;
+  };
+  [PlatformChannels.ExecuteDesktopCommand]: {
+    request: DesktopCommandId;
+    // 返回值直通 main 进程 handler 的 return（GetCuaOsSupport 返回 CuaOsSupport），
+    // 与 renderer 侧 IPlatformService.executeDesktopCommand 的 Promise<unknown> 对齐。
+    response: unknown;
+  };
+  [PlatformChannels.SetApplicationLocale]: {
+    request: Locale;
+    response: void;
+  };
+  [PlatformChannels.SetTitleBarTheme]: {
+    request: DesktopTitleBarTheme;
+    response: void;
+  };
+}

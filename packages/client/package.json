@@ -1,0 +1,21 @@
+{
+  "name": "@idexal/client",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./globals": "./src/globals.d.ts"
+  },
+  "scripts": {
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
+  },
+  "dependencies": {
+    "@idexal/rpc": "workspace:*",
+    "@idexal/services": "workspace:*",
+    "@idexal/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
+}

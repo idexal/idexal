@@ -1,0 +1,29 @@
+/*
+ * 启动 logo 的呼吸脉冲。
+ * 修复：品牌换成 PNG 后无法再在 SVG 上挂 <animate attributeName="opacity" begin="3s"
+ * dur="1.8s" values="1;0.4;1" repeatCount="indefinite">，这里用等价的 CSS 动画保留
+ * 原时序（3s 后开始、1.8s 一轮、最低 0.4），避免动效在换图时静默消失。
+ */
+@keyframes idexal-startup-logo-pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.idexal-startup-logo-pulse {
+  animation: idexal-startup-logo-pulse 1.8s ease-in-out 3s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .idexal-startup-logo-pulse {
+    animation: none;
+  }
+}

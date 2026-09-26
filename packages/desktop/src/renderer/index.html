@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Idexal</title>
+    <style>
+      html,
+      body,
+      #root {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      #root {
+        opacity: 0;
+        transition: opacity 0.16s ease;
+      }
+
+      body.idexal-startup-ready #root {
+        opacity: 1;
+      }
+
+      #loading {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.16s ease;
+      }
+
+      body.idexal-startup-ready #loading {
+        pointer-events: none;
+        opacity: 0;
+      }
+
+      .startup-logo-shell {
+        position: relative;
+        display: flex;
+        width: 96px;
+        height: 96px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 24px;
+        background: linear-gradient(180deg, #000000 0%, #151718 100%);
+        box-shadow:
+          0 20px 25px -5px rgb(0 0 0 / 0.2),
+          0 8px 10px -6px rgb(0 0 0 / 0.2);
+        transform: scale(0.72);
+        opacity: 0;
+        animation: startup-logo-pop 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        transform-origin: center;
+      }
+
+      .startup-logo-shell::before {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        content: "";
+        /* 启动 logo 壳是固定深色底，边框不能跟随浅色主题 token，否则首屏边框过重。*/
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: inherit;
+      }
+
+      .startup-logo {
+        width: 56px;
+        height: auto;
+        object-fit: contain;
+      }
+
+      @keyframes startup-logo-pop {
+        0% {
+          opacity: 0;
+          transform: scale(0.72);
+        }
+
+        38% {
+          opacity: 1;
+          transform: scale(1.045);
+        }
+
+        58% {
+          transform: scale(0.985);
+        }
+
+        76% {
+          transform: scale(1.008);
+        }
+
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .startup-logo-shell {
+          opacity: 1;
+          transform: scale(1);
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div
+      id="loading"
+      class="[app-region:drag]"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading..."
+    >
+      <div class="startup-logo-shell">
+        <!--
+          修复：这里是 React 接管前的启动壳，原先内联的是上游旧品牌 Chevron 标志，
+          会与 RootStartupLoading 的品牌图标不一致。logo 壳为固定深色渐变底，
+          因此恒定使用深色背景专用（白色）mark；资源放在 renderer public/brand/ 下，
+          Vite 构建时会按 base 重写为相对路径，兼容 Electron 的 file:// 加载。
+        -->
+        <img
+          src="/brand/idexal-mark-dark.png"
+          class="startup-logo"
+          alt=""
+          aria-hidden="true"
+          draggable="false"
+        />
+      </div>
+    </div>
+    <script type="module">
+      const startupLogoShell = document.querySelector(".startup-logo-shell");
+      const startupLoading = document.getElementById("loading");
+      const isUpdateStatusWindow =
+        new URLSearchParams(window.location.search).get("windowKind") === "update-status";
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let finished = false;
+      let animationDone = false;
+      let reactReady = false;
+
+      // 主入口不能依赖动画结束后的动态 import；一旦导入路径在 Electron/Vite 下失败，
+      // 页面会永久停在 HTML loading。这里让主入口静态加载，只把启动壳作为动画遮罩延迟移除。
+      const tryFinishStartupAnimation = () => {
+        if (finished || !animationDone || !reactReady) return;
+        finished = true;
+        document.body.classList.add("idexal-startup-ready");
+        window.setTimeout(() => startupLoading?.remove(), 500);
+      };
+
+      const markAnimationDone = () => {
+        animationDone = true;
+        tryFinishStartupAnimation();
+      };
+
+      const markReactReady = () => {
+        reactReady = true;
+        tryFinishStartupAnimation();
+      };
+
+      if (isUpdateStatusWindow) {
+        // 更新状态窗口本身就是一个轻量弹窗，复用主入口 HTML 时不应再显示启动壳。
+        // 否则透明独立窗口里的启动 logo 会短暂或持续盖在更新按钮上，看起来像弹窗 UI 异常。
+        finished = true;
+        document.body.classList.add("idexal-startup-ready");
+        startupLoading?.remove();
+      } else {
+        window.addEventListener("idexal-react-startup-ready", markReactReady, { once: true });
+      }
+
+      if (isUpdateStatusWindow || reduceMotion || !startupLogoShell) {
+        markAnimationDone();
+      } else {
+        startupLogoShell.addEventListener("animationend", markAnimationDone, { once: true });
+        window.setTimeout(markAnimationDone, 1000);
+      }
+
+      if (!isUpdateStatusWindow) {
+        window.setTimeout(markReactReady, 3000);
+      }
+    </script>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>

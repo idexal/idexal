@@ -1,0 +1,75 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Idexal Desktop: Main",
+      "type": "pwa-node",
+      "request": "attach",
+      "port": 9231,
+      "preLaunchTask": "idexal: start electron (debug)",
+      "restart": true,
+      "timeout": 30000,
+      "outFiles": ["${workspaceFolder}/packages/desktop/out/**/*.js"],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/packages/desktop/out/**/*.js",
+        "!**/node_modules/**"
+      ],
+      "skipFiles": ["<node_internals>/**"],
+      "autoAttachChildProcesses": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Idexal Desktop: Main (with host inspect)",
+      "type": "pwa-node",
+      "request": "attach",
+      "port": 9231,
+      "preLaunchTask": "idexal: start electron (debug with host inspect)",
+      "restart": true,
+      "timeout": 30000,
+      "outFiles": ["${workspaceFolder}/packages/desktop/out/**/*.js"],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/packages/desktop/out/**/*.js",
+        "!**/node_modules/**"
+      ],
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Idexal Desktop: Renderer",
+      "type": "pwa-chrome",
+      "request": "attach",
+      "port": 9229,
+      "webRoot": "${workspaceFolder}/packages/desktop/src/renderer",
+      "timeout": 30000
+    },
+    {
+      "name": "Idexal Desktop: Host",
+      "type": "pwa-node",
+      "request": "attach",
+      "port": 9230,
+      "restart": true,
+      "timeout": 30000,
+      "skipFiles": ["<node_internals>/**"],
+      "outFiles": ["${workspaceFolder}/packages/desktop/out/**/*.js"],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/packages/desktop/out/**/*.js",
+        "!**/node_modules/**"
+      ]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Idexal Desktop: F5",
+      "configurations": ["Idexal Desktop: Main", "Idexal Desktop: Renderer"],
+      "stopAll": true
+    },
+    {
+      "name": "Idexal Desktop: F5 (with host inspect)",
+      "configurations": [
+        "Idexal Desktop: Main (with host inspect)",
+        "Idexal Desktop: Renderer",
+        "Idexal Desktop: Host"
+      ],
+      "stopAll": true
+    }
+  ]
+}

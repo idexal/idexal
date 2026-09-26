@@ -1,0 +1,245 @@
+/**
+ * 草稿态空态问候：时间问候语 + Idexal Logo。
+ * 自旧版 ChatView/ChatViewEmptyState.tsx 恢复（该组件随旧 ChatView 删除，
+ * i18n key `chat.empty.greeting.*` 一直保留）；边界时刻自动换档逻辑保真。
+ * 手机远控复用同一组件，但继续保留 20px 紧凑标题；桌面草稿首页才按标题自身宽度适配。
+ */
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
+import brandMarkDarkUrl from "@/assets/brand/mark-dark.png";
+import brandMarkLightUrl from "@/assets/brand/mark-light.png";
+import { cn } from "@/components/lib/utils.js";
+import { useIdexalIntl } from "@/i18n/IntlProvider.js";
+import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
+import { logger } from "@/logger.js";
+
+const GREETING_BOUNDARY_HOURS = [5, 9, 12, 14, 18, 23] as const;
+const GREETING_MIN_FONT_SIZE_PX = 20;
+const GREETING_MAX_FONT_SIZE_PX = 30;
+
+type ChatEmptyGreetingMessageId =
+  | "chat.empty.greeting.morningEarly"
+  | "chat.empty.greeting.morning"
+  | "chat.empty.greeting.noon"
+  | "chat.empty.greeting.afternoon"
+  | "chat.empty.greeting.evening"
+  | "chat.empty.greeting.lateNight";
+
+function getChatEmptyGreetingMessageId(date: Date = new Date()): ChatEmptyGreetingMessageId {
+  const hour = date.getHours();
+
+  if (hour >= 5 && hour < 9) return "chat.empty.greeting.morningEarly";
+  if (hour >= 9 && hour < 12) return "chat.empty.greeting.morning";
+  if (hour >= 12 && hour < 14) return "chat.empty.greeting.noon";
+  if (hour >= 14 && hour < 18) return "chat.empty.greeting.afternoon";
+  if (hour >= 18 && hour < 23) return "chat.empty.greeting.evening";
+
+  return "chat.empty.greeting.lateNight";
+}
+
+function getNextChatEmptyGreetingDelayMs(date: Date = new Date()) {
+  const candidates = GREETING_BOUNDARY_HOURS.map((hour) => {
+    const boundary = new Date(date);
+    boundary.setHours(hour, 0, 0, 0);
+    return boundary;
+  });
+  const tomorrowFirstBoundary = new Date(date);
+  tomorrowFirstBoundary.setDate(tomorrowFirstBoundary.getDate() + 1);
+  tomorrowFirstBoundary.setHours(GREETING_BOUNDARY_HOURS[0], 0, 0, 0);
+
+  const nextBoundary =
+    candidates.find((candidate) => candidate.getTime() > date.getTime()) ?? tomorrowFirstBoundary;
+
+  return Math.max(1, nextBoundary.getTime() - date.getTime());
+}
+
+function resolveGreetingFontSizePx({
+  availableWidthPx,
+  naturalTextWidthPx,
+}: {
+  availableWidthPx: number;
+  naturalTextWidthPx: number;
+}) {
+  if (
+    !Number.isFinite(availableWidthPx) ||
+    !Number.isFinite(naturalTextWidthPx) ||
+    availableWidthPx <= 0 ||
+    naturalTextWidthPx <= 0 ||
+    availableWidthPx >= naturalTextWidthPx
+  ) {
+    return GREETING_MAX_FONT_SIZE_PX;
+  }
+
+  return Math.max(
+    GREETING_MIN_FONT_SIZE_PX,
+    Math.min(
+      GREETING_MAX_FONT_SIZE_PX,
+      Math.floor(GREETING_MAX_FONT_SIZE_PX * (availableWidthPx / naturalTextWidthPx)),
+    ),
+  );
+}
+
+export function ConversationDraftEmptyState({ className }: { className?: string }) {
+  const { intl } = useIdexalIntl();
+  const isOfficeMode = useIsOfficeMode();
+  const [greetingDate, setGreetingDate] = useState(() => new Date());
+  const [greetingFontSizePx, setGreetingFontSizePx] = useState(GREETING_MAX_FONT_SIZE_PX);
+  const greetingContainerRef = useRef<HTMLParagraphElement | null>(null);
+  const greetingMeasurementRef = useRef<HTMLSpanElement | null>(null);
+  const greeting = intl.formatMessage({
+    id: isOfficeMode ? "chat.empty.greeting.office" : getChatEmptyGreetingMessageId(greetingDate),
+  });
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setGreetingDate(new Date());
+    }, getNextChatEmptyGreetingDelayMs(greetingDate));
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [greetingDate]);
+
+  useLayoutEffect(() => {
+    const container = greetingContainerRef.current;
+    const measurement = greetingMeasurementRef.current;
+    if (!container || !measurement) {
+      return;
+    }
+
+    let frameId: number | null = null;
+    const measure = () => {
+      frameId = null;
+      const containerStyle = window.getComputedStyle(container);
+      const horizontalPaddingPx =
+        Number.parseFloat(containerStyle.paddingLeft) +
+        Number.parseFloat(containerStyle.paddingRight);
+      const availableWidthPx = Math.max(
+        0,
+        container.getBoundingClientRect().width - horizontalPaddingPx,
+      );
+      const naturalTextWidthPx = measurement.getBoundingClientRect().width;
+      const nextFontSizePx = resolveGreetingFontSizePx({
+        availableWidthPx,
+        naturalTextWidthPx,
+      });
+
+      setGreetingFontSizePx((currentFontSizePx) => {
+        if (currentFontSizePx === nextFontSizePx) {
+          return currentFontSizePx;
+        }
+        logger.debug("[v4-draft-greeting] 标题自身可用宽度变化，更新字号", {
+          availableWidthPx: Math.round(availableWidthPx),
+          naturalTextWidthPx: Math.round(naturalTextWidthPx),
+          previousFontSizePx: currentFontSizePx,
+          nextFontSizePx,
+        });
+        return nextFontSizePx;
+      });
+    };
+    const scheduleMeasure = () => {
+      if (frameId !== null) {
+        return;
+      }
+      frameId = window.requestAnimationFrame(measure);
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", scheduleMeasure);
+      return () => {
+        if (frameId !== null) {
+          window.cancelAnimationFrame(frameId);
+        }
+        window.removeEventListener("resize", scheduleMeasure);
+      };
+    }
+
+    // 标题字号曾直接绑定整个视口宽度，最小窗口里文字两侧仍有大量空间却被
+    // 强制缩到 20px。分别观察标题容器和 30px 原始文案，只在两者真实相撞时缩小。
+    const observer = new ResizeObserver(scheduleMeasure);
+    observer.observe(container);
+    observer.observe(measurement);
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+      observer.disconnect();
+    };
+  }, [greeting]);
+
+  return (
+    <div
+      className={cn(
+        "relative mb-10 flex w-full max-w-2xl flex-col items-center justify-center gap-6 text-foreground sm:mb-8",
+        className,
+      )}
+    >
+      <div
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute left-1/2 top-1/2 aspect-[5/4] w-[min(72vw,25rem)] -mt-10",
+          "-translate-x-1/2 -translate-y-1/2 text-foreground-subtlest",
+        )}
+      >
+        <IdexalEmptyStateLogo className="h-full w-full" />
+      </div>
+      <p
+        ref={greetingContainerRef}
+        data-v4-draft-greeting="true"
+        style={
+          {
+            "--v4-draft-greeting-font-size": `${greetingFontSizePx}px`,
+          } as CSSProperties
+        }
+        className={cn(
+          "relative z-10 w-full px-4 text-center font-medium text-foreground",
+          "text-[length:var(--v4-draft-greeting-font-size)]/[1.2]",
+        )}
+      >
+        <span
+          ref={greetingMeasurementRef}
+          aria-hidden="true"
+          className="pointer-events-none invisible absolute whitespace-nowrap text-3xl/[1.2]"
+        >
+          {greeting}
+        </span>
+        <span>{greeting}</span>
+      </p>
+    </div>
+  );
+}
+
+function IdexalEmptyStateLogo({ className }: { className?: string }) {
+  // 修复：两套资源都是官方标志位图，不再依赖 currentColor，因此沿用原本就存在于这里的
+  // Tailwind `dark:` 互斥写法显式选图（.dark 类由主题系统切换，与 prefers-color-scheme 无关）。
+  // 浅色件在原始 PNG 上自带深色字，需要保留原来的向下渐隐遮罩；
+  // 夜间资源本身已带渐变和透明度，公共容器再叠遮罩会重复变淡，故浅深各自的类互斥。
+  return (
+    <>
+      <img
+        aria-hidden="true"
+        className={cn(
+          className,
+          "object-contain opacity-70 dark:hidden",
+          "[-webkit-mask-image:linear-gradient(to_bottom,black_0%,transparent_70%,transparent_100%)]",
+          "[-webkit-mask-repeat:no-repeat] [-webkit-mask-size:100%_100%]",
+          "[mask-image:linear-gradient(to_bottom,black_0%,transparent_70%,transparent_100%)]",
+          "[mask-repeat:no-repeat] [mask-size:100%_100%]",
+        )}
+        data-v4-draft-logo="light"
+        src={brandMarkLightUrl}
+        alt=""
+        draggable={false}
+      />
+      <img
+        aria-hidden="true"
+        className={cn(className, "hidden object-contain dark:block")}
+        data-v4-draft-logo="dark"
+        src={brandMarkDarkUrl}
+        alt=""
+        draggable={false}
+      />
+    </>
+  );
+}

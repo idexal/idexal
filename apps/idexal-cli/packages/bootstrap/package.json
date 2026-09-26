@@ -1,0 +1,45 @@
+{
+  "name": "@idexal/bootstrap",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./v4-replay": {
+      "types": "./dist/idexal-protocol-v4/replay.d.ts",
+      "import": "./dist/idexal-protocol-v4/replay.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "node ../../scripts/clean-dist.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src",
+    "lint:fix": "oxlint --write src"
+  },
+  "dependencies": {
+    "@idexal/adapters": "workspace:*",
+    "@idexal/contracts": "workspace:*",
+    "@idexal/core": "workspace:*",
+    "@idexal/dynamic-workflow": "workspace:*",
+    "@idexal/dynamic-workflow-runtime": "workspace:*",
+    "@idexal/i18n": "workspace:*",
+    "@idexal/provider": "workspace:*",
+    "@idexal/provider-node": "workspace:*",
+    "@idexal/shared": "workspace:*",
+    "@idexal/telemetry": "workspace:*",
+    "diff": "^9.0.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/yazl": "^3.3.1",
+    "@idexal/formal-proof": "workspace:*",
+    "yazl": "^3.3.1"
+  }
+}

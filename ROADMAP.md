@@ -9,6 +9,7 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 ---
 
 ## ✅ Done
+
 - **IDE v2.7.1** — hotfix: clean-install packaging (asarUnpack + missing deps + zip) — app now opens on fresh Windows (MODULE_NOT_FOUND fixed), Setup 95M + Portable 95M + Zip 128M fallback + app.asar 26M, 90/90, live launch verified (win-unpacked stays 12s)
 - **CLI v2.7.1** — hotfix: real PE32+ binary via pkg (37.8MB, Node 18 embedded) — runs on clean Windows without Node (was JS text), 29/29, live --help/--version/ask --help verified
 - **IDE v2.8.0** — callbacks live (CLI `ide_open_file`/`ide_show_diff` → IDE `open-file`/`show-diff` IPC), on-device distilled n-gram ghost-text (Ollama → LM Studio → on-device fallback) + Settings On-Device panel (toggle + model `distilled-350M/1B/Xenova` + badge), vite 20s, 90/90
@@ -30,29 +31,37 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 - **Website v0.9.0** — published (development intentionally deferred)
 
 ## ✅ Shipped — v2.8.0 (2026-08-26)
+
 ### IDE v2.8.0
+
 - [x] Agent-to-agent callbacks live (CLI → IDE open_file/show_diff via Protocol v2)
 - [x] On-device fine-tuned completion model (distilled local ghost-text)
 
 ### CLI v2.8.0
+
 - [x] `idexa do --watch` auto-rebuild index + `ask --index --stream` combo
 - [x] `idexa plugins publish` → real npm registry push (billing `npm publish --access public`)
 
 ## ✅ Shipped — v2.9.0 (2026-08-26)
+
 - Plugin store billing live (Stripe payouts) + verification · Cloud sync AES-GCM + conflict merge · Multi-model router `ask --model auto`
 
 ## 🔥 Now — Next release (v2.10.0)
+
 - Multi-workspace ghost-text ensemble + Yjs CRDT polish + Plugin payouts live (real Stripe webhook)
 
 ## ⏭️ Next — v2.9.0 targets
+
 - Collab Yjs polish · `idexa collab` multi-agent room
 
 ## 🧊 Later — differentiators
+
 - [ ] Cloud sync conflict resolution across devices
 - [ ] Plugin store revenue payouts live
 - [ ] On-device model fine-tuning pipeline
 
 ## 🌐 Website (last priority)
+
 - [ ] Docs site generation from repo markdown
 - [ ] Download pages wired to GitHub Releases API
 - [ ] v1.0 launch when IDE+CLI reach feature parity goals
@@ -60,6 +69,7 @@ recorded in each repo's `CHANGELOG.md` + a GitHub Release with installable artif
 ---
 
 ## 📋 Definition of done (every release)
+
 1. Version bumped in `package.json` (+ tag `vX.Y.Z`)
 2. `CHANGELOG.md` updated with dated entry
 3. `npx tsc --noEmit` = 0 errors · tests green · build succeeds

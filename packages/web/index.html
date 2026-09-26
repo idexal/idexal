@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#161616" />
+    <meta name="color-scheme" content="dark" />
+    <!-- Chrome dev 下可能不发 favicon 网络请求；内嵌小尺寸 App 图标，避免标签页回退到默认图标。-->
+    <link
+      rel="icon"
+      type="image/png"
+      href="data:image/png;base64,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"
+      sizes="32x32"
+    />
+    <title>Idexal</title>
+    <script>
+      (() => {
+        // JS bundle 执行前先按本地主题偏好决定首屏底色，避免 dark 用户在这一帧看到白底闪烁。
+        const STORAGE_KEY = "idexal-theme";
+        const DEFAULT_THEME = "zai-dark";
+        const BROWSER_THEME_COLORS = {
+          dark: "#161616",
+          light: "#f8f8f8",
+        };
+
+        const normalizeResolvedTheme = (theme) => {
+          if (theme === "dark") return "dark";
+          if (theme === "light") return "light";
+          if (theme === "zai-dark") return "dark";
+          if (theme === "zai-light") return "light";
+          return theme;
+        };
+
+        const syncBrowserThemeSurface = (theme) => {
+          document.documentElement.setAttribute("data-idexal-browser-theme-surface", theme);
+          document.documentElement.style.colorScheme = theme;
+          document
+            .querySelector('meta[name="theme-color"]')
+            ?.setAttribute("content", BROWSER_THEME_COLORS[theme]);
+          document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", theme);
+        };
+
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME;
+          const resolved =
+            saved === "system"
+              ? window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light"
+              : normalizeResolvedTheme(saved);
+          const finalTheme = resolved === "dark" ? "dark" : "light";
+          document.documentElement.setAttribute("data-idexal-bootstrap-theme", finalTheme);
+          syncBrowserThemeSurface(finalTheme);
+          if (finalTheme === "dark") {
+            document.documentElement.classList.add("dark");
+          }
+        } catch {
+          document.documentElement.setAttribute("data-idexal-bootstrap-theme", "dark");
+          syncBrowserThemeSurface("dark");
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
+    <style>
+      html,
+      body,
+      #root {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        background: var(--idexal-bootstrap-bg, var(--color-background, #0f172a));
+        color: var(--idexal-bootstrap-fg, var(--color-foreground, #e2e8f0));
+        font-family:
+          Inter,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      html[data-idexal-bootstrap-theme="light"] body {
+        background: var(--idexal-bootstrap-bg, var(--color-background, #f8fafc));
+        color: var(--idexal-bootstrap-fg, var(--color-foreground, #334155));
+      }
+
+      html[data-idexal-browser-theme-surface],
+      html[data-idexal-browser-theme-surface] body,
+      html[data-idexal-browser-theme-surface] #root {
+        /* 共享 UI 样式为 Electron vibrancy 强制透明根背景；浏览器入口必须用语义背景
+           覆盖该桌面专属行为，否则浏览器工具栏、overscroll 和页面画布会回退为系统白色。 */
+        background: var(--color-background, var(--idexal-bootstrap-bg, #161616)) !important;
+      }
+
+      html[data-idexal-browser-theme-surface="light"],
+      html[data-idexal-browser-theme-surface="light"] body,
+      html[data-idexal-browser-theme-surface="light"] #root {
+        background: var(--color-background, var(--idexal-bootstrap-bg, #f8f8f8)) !important;
+      }
+
+      .idexal-boot-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        /* UI 全局样式会把 body/#root 置为透明，预渲染壳必须自己承接主题背景，否则深色主题会露出浏览器白底。*/
+        background: var(--idexal-bootstrap-bg, var(--color-background, #0f172a));
+        color: var(--idexal-bootstrap-fg, var(--color-foreground, #e2e8f0));
+      }
+
+      html[data-idexal-bootstrap-theme="light"] .idexal-boot-loading {
+        background: var(--idexal-bootstrap-bg, var(--color-background, #f8fafc));
+        color: var(--idexal-bootstrap-fg, var(--color-foreground, #334155));
+      }
+
+      .idexal-boot-loading__logo-shell {
+        position: relative;
+        display: flex;
+        width: 96px;
+        height: 96px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 24px;
+        background: linear-gradient(180deg, #000000 0%, #151718 100%);
+        box-shadow:
+          0 20px 25px -5px rgb(0 0 0 / 0.2),
+          0 8px 10px -6px rgb(0 0 0 / 0.2);
+      }
+
+      .idexal-boot-loading__logo-shell::before {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        content: "";
+        /* 启动 logo 壳是固定深色底，边框不能跟随浅色主题 token，否则首屏边框过重。*/
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: inherit;
+      }
+
+      .idexal-boot-loading__logo {
+        width: 56px;
+        height: auto;
+        object-fit: contain;
+        /* 修复：原先是三条旧品牌 Chevron 路径各自错相 <animate>；官方 mark 是单张位图，
+           无法再分路径错相，这里退化为整体等节奏脉冲（1.5s、最低 0.3），保持启动动效不消失。 */
+        animation: idexal-boot-logo-pulse 1.5s ease-in-out infinite;
+      }
+
+      @keyframes idexal-boot-logo-pulse {
+        0% {
+          opacity: 1;
+        }
+
+        50% {
+          opacity: 0.3;
+        }
+
+        100% {
+          opacity: 1;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .idexal-boot-loading__logo {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <!-- 远程控制跨 workspace 时会整页跳转；在 JS 入口执行前先给出 loading 壳，避免出现白屏空档。-->
+      <div
+        class="idexal-boot-loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label="Loading..."
+      >
+        <div class="idexal-boot-loading__logo-shell">
+          <!--
+            修复：React 接管前的预渲染启动壳原先内联上游旧品牌 Chevron 标志，
+            与 RootStartupLoading 的品牌图标不一致。logo 壳是固定深色渐变底，
+            与页面浅/深主题无关，因此恒定使用深色背景专用（白色）mark。
+          -->
+          <img
+            src="/brand/idexal-mark-dark.png"
+            class="idexal-boot-loading__logo"
+            alt=""
+            aria-hidden="true"
+            draggable="false"
+          />
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,65 +1,81 @@
-# Dependencies
 node_modules/
-.pnp
-.pnp.js
-
-# Build outputs
 dist/
+# idexal-server-cli 发行包 staging 输出，本地组装产物不入库。
+dist-release/
+# macOS CI 按架构隔离 electron-builder 输出目录，这些仍是构建产物。
+packages/desktop/dist-*/
+out/
+prebuilds/
+bundled-resources/
+mock-cdn/
+packages/desktop/bundled-resources/
+packages/desktop/bundled-agents/
+packages/desktop/bundled-tools/
+packages/desktop/mock-cdn/
 *.tsbuildinfo
-
-# Rust
-target/
-
-# IDE / Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
 .DS_Store
-Thumbs.db
-
-# Environment & secrets
-.env
+coverage/
 .env.local
 .env.*.local
-*.pem
-!**/certs/*.pem
+.env
+.VSCodeCounter
+.idea/
+.zed/
+.cache
+# CI 会跨任务保留这些下载缓存；不应进入 Git 未跟踪源码枚举。
+/.electron-builder-cache/
+/.electron-cache/
+/.pnpm-store/
+/.npm-cache/
+.turbo/
+z-work/
+openclaw/
+.run-logs/
+.worktrees/
+packages/stream-animate/dist-server/
+packages/stream-animate/.stream-animate-data/
+.codegraph
+.mimosa/
+# 集成曾混入 node-gyp 构建产物与 .playwright-mcp 临时快照；
+# 这里让本地 git add 也忽略它们。
+.playwright-mcp/
+*.o
+.deps/
+obj.target/
+config.gypi
+gyp-mac-tool
+*.target.mk
+binding.Makefile
+# 这两条原来写成 build/Makefile、build/Release/*.node，含中间斜杠的 pattern
+# 只相对 .gitignore 所在目录（仓库根）生效，匹配不到 packages/ax-macos/build/ 下的产物；
+# 而 ci-repo-hygiene.mjs 的 denylist 用的是 (^|/)build/... 任意层级匹配。
+# 宽严不一致时无斜杠 pattern 能拦住的产物会被 git add -A 重新扫进索引。
+# 加 **/ 让忽略范围与门禁范围对齐。
+**/build/Makefile
+**/build/Release/*.node
 
-# Logs
+# CUA 权限浮窗吸附用的 Swift 辅助二进制（由 prepare:macos-window-bounds 从
+# packages/desktop/native/macos-window-bounds/main.swift 编出，源码入库、产物不入库）
+packages/desktop/resources/macos-window-bounds/
+# CUA Helper SEA 基座下载缓存（scripts/cua-helper-sea-base.mjs 落盘的官方 Node 22 运行时，纯下载产物）
+/.tmp/
+# Python 字节码（docker/plugin-eval/summarize.py 在主机上跑会生成）。
+__pycache__/
+*.pyc
+
+# 本地工具运行产物，均可再生：桌面端 e2e 的截图/缓存/网络抓包，以及桌面
+# 开发运行器的 Electron 下载缓存。
+packages/desktop/.e2e-artifacts/
+packages/desktop/.e2e-cache/
+packages/desktop/.e2e-network-capture/
+.idexal-runtime/
+# 本地 dev:desktop 运行日志由 scripts/dev-desktop-env.mjs 落盘，属可再生产物，不入库。
+/dev-desktop.log
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Coverage
-coverage/
-
-# Electron builder output
-out/
-release/
-
-# Test artifacts
-test-results/
-playwright-report/
-
-# App-local scratch files (not part of the source tree)
-.idexal/*.log
-.idexal/project-id
-
-# Agent tooling (local-only)
-.agents/
-# App-local scratch (not source)
-.idexal/*.log
-.idexal/*.log.err
-.idexal/project-id
-.freebuff/
-idexal-ide/
-Website/
-skills/
-idexal-workspaces/
-.idexal/
-.freebuff/
-.agents/
+# .agents/skills 是编辑器侧安装的本地技能副本（第三方 SKILL.md 与脚本），
+# 不是本产品源码，公开仓库不应携带。
+/.agents/
+# SEA 运行期检索工具（ripgrep/ugrep 各平台压缩包）由
+# apps/idexal-cli/packages/cli/scripts/sea-runtime-tool-prepare.mjs 下载到此缓存目录，
+# 属可再生构建产物，不入库。
+/apps/idexal-cli/dependencies/
