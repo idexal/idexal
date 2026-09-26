@@ -1,6 +1,10 @@
 # 保持脚本文件 LF 换行，避免 Windows CRLF 导致 shebang 解析失败
 *.mjs text eol=lf
 *.sh  text eol=lf
+# 源码同样固定 LF：oxfmt 按字节比较换行符，autocrlf 在检出时把 LF 展开成 CRLF
+# 会让 `pnpm fmt:check` 对一个未改动文件报失败，Windows 上的门禁因此不可复现。
+*.ts text eol=lf
+*.tsx text eol=lf
 
 # 上游许可原文与生成的声明按字节保存，不能自动转换换行或裁剪空白。
 # 原文中的 License / ======= 是 Markdown 标题，不是合并冲突。
