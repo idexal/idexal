@@ -26,6 +26,7 @@ import {
   LAUNCH_MARKS_QUERY_KEY,
   type LaunchMarks,
   DEFAULT_LOCALE,
+  isSupportedLocale,
 } from "@idexal/shared";
 import type { Locale } from "@idexal/shared";
 import type { IServiceAccessor } from "@idexal/services";
@@ -133,10 +134,11 @@ const initialWorkspacePurpose = readStringFlag("initialWorkspacePurpose");
 const unavailableWorkspacePath = readStringFlag("unavailableWorkspacePath");
 const windowKind = readStringFlag("windowKind");
 const initialLocaleFlag = readStringFlag("locale");
-const initialLocale: Locale =
-  initialLocaleFlag === "zh-CN" || initialLocaleFlag === "en-US"
-    ? initialLocaleFlag
-    : DEFAULT_LOCALE;
+// 用 localeSchema 校验命令行传入的语言，而不是逐个字符串比较：
+// 之前新增语言时这里会静默把 ar/fr 降级成默认语言，而设置下拉里却能看到它们。
+const initialLocale: Locale = isSupportedLocale(initialLocaleFlag)
+  ? initialLocaleFlag
+  : DEFAULT_LOCALE;
 let baseServicesForRemoteSessions: IServiceAccessor | null = null;
 const pendingRemoteWorkspaceServicePorts: RemoteWorkspaceServicePortRegistration[] = [];
 

@@ -32,6 +32,7 @@ import {
   CodingPlanWebviewChannels,
   type CodingPlanPurchaseCompletePayload,
   IDEXAL_VERSION,
+  toCodingPlanWebviewLocale,
 } from "@idexal/shared";
 
 interface CodingPlanEmbeddedWebviewDialogProps {
@@ -90,8 +91,9 @@ export function CodingPlanEmbeddedWebviewDialog({
   const webviewRef = useRef<ElectronWebviewTag | null>(null);
   const onOpenResultRef = useRef(onOpenResult);
   onOpenResultRef.current = onOpenResult;
-  // 当前 locale 作为 webview 语言 hint / 注入值；Locale 与 CodingPlanWebviewLocale 同构。
-  const webviewLocale = locale;
+  // 当前 locale 作为 webview 语言 hint / 注入值。两者不再同构（本应用新增 ar/fr），
+  // 必须经映射函数降级，否则会把官网页不认识的 lang 注入进去。
+  const webviewLocale = toCodingPlanWebviewLocale(locale);
   const webviewCleanupRef = useRef<(() => void) | null>(null);
   // webview 是否已 dom-ready：executeJavaScript 只在 ready 后调用，
   // 否则会抛 "WebView must be attached to the DOM and dom-ready emitted"。

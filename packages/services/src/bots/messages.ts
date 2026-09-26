@@ -4,7 +4,13 @@ export type BotMessageLocale = Extract<Locale, "zh-CN" | "en-US">;
 
 type MessageValues = Record<string, string | number | undefined>;
 
-const DEFAULT_BOT_MESSAGE_LOCALE: BotMessageLocale = "zh-CN";
+/**
+ * Bot 回复（飞书/微信）目前只有中英两套文案。
+ *
+ * 默认值原先是 zh-CN，那在中文是唯二语言时成立；新增 ar/fr 后它会让阿语/法语用户
+ * 收到中文回复。改为英文兜底：未翻译的语言一律降级到英文，而不是降级到中文。
+ */
+const DEFAULT_BOT_MESSAGE_LOCALE: BotMessageLocale = "en-US";
 
 const messages = {
   "zh-CN": {

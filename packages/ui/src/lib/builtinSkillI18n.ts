@@ -41,7 +41,11 @@ const OFFICIAL_PLUGIN_PATH_MARKERS = [
   "/zcode-guide-plugin/",
 ];
 
-const BUILTIN_SKILL_DESCRIPTIONS: Record<string, Record<Locale, string>> = {
+/**
+ * 只覆盖已翻译的语言：查表失败时 `resolveSkillDisplayDescription` 会回退到插件自带的
+ * （英文）描述，所以新增语言不需要一次性补齐这 24 条，缺者自然降级而不是显示空串。
+ */
+const BUILTIN_SKILL_DESCRIPTIONS: Record<string, Partial<Record<Locale, string>>> = {
   "android-dev": {
     "zh-CN": "通过 android-emulator MCP 工具构建、运行、检查并轻量自动化 Android 应用。",
     "en-US":

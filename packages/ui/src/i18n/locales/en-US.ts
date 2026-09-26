@@ -2278,6 +2278,8 @@ const enUS: Record<string, string> = {
   "settings.locale.system": "System default",
   "settings.locale.zh-CN": "中文简体",
   "settings.locale.en-US": "English",
+  "settings.locale.ar": "العربية",
+  "settings.locale.fr": "Français",
   "sidebar.settings.systemDefault": "System default",
   "sidebar.settings.locale.en-US": "English",
   "sidebar.settings.locale.zh-CN": "中文简体",

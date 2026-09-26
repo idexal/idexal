@@ -3,11 +3,19 @@ import type { Locale } from "@idexal/shared";
 import { TID_LOCALE_TOGGLE } from "@idexal/shared";
 import { useIdexalIntl } from "./IntlProvider.js";
 
-const LOCALE_CYCLE: Locale[] = ["zh-CN", "en-US"];
+/**
+ * 切换器只提供产品当前支持的三种语言。
+ * zh-CN 仍在 `Locale` 联合类型里，只为让已经落盘的 setting.json 继续解析成功；
+ * 不再出现在这里，中文用户下次主动切换后就进入阿/英/法集合。
+ */
+const LOCALE_CYCLE: Locale[] = ["ar", "en-US", "fr"];
 
+// 语言名一律用该语言自身的写法（ع / EN / FR），否则用户看不懂自己要切去哪。
 const LOCALE_LABELS: Record<Locale, string> = {
   "zh-CN": "中",
   "en-US": "En",
+  ar: "ع",
+  fr: "Fr",
 };
 
 /**

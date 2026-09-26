@@ -27,7 +27,14 @@ export type {
   PersistedWorkspaceSessionEntry,
 } from "./protocol.js";
 export type { WorkspacePurpose } from "./workspacePurpose.js";
-export { DEFAULT_LOCALE } from "./protocol.js";
+export {
+  DEFAULT_LOCALE,
+  FALLBACK_LOCALE,
+  isSupportedLocale,
+  localeFromLanguageTag,
+  resolveTextDirection,
+} from "./protocol.js";
+export type { TextDirection } from "./protocol.js";
 export { IDEXAL_VERSION, IDEXAL_COMMIT, IDEXAL_BUILD_TIME } from "./version.js";
 export type { HelloMessage, HelloAckMessage } from "./handshake.js";
 export type { ArmsRumEnv, IdexalEnv, IdexalProductFlavor } from "./env.js";

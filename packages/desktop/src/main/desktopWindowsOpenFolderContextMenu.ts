@@ -8,6 +8,8 @@ const DRIVE_MENU_KEY = `HKCU\\Software\\Classes\\Drive\\shell\\${MENU_KEY_NAME}`
 const MENU_LABELS: Record<Locale, string> = {
   "zh-CN": "在Idexal中打开",
   "en-US": "Open in Idexal",
+  ar: "فتح في Idexal",
+  fr: "Ouvrir dans Idexal",
 };
 
 type Logger = {

@@ -102,6 +102,10 @@ export const providerTemplateNameMapDataSchema = z
   .object({
     "zh-CN": z.string().min(1).optional(),
     "en-US": z.string().min(1).optional(),
+    // 模板名多为品牌与模型名，配置文件通常只提供中英两份；
+    // 这里允许缺省，resolveProviderTemplateName 会回退到 en-US。
+    ar: z.string().min(1).optional(),
+    fr: z.string().min(1).optional(),
   })
   .strict();
 export const providerTemplateDataSchema = z

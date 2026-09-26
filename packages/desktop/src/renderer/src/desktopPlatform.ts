@@ -1,5 +1,6 @@
 import { recordArmsCustomEventForE2E } from "@idexal/ui";
 import {
+  localeFromLanguageTag,
   DesktopCommandIds,
   buildLocalMediaPreviewUrl,
   type IPlatformService,
@@ -164,7 +165,7 @@ export function createDesktopPlatform(options: {
     setApplicationLocale: (locale) => window.idexal.setApplicationLocale(locale),
     getSystemLocale: () =>
       window.idexal.getSystemLocale?.() ??
-      Promise.resolve(navigator.language.toLowerCase().startsWith("zh") ? "zh-CN" : "en-US"),
+      Promise.resolve(localeFromLanguageTag(navigator.language)),
     setTitleBarTheme: (theme) => window.idexal.setTitleBarTheme(theme),
     getDeviceId: () =>
       (window as Window & { __IDEXAL_DEVICE_ID__?: string }).__IDEXAL_DEVICE_ID__ ?? "",

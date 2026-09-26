@@ -81,6 +81,20 @@ const ABOUT_MESSAGES: Record<
     optimizedForAppleSilicon: "Optimized for Apple Silicon.",
     copyright: (year) => `Copyright © ${year} Idexal.`,
   },
+  ar: {
+    aboutTitle: "حول Idexal",
+    versionLabel: "الإصدار",
+    okButtonLabel: "موافق",
+    optimizedForAppleSilicon: "محسّن لمعالج Apple Silicon.",
+    copyright: (year) => `حقوق النشر © ${year} Idexal.`,
+  },
+  fr: {
+    aboutTitle: "À propos d'Idexal",
+    versionLabel: "version",
+    okButtonLabel: "OK",
+    optimizedForAppleSilicon: "Optimisé pour Apple Silicon.",
+    copyright: (year) => `Copyright © ${year} Idexal.`,
+  },
 };
 
 function normalizeValue(value: string | undefined | null): string {

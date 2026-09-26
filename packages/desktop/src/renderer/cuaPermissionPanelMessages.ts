@@ -31,6 +31,24 @@ const MESSAGES: Record<
     accessibility: "Accessibility",
     screen_recording: "Screen Recording",
   },
+  ar: {
+    documentTitle: "أذونات Idexal Computer Use",
+    dragTitle: "اسحبني إلى قائمة الأذونات بالأعلى",
+    hintPrefix: "اسحب الأيقونة الموجودة على اليسار إلى قائمة ",
+    hintSuffix: " بالأعلى",
+    completion: "أفلت الماوس لمنح الوصول فورًا، دون الحاجة إلى تبديل المفتاح",
+    accessibility: "إمكانية الوصول",
+    screen_recording: "تسجيل الشاشة",
+  },
+  fr: {
+    documentTitle: "Autorisations Idexal Computer Use",
+    dragTitle: "Faites-moi glisser vers la liste des autorisations ci-dessus",
+    hintPrefix: "Faites glisser l’icône de gauche dans la liste ",
+    hintSuffix: " ci-dessus",
+    completion: "Relâchez pour accorder l’accès — inutile d’activer le commutateur",
+    accessibility: "Accessibilité",
+    screen_recording: "Enregistrement de l’écran",
+  },
 };
 
 export function resolveCuaPermissionPanelMessages(

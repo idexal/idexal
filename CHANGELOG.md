@@ -1,5 +1,56 @@
 # Changelog
 
+## 3.16.0 (2026-09-26)
+
+### Changes
+
+- **feat(i18n):** 应用语言改为阿拉伯语 / 英语 / 法语，并接入 RTL 排版方向
+  - `Locale` 由 `"zh-CN" | "en-US"` 扩展为 `"ar" | "en-US" | "fr" | "zh-CN"`，新增
+    `TextDirection` 与 `resolveTextDirection(locale)`：方向**由语言推导**，不作为独立设置项，
+    避免出现"阿拉伯语 + LTR"这种自相矛盾的状态。
+  - 中文不再出现在语言切换器与设置下拉的可选项里，且不再是默认值：`DEFAULT_LOCALE` 仍是 zh-CN
+    但 `localeSchema.default` 改为 en-US，`BotMessageLocale` 默认值同步改为 en-US，
+    系统语言未覆盖时（如德语）一律降级英文而不是中文。
+  - **zh-CN 暂留类型与 schema 的原因（不是遗漏）**：已落盘的 `setting.json` 可能写着
+    `locale: "zh-CN"`，若直接从 `z.enum` 移除会让整份设置解析失败并回落默认值，等于升级即清空
+    用户配置。彻底删除需要一次带 `zh-CN → en-US` 迁移的独立改动，已记入待办。
+  - 新增 `locales/ar.ts`（68 键）与 `locales/fr.ts`（68 键），覆盖登录、API key 表单、
+    会话过期、应用外壳、引导首屏与语言/主题等首次运行可见界面。
+  - 关键架构改动：`createIntl` 的查表由 `messages[id] ?? id` 改为
+    `目标语言 → en-US → key`。原实现没有编译期校验，漏一个键就把 `login.foo.bar`
+    直接渲染给用户；有了回退链，翻译才能按界面逐块补齐，而不必攒成一次不可发布的巨型改动。
+  - 语言下拉从逐个写死 `SelectItem` 改为 `LOCALE_SELECT_VALUES` 列表驱动，并修掉
+    `SettingsPage.tsx:1278` 的 `if (value === "zh-CN" || value === "en-US")` 硬编码判断——
+    该判断会让新语言在设置里"看得见、选了没反应"。
+  - 宿主映射收敛到 shared：新增 `isSupportedLocale` 与 `localeFromLanguageTag`，
+    桌面渲染进程与 UI 层共用同一份系统语言→界面语言映射，避免新增语言时只改一处。
+  - 外部契约刻意**不**跟着 `Locale` 扩张（详见 docs/i18n-rtl.md）：官网订阅页
+    `CodingPlanWebviewLocale` 经 `toCodingPlanWebviewLocale()` 把 ar/fr 降级为 en-US；
+    分享站 URL 只有 `/cn` 与裸路径两种形状，抽出 `ConversationShareSiteLocale` 保持窄类型，
+    避免凭空承诺两个不存在的站点前缀；`community_urls` 与 bot 回复同理。
+  - 补齐 ar/fr 文案的界面：桌面 About 窗口、Computer Use 权限拖拽面板、
+    macOS Finder 与 Windows 资源管理器的"在 Idexal 中打开"、应用菜单栏全部 51 项。
+  - 实测（隔离实例，独立 app name + userData/HOME + CDP 9233，不触碰用户 9229）：
+    阿语态 `documentElement.dir === "rtl"`、`lang === "ar"`、计算样式 direction 为 rtl，
+    登录面板显示"مرحبًا بك في Idexal / الاشتراكات قريبًا / استخدام مفتاح API"；
+    法语态 `dir === "ltr"`、`lang === "fr"`，显示"Bienvenue dans Idexal /
+    Abonnements bientôt disponibles / Utiliser une clé API"；两种语言 rawKeyLeak 均为空，
+    EXCEPTIONS 0。法语按钮文本经 `textContent` 逐字符复核无损坏（`innerText` 抽取会丢字母，
+    那是提取侧的伪影而不是界面缺陷）。
+  - 门禁：`pnpm typecheck` exit 0；`pnpm lint` 70 warnings / 0 errors —— 与 HEAD 的
+    detached worktree 实测基线（70 warnings / 2617 files）逐项对齐，本次 2619 files 未新增告警；
+    `architecture:check --changed` violations 0；oxfmt 通过。
+  - 过程中被真实运行抓到、而类型检查抓不到的缺陷：桌面 renderer 不在 `pnpm typecheck` 覆盖范围内
+    （`tsconfig.renderer.json` 有 125 个既有错误且不作为门禁），我在 `main.tsx` 与
+    `desktopPlatform.ts` 调用了新助手却漏了 import，启动即
+    `ReferenceError: isSupportedLocale is not defined`、白屏无按钮。是这次实跑发现的，
+    补 import 后复测为 EXCEPTIONS 0。结论：改完桌面侧代码必须实跑，不能只看 typecheck 绿。
+  - **明确未完成**：Tailwind 物理工具类不认 `dir`，`packages/ui/src` 实测有 ≥400 处
+    `ml-/mr-/pl-/pr-/left-/right-/translate-x-/text-left/rounded-l/border-l/space-x-`
+    分布在 197 个文件，不会自动镜像。当前状态是"阿拉伯语可读、文本方向正确"，
+    但部分组件的间距与绝对定位仍按 LTR 摆放。改为逻辑属性并逐组件验收是独立一次工程，
+    本次不声称"完整 RTL"。
+
 ## 3.15.22 (2026-09-26)
 
 ### Changes

@@ -10,6 +10,8 @@ const WORKFLOW_VERSION = "5";
 const SERVICES_MENU_LABELS: Record<Locale, string> = {
   "zh-CN": "在Idexal中打开",
   "en-US": "Open in Idexal",
+  ar: "فتح في Idexal",
+  fr: "Ouvrir dans Idexal",
 };
 
 const workflowScript = `first=""

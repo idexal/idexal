@@ -71,11 +71,62 @@ export interface SystemInfo {
   platform: string;
 }
 
-/** 支持的语言 */
-export type Locale = "zh-CN" | "en-US";
+/** 支持的语言。中文（zh-CN）仍在联合类型里以兼容已落盘的设置，但不再出现在语言切换器中。 */
+export type Locale = "ar" | "en-US" | "fr" | "zh-CN";
 
 /** 界面语言偏好；system 表示跟随当前运行端系统语言。 */
 export type LocalePreference = "system" | Locale;
+
+/** 文本排版方向。方向由语言推导，不能独立设置，否则会出现"阿拉伯语 + LTR"这种自相矛盾的状态。 */
+export type TextDirection = "ltr" | "rtl";
+
+/** 从右到左排版的语言集合。新增语言时只需改这一处，其余方向判断都经由 resolveTextDirection。 */
+const RTL_LOCALES: readonly Locale[] = ["ar"];
+
+/** 由语言推导排版方向；所有需要设置 document.dir 或翻转布局的地方都必须走这里。 */
+export function resolveTextDirection(locale: Locale): TextDirection {
+  return RTL_LOCALES.includes(locale) ? "rtl" : "ltr";
+}
+
+/** 判断任意字符串是否为受支持的界面语言（用于校验命令行、URL 与外部配置传入的值）。 */
+export function isSupportedLocale(value: unknown): value is Locale {
+  return value === "ar" || value === "en-US" || value === "fr" || value === "zh-CN";
+}
+
+/**
+ * 把 BCP-47 语言标签（ar-EG、fr-CA、zh-Hans…）映射到界面语言。
+ *
+ * 三个宿主各自实现过一份这个映射，新增语言时很容易只改一处；集中到这里后
+ * 未覆盖的语言统一降级到英文，而不是历史遗留的中文。
+ */
+export function localeFromLanguageTag(
+  languageTag: string | undefined,
+  fallback: Locale = FALLBACK_LOCALE,
+): Locale {
+  if (!languageTag) return fallback;
+  const lower = languageTag.toLowerCase();
+  if (lower.startsWith("zh")) return "zh-CN";
+  if (lower.startsWith("ar")) return "ar";
+  if (lower.startsWith("fr")) return "fr";
+  return fallback;
+}
+
+/**
+ * 缺失译文时的回退语言。
+ *
+ * 新增语言时不可能一次性补齐全部文案表，因此所有 `Record<Locale, …>` 查表都经由
+ * {@link pickLocaleText}，未翻译的键回退到英文而不是把 key 或 undefined 暴露给用户。
+ * 这让翻译可以按界面逐块推进，而不必攒成一个不可发布的巨型改动。
+ */
+export const FALLBACK_LOCALE: Locale = "en-US";
+
+/** 按 目标语言 → 回退语言 → 默认语言 的顺序取文案；三者都缺时返回 undefined 交给调用方决定形状。 */
+export function pickLocaleText<T>(
+  table: Partial<Record<Locale, T>>,
+  locale: Locale,
+): T | undefined {
+  return table[locale] ?? table[FALLBACK_LOCALE] ?? table[DEFAULT_LOCALE];
+}
 
 /** Idexal 运行中继续输入时的交互行为 */
 export type IdexalInteractionBehavior = "queue" | "guide";
@@ -106,8 +157,8 @@ export interface IntegratedTerminalShellOption {
   source: "system" | "path";
 }
 
-/** 默认语言 */
-export const DEFAULT_LOCALE: Locale = "zh-CN";
+/** 默认语言。原先是 zh-CN，中文下线后改为英文，因为它同时是缺失文案的回退语言。 */
+export const DEFAULT_LOCALE: Locale = "en-US";
 
 // ── Workspace / Tab ──
 

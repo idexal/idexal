@@ -8,7 +8,7 @@ import {
   parseConversationSharePathname,
   type ConversationShareApiErrorCode,
   type ConversationSharePreview,
-  type Locale,
+  type ConversationShareSiteLocale,
 } from "@idexal/shared";
 
 const SHARE_CODE_PATTERN = /^[A-Za-z0-9._~-]{1,512}$/u;
@@ -60,7 +60,7 @@ export function parseConversationShareRoute(pathname: string): string | null {
 }
 
 /** 页面语言由路径前缀决定：/cn/share 中文，裸 /share 英文；非分享路径回退到浏览器语言。 */
-export function resolveConversationShareRouteLocale(pathname: string): Locale {
+export function resolveConversationShareRouteLocale(pathname: string): ConversationShareSiteLocale {
   const parsed = parseConversationSharePathname(pathname);
   if (parsed) return parsed.locale;
   return /^zh(?:-|$)/iu.test(navigator.language) ? "zh-CN" : "en-US";

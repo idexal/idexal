@@ -8,12 +8,23 @@ import {
 } from "./idexal-protocol-v4/rows.js";
 
 /**
- * 分享站按语言分路径：中文站带 /cn 前缀，英文站是裸 /share。
- * web 路由、发布回链改写、导入回链共用这一份定义，避免三处各写一遍前缀。
+ * 分享站点实际存在的语言变体：只有 `/cn/share` 与裸 `/share` 两种形状。
+ *
+ * 这是站点的 URL 契约，不是本应用的界面语言集合（后者已含 ar/fr）。
+ * 阿语/法语用户打开分享链接时落在英文站点上，因此这里必须保持窄类型，
+ * 不能跟着 `Locale` 一起扩张，否则会凭空承诺两个不存在的站点前缀。
  */
-const CONVERSATION_SHARE_LOCALE_PATH_PREFIX: Readonly<Record<Locale, string>> = {
+export type ConversationShareSiteLocale = "zh-CN" | "en-US";
+
+/**
+ * 分享站按语言分路径：中文站带 /cn 前缀，其余语言都是裸 /share。
+ * web 路由、发布回链改写、导入回链共用这一份定义，避免三处各写一遍前缀。
+ *
+ * 用 Partial 而不是全量 Record：阿语和法语没有独立站点，缺省即"不加前缀"，
+ * 新增语言时不必回来补一张表。
+ */
+const CONVERSATION_SHARE_LOCALE_PATH_PREFIX: Readonly<Partial<Record<Locale, string>>> = {
   "zh-CN": "/cn",
-  "en-US": "",
 };
 
 const CONVERSATION_SHARE_PATHNAME_RE = /^\/(cn\/)?share\/([^/]+)\/?$/u;
@@ -24,7 +35,7 @@ const CONVERSATION_SHARE_PATHNAME_RE = /^\/(cn\/)?share\/([^/]+)\/?$/u;
  */
 export function parseConversationSharePathname(
   pathname: string,
-): { rawCode: string; locale: Locale } | null {
+): { rawCode: string; locale: ConversationShareSiteLocale } | null {
   const match = CONVERSATION_SHARE_PATHNAME_RE.exec(pathname);
   if (!match) return null;
   return { rawCode: match[2]!, locale: match[1] ? "zh-CN" : "en-US" };
@@ -46,7 +57,7 @@ export function localizeConversationShareUrl(shareUrl: string, locale: Locale): 
   }
   const parsed = parseConversationSharePathname(url.pathname);
   if (!parsed) return shareUrl;
-  url.pathname = `${CONVERSATION_SHARE_LOCALE_PATH_PREFIX[locale]}/share/${parsed.rawCode}`;
+  url.pathname = `${CONVERSATION_SHARE_LOCALE_PATH_PREFIX[locale] ?? ""}/share/${parsed.rawCode}`;
   return url.toString();
 }
 

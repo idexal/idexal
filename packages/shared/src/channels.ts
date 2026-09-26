@@ -472,6 +472,14 @@ export interface CodingPlanPurchaseCompletePayload {
 export type CodingPlanWebviewLocale = "zh-CN" | "en-US";
 
 /**
+ * 官网订阅页只认这两个取值，它是外部页面的契约而不是本应用的语言集合。
+ * 阿语/法语一律映射为 en-US：把新语言直接塞进契约会让页面拿到它不认识的 lang。
+ */
+export function toCodingPlanWebviewLocale(locale: Locale): CodingPlanWebviewLocale {
+  return locale === "zh-CN" ? "zh-CN" : "en-US";
+}
+
+/**
  * 官网页 lang-change 事件 detail。App 用 executeJavaScript 在 main world 派发
  * `idexal-coding-plan-lang-change` CustomEvent，website 侧（idexalBridge.onLangChange 或
  * 直接 window.addEventListener）订阅后切换 copy。

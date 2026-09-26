@@ -8,8 +8,13 @@ import {
   useRef,
 } from "react";
 import type { ReactNode } from "react";
-import type { Locale, LocalePreference } from "@idexal/shared";
-import { DEFAULT_LOCALE } from "@idexal/shared";
+import type { Locale, LocalePreference, TextDirection } from "@idexal/shared";
+import {
+  DEFAULT_LOCALE,
+  FALLBACK_LOCALE,
+  localeFromLanguageTag,
+  resolveTextDirection,
+} from "@idexal/shared";
 import type { BroadcastMessage, IBroadcastService, ISettingService } from "@idexal/services";
 import {
   readNavigatorLanguage,
@@ -18,11 +23,15 @@ import {
 } from "@/lib/browserEnvironment.js";
 import zhCN from "./locales/zh-CN.js";
 import enUS from "./locales/en-US.js";
+import ar from "./locales/ar.js";
+import fr from "./locales/fr.js";
 
 /** 语言 → 翻译消息映射 */
 const MESSAGES: Record<Locale, Record<string, string>> = {
   "zh-CN": zhCN,
   "en-US": enUS,
+  ar,
+  fr,
 };
 
 /** 简易 intl 工具：根据 id 查找翻译，支持 {key} 占位符替换 */
@@ -39,7 +48,7 @@ interface LocaleBroadcastPayload {
 }
 
 function isLocale(value: unknown): value is Locale {
-  return value === "zh-CN" || value === "en-US";
+  return value === "zh-CN" || value === "en-US" || value === "ar" || value === "fr";
 }
 
 function isLocalePreference(value: unknown): value is LocalePreference {
@@ -111,11 +120,13 @@ function shouldApplyLocaleBroadcastMessage(
 }
 
 function createIntl(locale: Locale): IntlInstance {
-  // noUncheckedIndexedAccess：用 ?? 回退到默认语言的翻译
   const messages = MESSAGES[locale] ?? MESSAGES[DEFAULT_LOCALE]!;
+  const fallbackMessages = MESSAGES[FALLBACK_LOCALE]!;
   return {
     formatMessage({ id }, values) {
-      let msg = messages[id] ?? id;
+      // 缺失译文必须回退到英文原文，而不是回退成 key：新增语言时翻译是逐块补齐的，
+      // 直接显示 `settings.foo.bar` 会把内部标识暴露成界面文案。
+      let msg = messages[id] ?? fallbackMessages[id] ?? id;
       if (values) {
         for (const [key, val] of Object.entries(values)) {
           msg = msg.replaceAll(`{${key}}`, String(val));
@@ -126,10 +137,25 @@ function createIntl(locale: Locale): IntlInstance {
   };
 }
 
+/**
+ * 把排版方向写到文档根元素上。
+ *
+ * Tailwind 的物理工具类（ml-/mr-/left-/right-/translate-x）不认 dir 属性，
+ * 因此这一步只保证 `dir`/`lang` 与文本流本身正确；组件级的镜像仍要靠
+ * 逻辑属性（ms-/me-/ps-/pe-/text-start）逐个改造。
+ */
+export function applyDocumentTextDirection(locale: Locale): void {
+  const direction: TextDirection = resolveTextDirection(locale);
+  document.documentElement.dir = direction;
+  document.documentElement.lang = locale;
+}
+
 interface IntlContextValue {
   intl: IntlInstance;
   locale: Locale;
   localePreference: LocalePreference;
+  /** 由 locale 推导的排版方向；组件需要翻转布局时读它，不要自己判断语言。 */
+  direction: TextDirection;
   setLocale: (locale: Locale) => void;
   setLocalePreference: (localePreference: LocalePreference) => void;
 }
@@ -164,7 +190,9 @@ export function IdexalIntlProvider({
       return DEFAULT_LOCALE;
     }
 
-    return language.toLowerCase().startsWith("zh") ? "zh-CN" : "en-US";
+    // 映射规则集中在 @idexal/shared，桌面渲染进程与主进程共用同一份，
+    // 避免新增语言时只改了其中一处。
+    return localeFromLanguageTag(language);
   }, []);
   const resolveSystemLocale = useCallback(async (): Promise<Locale> => {
     const resolvedLocale = await resolveHostSystemLocale?.();
@@ -355,10 +383,15 @@ export function IdexalIntlProvider({
   );
 
   const intl = useMemo(() => createIntl(locale), [locale]);
+  const direction = resolveTextDirection(locale);
+
+  useEffect(() => {
+    applyDocumentTextDirection(locale);
+  }, [locale]);
 
   const value = useMemo<IntlContextValue>(
-    () => ({ intl, locale, localePreference, setLocale, setLocalePreference }),
-    [intl, locale, localePreference, setLocale, setLocalePreference],
+    () => ({ intl, locale, localePreference, direction, setLocale, setLocalePreference }),
+    [intl, locale, localePreference, direction, setLocale, setLocalePreference],
   );
 
   return <IntlContext value={value}>{children}</IntlContext>;

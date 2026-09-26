@@ -32,8 +32,8 @@ export const appSettingsOccupationEnum = appSettingsOccupationSchema;
 
 const nonEmptyStringSchema = z.string().trim().min(1);
 
-export const localeSchema = z.enum(["zh-CN", "en-US"]);
-const localePreferenceSchema = z.enum(["system", "zh-CN", "en-US"]);
+export const localeSchema = z.enum(["ar", "en-US", "fr", "zh-CN"]);
+const localePreferenceSchema = z.enum(["system", "ar", "en-US", "fr", "zh-CN"]);
 const idexalInteractionBehaviorSchema = z.enum(["queue", "guide"]);
 const electronReleaseChannelSchema = z.enum(["stable", "preview"]);
 const desktopZoomLevelSchema = z.number().int().min(-3).max(5);
@@ -419,7 +419,8 @@ function migrateLegacyWorkspaceSession(value: unknown): unknown {
 
 const appSettingsObjectSchema = z.object({
   recentProjects: z.array(z.string()).default([]),
-  locale: localeSchema.default("zh-CN"),
+  // 新装用户的兜底语言：中文已不再是产品语言，缺省必须是英文。
+  locale: localeSchema.default("en-US"),
   // 快捷键用户覆盖（语义校验在 ui/src/shortcuts 生效表阶段容错，schema 只管形状）
   shortcutBindings: z.record(z.string(), z.array(z.string())).optional(),
   localePreference: localePreferenceSchema.default("system"),

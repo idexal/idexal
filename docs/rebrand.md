@@ -262,6 +262,14 @@
   `login.subscription.comingSoon` 原样显示给用户。因此新文案必须两份同时写，并在验收里显式检查
   "界面上不出现 key 字面量"。
 
+### 界面语言集合（v3.16.0）
+
+- 品牌重构只处理了 `idexal` 与上游域名的替换，语言集合仍是上游的中英双语。
+  v3.16.0 起产品语言为 **阿拉伯语 / 英语 / 法语**，并接入 RTL。规则与验收见 `docs/i18n-rtl.md`。
+- 与品牌判定相关的一处遗留：`config/provider/idexal-builtin.json` 里 20 处 `"zh-CN"` 是
+  **模型供应商的显示名**（Z.ai、阿里云百炼 等），属上游产品名而非本应用品牌，按外部契约保留；
+  `FeedbackTicketStatus` 等中文枚举值是后端数据契约，同样不属于品牌层。
+
 ## 已知非品牌问题（记录以免被当成改名引入）
 
 - 实测（v3.15.3，CDP 直连运行中的桌面应用）：应用主题为深色时 `documentElement.className` 为 `dark theme-zai-dark platform-windows-desktop`，而 `matchMedia('(prefers-color-scheme: dark)').matches` 仍为 `false`（系统为浅色）。因此仓库里全部 122 处 `dark:` 工具类在桌面端启动阶段和 Web 端都跟系统偏好走，而不是跟应用主题走：这是上游遗留的主题机制问题，不属于品牌重构，本版本只把品牌位图的选图改成读 store 主题以消除“标志看不见”的后果，没有全局改写 `dark` 变体语义（那会影响所有 shadcn 组件的既有表现，需要单独设计与验收）。

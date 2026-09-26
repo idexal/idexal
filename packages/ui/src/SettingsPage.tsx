@@ -1275,7 +1275,7 @@ export function SettingsPage({
         });
         return;
       }
-      if (value === "zh-CN" || value === "en-US") {
+      if (value === "ar" || value === "en-US" || value === "fr" || value === "zh-CN") {
         runUserAction({
           input: { featureId: "settings.locale", action: "change_locale", trigger: "select" },
           operation: () => setLocalePreference(value as Locale),

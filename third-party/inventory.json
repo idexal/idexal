@@ -244,7 +244,7 @@
     "apps/idexal-cli/packages/tui/package.json": "bf4d9d82f1fe3b89439684d6f523bebd53b68d401d00663f7fc62daa4d4e9404",
     "apps/idexal-cli/tools/prompt-trajectory/package.json": "b9a1074500bf58045b23227fbac68756a3b3087998847649a79355d2d6be69fb",
     "apps/idexal-cli/tools/typescript/package.json": "805b36f3c53ea095587da9bc719b143b55226d33a8d3c45ee2eebc2fa31dc9b3",
-    "package.json": "1a7cb4f4e8a22357d4b3df8ef76c3b39699b1d27f2fdf5750e7f79b77b1608ac",
+    "package.json": "412b85e00a466d8a6f3714e8c8872c37a9c30e9f43e3a89fda44ee2f781e7cd3",
     "packages/client/package.json": "b3e3308b700e75af5d2718f80037a3f23fba051c343770a96f056defa4314e42",
     "packages/desktop/package.json": "94be4c6de51fd70eb9ed8d5a0a23895b437e85f82f133bcfc1698c088c454717",
     "packages/desktop/src/renderer/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
@@ -1516,7 +1516,7 @@
     "packages/ui/src/components/ui/toast.tsx": "de31a9f4638647d774ab287859f24a2b73cd8a02da106a31d42a786f7e4ee3b5",
     "packages/ui/src/components/ui/tooltip.tsx": "301dbf3a6f8b1bc496f9bdc6fbc5fe6202ed373182897f39cd1ecd19b00fdfbe",
     "packages/ui/src/components/ui/usePdfZoomOverlay.ts": "c8c91b003ce2fded32c7a2369dc6eac43aa4b9dc9c830a0f5ceccb21d366b610",
-    "packages/ui/src/lib/builtinSkillI18n.ts": "90f1afa1935458d30176a2e5c98bc6cb06a7d0c333e1bc11305d1b17fdcb0b01",
+    "packages/ui/src/lib/builtinSkillI18n.ts": "ff9c7f08ebe4d0d2abf43995fe4bc01634feae32f6b3a4f66402200c04c5d188",
     "packages/ui/src/styles.css": "5bc0af660f1bda35bda72c04c895e16709064a525baf41fdcb455e817c75f6fa",
     "packages/web/package.json": "410a3e279babee37876a9cb86dab5aee52017160b848af0258e1c6b3d7b7b4c5",
     "packages/web/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
@@ -29852,7 +29852,7 @@
       "files": [
         {
           "file": "packages/ui/src/lib/builtinSkillI18n.ts",
-          "sha256": "90f1afa1935458d30176a2e5c98bc6cb06a7d0c333e1bc11305d1b17fdcb0b01"
+          "sha256": "ff9c7f08ebe4d0d2abf43995fe4bc01634feae32f6b3a4f66402200c04c5d188"
         },
         {
           "file": "apps/idexal-cli/packages/superpowers-plugin/LICENSE",

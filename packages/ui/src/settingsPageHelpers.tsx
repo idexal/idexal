@@ -2,9 +2,17 @@
 import type {
   IntegratedTerminalShellOption,
   IntegratedTerminalShellSelection,
+  Locale,
   LocalePreference,
   IdexalInteractionBehavior,
 } from "@idexal/shared";
+
+/**
+ * 语言下拉的可选项。用列表而不是逐个写死 SelectItem：新增语言时只需要在这里
+ * 加一项并补文案，不会出现"类型里有、下拉里没有"的静默缺失。
+ * zh-CN 仍列出只为让已有中文配置的用户能看到并主动离开该语言。
+ */
+export const LOCALE_SELECT_VALUES: readonly Locale[] = ["ar", "en-US", "fr", "zh-CN"];
 import {
   TID_SETTINGS_ASK_USER_QUESTION_AUTO_RESOLUTION_SWITCH,
   TID_SETTINGS_NATIVE_SEARCH_SWITCH,
@@ -304,18 +312,15 @@ export function GeneralSectionContent({
                 >
                   {intl.formatMessage({ id: "settings.locale.system" })}
                 </SelectItem>
-                <SelectItem
-                  value="zh-CN"
-                  data-testid={testId(TID_SETTINGS_LOCALE_SELECT_ITEM, "zh-CN")}
-                >
-                  {intl.formatMessage({ id: "settings.locale.zh-CN" })}
-                </SelectItem>
-                <SelectItem
-                  value="en-US"
-                  data-testid={testId(TID_SETTINGS_LOCALE_SELECT_ITEM, "en-US")}
-                >
-                  {intl.formatMessage({ id: "settings.locale.en-US" })}
-                </SelectItem>
+                {LOCALE_SELECT_VALUES.map((value) => (
+                  <SelectItem
+                    key={value}
+                    value={value}
+                    data-testid={testId(TID_SETTINGS_LOCALE_SELECT_ITEM, value)}
+                  >
+                    {intl.formatMessage({ id: `settings.locale.${value}` })}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           }
