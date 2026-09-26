@@ -11,8 +11,8 @@ import { cn } from "@/components/lib/utils.js";
 import { useIdexalIntl } from "@/i18n/IntlProvider.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { logger } from "@/logger.js";
-import { useIdexalStore } from "@/store/StoreProvider.js";
-import { resolveTheme } from "@/useTheme.js";
+import { useIdexalStoreWithDefault } from "@/store/StoreProvider.js";
+import { inferAppliedTheme, resolveTheme } from "@/useTheme.js";
 
 const GREETING_BOUNDARY_HOURS = [5, 9, 12, 14, 18, 23] as const;
 const GREETING_MIN_FONT_SIZE_PX = 20;
@@ -218,7 +218,7 @@ function IdexalEmptyStateLogo({ className }: { className?: string }) {
   // `dark:` 编译成 @media (prefers-color-scheme: dark)，Web 目标只跟系统偏好，会和应用主题相反。
   // 浅色件在原始 PNG 上自带深色字，需要保留原来的向下渐隐遮罩；
   // 夜间资源本身已带渐变和透明度，公共容器再叠遮罩会重复变淡，故遮罩只跟浅色一起出现。
-  const theme = useIdexalStore((state) => state.theme);
+  const theme = useIdexalStoreWithDefault((state) => state.theme, inferAppliedTheme());
   const isDark = resolveTheme(theme) === "dark";
   return (
     <img

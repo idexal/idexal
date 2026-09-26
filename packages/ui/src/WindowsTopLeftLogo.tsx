@@ -1,8 +1,8 @@
 import { cn } from "@/components/lib/utils.js";
 import brandMarkDarkUrl from "@/assets/brand/mark-dark.png";
 import brandMarkLightUrl from "@/assets/brand/mark-light.png";
-import { useIdexalStore } from "@/store/StoreProvider.js";
-import { resolveTheme } from "@/useTheme.js";
+import { useIdexalStoreWithDefault } from "@/store/StoreProvider.js";
+import { inferAppliedTheme, resolveTheme } from "@/useTheme.js";
 
 export function WindowsTopLeftLogo({
   className,
@@ -11,7 +11,7 @@ export function WindowsTopLeftLogo({
   className?: string;
   imageClassName?: string;
 }) {
-  const theme = useIdexalStore((state) => state.theme);
+  const theme = useIdexalStoreWithDefault((state) => state.theme, inferAppliedTheme());
   return (
     <div
       className={cn(

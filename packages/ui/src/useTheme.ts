@@ -69,6 +69,18 @@ export function applyTheme(theme: Theme) {
   syncBrowserThemeSurface(resolved);
 }
 
+/**
+ * 供 StoreProvider 之外渲染的表面（启动遮罩、HTML 壳接管后的首屏）推断当前主题。
+ *
+ * 这些表面在 Root 的 isStartupRenderBlocked 分支里渲染，位置低于 <StoreProvider>，
+ * 读 store 会抛 "useIdexalStore 必须在 StoreProvider 内使用"；而 applyTheme 已经把
+ * 解析后的主题写成 .dark 类，所以类名是此处唯一可用且与背景同源的事实。
+ */
+export function inferAppliedTheme(): Theme {
+  if (typeof document === "undefined") return "zai-dark";
+  return document.documentElement.classList.contains("dark") ? "zai-dark" : "zai-light";
+}
+
 function isTheme(value: string | null): value is Theme {
   return (
     value === "light" ||

@@ -2,8 +2,8 @@ import { cn } from "@/components/lib/utils.js";
 import brandLogoDarkUrl from "@/assets/brand/logo-dark.png";
 import brandLogoLightUrl from "@/assets/brand/logo-light.png";
 import brandMarkDarkUrl from "@/assets/brand/mark-dark.png";
-import { useIdexalStore } from "@/store/StoreProvider.js";
-import { resolveTheme } from "@/useTheme.js";
+import { useIdexalStoreWithDefault } from "@/store/StoreProvider.js";
+import { inferAppliedTheme, resolveTheme } from "@/useTheme.js";
 
 /**
  * 品牌方形标志（"IX" mark）。
@@ -36,14 +36,18 @@ export function IdexalAboutLogo({ className }: { className?: string }) {
  * 默认宽度沿用旧 SVG 的 244px 内在宽度，调用方可用 className 覆盖。
  */
 export function IdexalWordmarkLogo({ className }: { className?: string }) {
-  const theme = useIdexalStore((state) => state.theme);
+  const theme = useIdexalStoreWithDefault((state) => state.theme, inferAppliedTheme());
   return (
     <img
       src={resolveTheme(theme) === "dark" ? brandLogoDarkUrl : brandLogoLightUrl}
       alt=""
       aria-hidden="true"
       draggable={false}
-      className={cn("h-auto w-60 max-w-full shrink-0 object-contain", className)}
+      className={cn(
+        // 画布 1136×380 的固有比例：h-auto 在 PNG 解码完成前会塌成 0 高，启动遮罩上会闪一次位移。
+        "aspect-[1136/380] h-auto w-60 max-w-full shrink-0 object-contain",
+        className,
+      )}
     />
   );
 }

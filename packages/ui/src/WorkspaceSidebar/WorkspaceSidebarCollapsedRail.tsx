@@ -4,8 +4,8 @@ import brandMarkLightUrl from "@/assets/brand/mark-light.png";
 import { Button } from "@/components/ui/button.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useIdexalIntl } from "@/i18n/IntlProvider.js";
-import { useIdexalStore } from "@/store/StoreProvider.js";
-import { resolveTheme } from "@/useTheme.js";
+import { useIdexalStoreWithDefault } from "@/store/StoreProvider.js";
+import { inferAppliedTheme, resolveTheme } from "@/useTheme.js";
 
 export function WorkspaceSidebarCollapsedRail({
   onToggleSidebar,
@@ -15,7 +15,7 @@ export function WorkspaceSidebarCollapsedRail({
   toggleSidebarShortcutLabel?: string;
 }) {
   const { intl } = useIdexalIntl();
-  const theme = useIdexalStore((state) => state.theme);
+  const theme = useIdexalStoreWithDefault((state) => state.theme, inferAppliedTheme());
 
   return (
     <aside className="flex h-full flex-col overflow-hidden border-r border-border bg-background-alt">

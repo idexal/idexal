@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.15.4 (2026-09-26)
+
+### Bug Fixes
+
+- **branding:** 修复 3.15.3 启动遮罩崩溃
+  - 现象：真机启动后 `AppErrorBoundary` 弹出 “The app ran into a problem”，
+    错误为 `useIdexalStore 必须在 StoreProvider 内使用`，组件栈指向 `IdexalWordmarkLogo` ← `RootStartupLoading`。
+  - 原因：`RootStartupLoading` 由 `Root.tsx` 的 `isStartupRenderBlocked` 分支渲染，位置低于同文件挂载的
+    `<StoreProvider>`，所以 3.15.3 引入的 store 读取在 Provider 之外抛错。`pnpm typecheck` 查不出这条边界，
+    只有真机启动才会暴露；这次是自己改出来的回归，已按实测修正。
+  - 修复：四个品牌组件统一改用 `useIdexalStoreWithDefault((s) => s.theme, inferAppliedTheme())`，
+    有 Provider 时随主题响应式更新，无 Provider 时退回 `applyTheme` 已写入的 `.dark` 类推断而不抛错；
+    `inferAppliedTheme` 对 `document` 缺失（SSR/单测）也返回默认深色。
+  - 复核：CDP 重连真机，启动遮罩在两套主题下都正常渲染——深色主题取 `logo-dark.png`、
+    浅色主题取 `logo-light.png`（该轮 `matchMedia('(prefers-color-scheme: dark)')` 为 false，
+    即旧 CSS 方案会把深色墨压在深色底上），登录页无 error boundary、控制台 0 报错。
+  - 附带：wordmark 加 `aspect-[1136/380]`，消除冷加载首帧 `h=0` 造成的一次位移（实测已为 `112×37.5`）。
+
 ## 3.15.3 (2026-09-26)
 
 ### Features
