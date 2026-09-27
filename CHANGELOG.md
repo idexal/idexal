@@ -58,6 +58,10 @@ step, not a feature.
 
 - The packaged application starts from the built output: window titled `Idexal`,
   interface loaded, and no error-level entries in its own log.
+- The wizard completed a per-user install of this version on a Windows x64 machine:
+  it registered in the current user's app list with version `4.0.0`, wrote its own
+  uninstaller and Start Menu entry, and the installed application runs from that
+  location with its own session data.
 - Installer and program both carry file and product version `4.0.0`, under the
   production identity rather than a preview one, so a release install will not
   overwrite or shadow a test build.
@@ -78,9 +82,10 @@ step, not a feature.
 - **Not signed or notarised.** Windows will show a SmartScreen warning, and there
   are no macOS or Linux packages yet. These are Beta and Stable requirements, not
   Alpha ones.
-- **We have not yet run the wizard's own install step on a clean machine.** What
-  we launched above is the built program, which is the same content the wizard
-  writes, but it is not the same test. Until it passes, this stays Alpha.
+- **One machine, and not a clean one.** The install above happened where Idexal was
+  already in use. A clean Windows machine, an upgrade from a previous version, and a
+  complete uninstall that leaves nothing of the program behind are still to be
+  verified; until those pass, this stays Alpha.
 - **The terminal binary has only been started, not driven.** `--version` and `--help`
   run and it creates its own data directory; a full agent session from a cold machine
   with a provider key is not covered by this release's checks.
