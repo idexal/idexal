@@ -41,7 +41,7 @@ et n'est publié ici ni ailleurs.
 | **Fonctionne sans surveillance, se pilote depuis le téléphone** | Les tâches longues continuent sur votre machine. Le téléphone se branche sur la session existante — il ne démarre pas un second agent. |
 | **Votre machine reste la frontière** | Fichiers, terminaux et outils s'exécutent en local. Idexal n'a pas besoin de copier votre dépôt dans un cloud tiers pour être utile. |
 | **Extensible par conception** | Compétences, extensions, connecteurs MCP et sous-agents sont des capacités installables de premier ordre, pas des copies du produit. |
-| **Pensé pour les équipes multilingues** | L'interface est fournie en arabe (de droite à gauche), en anglais et en français, et s'enrichit version après version. |
+| **Pensé pour les équipes multilingues** | L'interface est disponible en arabe, en anglais et en français, et la disposition suit le sens de la langue. L'arabe et le français ne couvrent aujourd'hui qu'une partie du produit ; le reste s'affiche en anglais jusqu'à sa traduction, et la couverture progresse version après version. |
 
 ## Téléchargement
 
@@ -80,7 +80,7 @@ Idexal peut rechercher une version plus récente et vous la signaler.
 l'installation automatiques sont une option que vous activez, pas un comportement
 par défaut.
 
-Dans 4.0.0, cette recherche ne lit pas cette page : elle interroge un service que
+Dans 4.0.0 et 4.0.1, cette recherche ne lit pas cette page : elle interroge un service que
 nous n'exploitons pas, lequel renvoie sa propre ligne de versions. Tant que le canal
 de mise à jour n'est pas géré par Idexal, la voie prise en charge pour évoluer est
 de télécharger ici l'installateur de la version voulue et de l'exécuter. Cet

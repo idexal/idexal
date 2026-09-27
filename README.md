@@ -40,7 +40,7 @@ elsewhere.
 | **Runs unattended, resumes on your phone** | Long tasks keep running on your machine. A phone connects to the existing session — it does not start a second agent — so you can watch, answer and steer from anywhere. |
 | **Your machine stays the boundary** | Files, terminals and tools execute locally. Idexal does not need to copy your repository to a vendor cloud to be useful. |
 | **Extensible by design** | Skills, plugins, MCP connectors and subagents are first-class, installable capabilities rather than forks of the product. |
-| **Built for multilingual teams** | The interface ships in Arabic (full right-to-left), English and French, with more languages added release by release. |
+| **Built for multilingual teams** | The interface is available in Arabic, English and French, and the layout follows the language's direction. Arabic and French currently cover part of the product; the rest is shown in English until it is translated, and coverage rises release by release. |
 
 ## Download
 
@@ -77,7 +77,7 @@ Idexal can check for a newer version and tell you when one exists. **Nothing is
 downloaded or installed until you accept** — automatic download and install is a
 setting you turn on, not a default.
 
-In 4.0.0 that check does not read this page. It asks a service we do not operate,
+In 4.0.0 and 4.0.1 that check does not read this page. It asks a service we do not operate,
 and that service reports its own release line rather than ours. Until the update
 feed is Idexal-operated, the supported way to upgrade is to download the installer
 for the version you want from this page and run it. That installer is built to leave

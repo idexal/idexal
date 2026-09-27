@@ -30,6 +30,76 @@ empty list than a promise.
 
 ---
 
+## 4.0.1 · Alpha — 2026-09-27
+
+A fixes-only release on top of 4.0.0. Nothing in it changes your sessions, workspaces,
+credentials or settings.
+
+### What changed
+
+- **What happens after an interrupted answer is now decided by the failure's own structured
+  fields, not by the wording of its message.** Before this, a provider rephrasing an error
+  could turn a clean stop into a retry, or a retry into a stop. A failure Idexal cannot
+  classify is now reported as unclassified instead of being guessed at.
+- **Prompt suggestions and scheduled-task templates no longer fall back to a language outside
+  Arabic, English and French.** An item with no text in a shipped language could display a
+  fourth language; it now shows nothing rather than the wrong thing, and a suggestion with
+  neither a label nor an action is hidden instead of rendered empty.
+- **A subagent's result is described by one contract.** The list of fields a subagent returns
+  is now derived from the code that produces them, so a result cannot be advertised one way
+  and delivered another.
+- **Syncing model-provider settings between machines no longer fails when a reserve model list
+  is stored.** The stored list made the export refuse its own payload. Export now leaves those
+  per-machine settings at home, and import no longer clears the receiving machine's own list.
+- **Prepared but not yet used:** storage for per-purpose reserve model lists. Behaviour is
+  unchanged — Idexal still does not switch models on its own.
+
+### What we verified on this build
+
+- The installer and the program inside it both carry file and product version `4.0.1` under
+  the production identity (`ProductName = Idexal`), not a preview one.
+- The ownership manifest is present with 87 entries and no unowned file, both in the unpacked
+  payload and inside the installer archive (89 files, 39 folders), so an upgrade can tell
+  which files it owns from the ones it does not.
+- The packaged locale set is exactly Arabic, English and French.
+- The terminal binary runs as a single file on Node `v24.14.0` and reports `0.16.9`, which is
+  the version this release's terminal line declares.
+- The built application starts from its own package and was walked through the signed-out
+  screen, the workspace, a new task, Automations and the Plugin Marketplace with **no uncaught
+  exceptions and no console errors**, no horizontal overflow, no overlapping or off-screen
+  controls, and no broken images. Renderer memory grew from 22.3 MB to 31.9 MB as those
+  screens loaded and did not keep climbing while idle.
+- Both files below were staged by the release tooling; the publisher checks these checksums
+  against what GitHub actually serves.
+
+### Checksums
+
+| File | SHA-256 |
+| --- | --- |
+| `Idexal-4.0.1-win-x64.exe` | `b9c2061e5d1d1013960dfef0164ba73a77a3433ab5324ccb881e4cb140999c0a` |
+| `Idexal-CLI-4.0.1-win-x64.exe` | `5e27eddd433409c8a5a524ecf93cf585f7d2850bfd8d270663e61eb383d8afd1` |
+
+### Open in this Alpha
+
+- **This installer has not been run.** 4.0.1 is verified from its build output, not from an
+  install: a clean-machine install, an upgrade over a previous version and a complete
+  uninstall are still unverified. The install-and-launch test recorded under 4.0.0 covers the
+  wizard itself, not this specific file.
+- **Arabic and French cover about 14% of interface text**; the rest is shown in English. This
+  was already true in 4.0.0, and we state it because the product is sold in those languages.
+- **Computer Use is not part of the Windows package.** Its helper is not shipped, so the app
+  records one start-up message about it on every launch.
+- **The in-app update check still asks a service we do not operate**, which answers with its
+  own release line. Download the installer for the version you want from this page instead.
+- **Nothing can be bought inside the app today.** Subscriptions are shown as coming soon, and
+  in-app payment for the international account type is refused by the code.
+- **No model turn was run from the published binary**, because our test environment has no
+  provider key. Runtime introspection, skill discovery and plugin install were driven from a
+  cold data directory.
+- **Not signed or notarised**, so Windows will show a SmartScreen warning.
+
+---
+
 ## 4.0.0 · Alpha — 2026-09-27
 
 The first public release of Idexal. It is published here as an installer, not as
