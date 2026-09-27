@@ -42,9 +42,10 @@ step, not a feature.
 
 - **Windows desktop app** with a guided setup wizard: you choose the installation
   folder, and the wizard speaks English, French and Arabic.
-- **Terminal CLI over the same agent runtime**, so the agent is scriptable without
-  the desktop window. The standalone terminal binary is not attached to this
-  release yet — see what is open below.
+- **Terminal CLI over the same agent runtime** as a standalone Windows binary, so the
+  agent is scriptable without the desktop window. It carries its own version line
+  (`idexal --version` reports the terminal's release, not this one), which is why the
+  file name and the version it prints differ; download notes match this release.
 - **One agent runtime behind desktop, browser and phone.** A phone attaches to a
   session that is already running on your desktop instead of starting a second
   agent.
@@ -60,14 +61,17 @@ step, not a feature.
 - Installer and program both carry file and product version `4.0.0`, under the
   production identity rather than a preview one, so a release install will not
   overwrite or shadow a test build.
-- The download attached to this release is the same file we built, checked by
-  SHA-256 after publication, and it is served to visitors who are not signed in.
+- The terminal binary starts: `--version` and `--help` both run, and it writes its data
+  directory where told rather than into an existing installation.
+- Each download attached to this release is the same file we built, checked by SHA-256
+  after publication, and served to visitors who are not signed in.
 
 ### Checksums
 
 | File | SHA-256 |
 | --- | --- |
 | `Idexal-4.0.0-win-x64.exe` | `e4cf64d7df5593ffd53da1d0402c1d1a6c733a0e34375dc8fe4b795fd5592644` |
+| `Idexal-CLI-4.0.0-win-x64.exe` | `ab1907f03071acb4a993ad74a86d0f5cb33a769bc3784c77caed72feb7ba6f42` |
 
 ### Open in this Alpha
 
@@ -77,10 +81,9 @@ step, not a feature.
 - **We have not yet run the wizard's own install step on a clean machine.** What
   we launched above is the built program, which is the same content the wizard
   writes, but it is not the same test. Until it passes, this stays Alpha.
-- **The standalone terminal binary is not published yet.** Building it on its own
-  currently fails in this workspace, so we are not shipping an untested executable
-  under a release version. It will be attached to this release once its build is
-  reproducible and run.
+- **The terminal binary has only been started, not driven.** `--version` and `--help`
+  run and it creates its own data directory; a full agent session from a cold machine
+  with a provider key is not covered by this release's checks.
 - **Model provider list may come up empty on first launch.** During our run the
   built-in provider configuration could not refresh, so add your own provider key
   in Settings if no models appear.
