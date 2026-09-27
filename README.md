@@ -44,15 +44,16 @@ elsewhere.
 
 ## Download
 
-Installers for Windows, macOS and Linux are published on the
-[Releases page](https://github.com/idexal/idexal/releases). Each release lists
-its downloads, supported platforms, checksums and the changes it contains.
+Today the Windows desktop installer and the Windows terminal binary are published
+on the [Releases page](https://github.com/idexal/idexal/releases). Each release
+lists its downloads, supported platforms, checksums and the changes it contains.
 
-| Platform | Installer | Architecture |
-| --- | --- | --- |
-| Windows | `Idexal-Setup-<version>.exe` (guided setup wizard) | x64 |
-| macOS | `Idexal-<version>.dmg` | Apple Silicon, Intel |
-| Linux | `Idexal-<version>.AppImage`, `.deb` | x64, arm64 |
+| Platform | File | Architecture | Status |
+| --- | --- | --- | --- |
+| Windows desktop | `Idexal-<version>-win-x64.exe` (guided setup wizard) | x64 | published |
+| Windows terminal | `Idexal-CLI-<version>-win-x64.exe` | x64 | published |
+| macOS | `Idexal-<version>.dmg` | Apple Silicon, Intel | planned — nothing published yet |
+| Linux | `Idexal-<version>.AppImage`, `.deb` | x64, arm64 | planned — nothing published yet |
 
 Every release carries a SHA-256 checksum next to its downloads. Verify it before
 installing.
@@ -87,6 +88,9 @@ On Windows, applying an update is always an explicit action. On macOS and Linux,
 once you have accepted an update it is applied when you quit the app. To move
 back, install the previous release from this page; your data is not removed by
 upgrading or by rolling back.
+
+We have not yet walked this path end to end from an installed build — the release
+notes list it as open, and macOS and Linux have no published installer to try it on.
 
 ## Documentation
 

@@ -45,16 +45,17 @@ et n'est publié ici ni ailleurs.
 
 ## Téléchargement
 
-Les installateurs Windows, macOS et Linux sont publiés sur la
-[page des releases](https://github.com/idexal/idexal/releases). Chaque version
-indique ses fichiers, les plateformes prises en charge, les sommes de contrôle et
-les changements apportés.
+Sont publiés aujourd'hui l'installateur Windows pour le bureau et le binaire
+terminal Windows, sur la [page des releases](https://github.com/idexal/idexal/releases).
+Chaque version indique ses fichiers, les plateformes prises en charge, les sommes
+de contrôle et les changements apportés.
 
-| Plateforme | Installateur | Architecture |
-| --- | --- | --- |
-| Windows | `Idexal-Setup-<version>.exe` (assistant d'installation guidé) | x64 |
-| macOS | `Idexal-<version>.dmg` | Apple Silicon, Intel |
-| Linux | `Idexal-<version>.AppImage`, `.deb` | x64, arm64 |
+| Plateforme | Fichier | Architecture | État |
+| --- | --- | --- | --- |
+| Windows bureau | `Idexal-<version>-win-x64.exe` (assistant d'installation guidé) | x64 | publié |
+| Windows terminal | `Idexal-CLI-<version>-win-x64.exe` | x64 | publié |
+| macOS | `Idexal-<version>.dmg` | Apple Silicon, Intel | prévu — rien de publié |
+| Linux | `Idexal-<version>.AppImage`, `.deb` | x64, arm64 | prévu — rien de publié |
 
 Chaque version publie une somme SHA-256 à côté de ses fichiers. Vérifiez-la
 avant d'installer.
@@ -90,6 +91,10 @@ Sous Windows, appliquer une mise à jour reste toujours un choix explicite. Sous
 macOS et Linux, une fois acceptée, elle est appliquée à la fermeture. Pour revenir
 en arrière, installez la version précédente depuis cette page ; ni la mise à jour
 ni le retour arrière ne suppriment vos données.
+
+Nous n'avons pas encore parcouru ce chemin de mise à jour de bout en bout depuis une
+installation réelle : les notes de version le listent parmi les points ouverts, et
+aucun installateur macOS ou Linux n'est publié pour l'essayer.
 
 ## Documentation
 
