@@ -47,7 +47,8 @@ In scope, for example:
 - Update checks are made against the configured release feed. Nothing is
   downloaded or installed without your acceptance.
 - Application data is stored under your Idexal data directory. See
-  [SUPPORT.md](SUPPORT.md) for how to collect a diagnostic bundle, and remove
-  anything you consider sensitive before sending it.
+  [SUPPORT.md](SUPPORT.md) for where that directory is and which log covers the
+  failing time window. There is no one-command diagnostic bundle; send the
+  narrowest log that shows the problem, and strip anything sensitive first.
 
 Please do not open a public issue for a suspected vulnerability.
