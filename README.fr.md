@@ -83,20 +83,20 @@ par défaut.
 Dans 4.0.0, cette recherche ne lit pas cette page : elle interroge un service que
 nous n'exploitons pas, lequel renvoie sa propre ligne de versions. Tant que le canal
 de mise à jour n'est pas géré par Idexal, la voie prise en charge pour évoluer est
-de télécharger ici l'installateur de la version voulue et de l'exécuter ; vos
-sessions, espaces de travail, identifiants et réglages sont conservés.
+de télécharger ici l'installateur de la version voulue et de l'exécuter. Cet
+installateur est conçu pour conserver vos sessions, espaces de travail, identifiants
+et réglages ; l'étendue de ce que nous avons vérifié est indiquée plus bas.
 
 | Comportement | Par défaut |
 | --- | --- |
 | Vérifier une version plus récente | Activé |
 | Télécharger sans demander | **Désactivé** — vous acceptez d'abord |
 | Installer | Après le téléchargement, quand vous choisissez d'appliquer |
-| Sessions, espaces de travail, identifiants et réglages | Préservés lors de la mise à jour |
+| Sessions, espaces de travail, identifiants et réglages | Conservés par conception : une mise à jour ne supprime que les fichiers installés par la version précédente, et la désinstallation est configurée pour laisser les données applicables. Ni la mise à jour ni la désinstallation n'ont encore été vérifiées de bout en bout. |
 
 Sous Windows, appliquer une mise à jour reste toujours un choix explicite. Sous
 macOS et Linux, une fois acceptée, elle est appliquée à la fermeture. Pour revenir
-en arrière, installez la version précédente depuis cette page ; ni la mise à jour
-ni le retour arrière ne suppriment vos données.
+en arrière, installez la version précédente depuis cette page.
 
 Nous n'avons pas encore parcouru ce chemin de mise à jour de bout en bout depuis une
 installation réelle : les notes de version le listent parmi les points ouverts, et

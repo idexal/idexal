@@ -80,20 +80,20 @@ setting you turn on, not a default.
 In 4.0.0 that check does not read this page. It asks a service we do not operate,
 and that service reports its own release line rather than ours. Until the update
 feed is Idexal-operated, the supported way to upgrade is to download the installer
-for the version you want from this page and run it; that keeps your sessions,
-workspaces, credentials and settings.
+for the version you want from this page and run it. That installer is built to leave
+your sessions, workspaces, credentials and settings in place; how far we have verified
+that is stated below.
 
 | Behaviour | Default |
 | --- | --- |
 | Check for a newer release | On |
 | Download without asking | **Off** — you accept first |
 | Install | Only after the download completes and you choose to apply it |
-| Sessions, workspaces, credentials and settings | Preserved across an upgrade |
+| Sessions, workspaces, credentials and settings | Kept by design: an update deletes only the files the previous version installed, and an uninstall is configured to leave application data alone. Neither the upgrade nor the uninstall has been verified end to end yet. |
 
 On Windows, applying an update is always an explicit action. On macOS and Linux,
 once you have accepted an update it is applied when you quit the app. To move
-back, install the previous release from this page; your data is not removed by
-upgrading or by rolling back.
+back, install the previous release from this page.
 
 We have not yet walked this path end to end from an installed build — the release
 notes list it as open, and macOS and Linux have no published installer to try it on.
