@@ -1,0 +1,97 @@
+name: Bug report
+description: Report something Idexal should do and does not. This repository is public — never paste keys or private content here.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Issues here are **public**. Do not include API keys, tokens, session
+        contents, private repository text, or anything you would not want read by
+        strangers. Trim logs to the failing window. Suspected security issues go to
+        the email address in SECURITY.md, never to an issue.
+  - type: input
+    id: version
+    attributes:
+      label: Version and channel
+      description: From the application's About screen.
+      placeholder: "4.0.0 Alpha"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface?
+      options:
+        - Desktop app
+        - Browser client
+        - Terminal (idexal CLI)
+        - Phone controlling a desktop session
+        - Installer or update
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows x64
+        - macOS Apple Silicon
+        - macOS Intel
+        - Linux x64
+        - Linux arm64
+        - Other / not sure
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: Include the exact message text if something was shown.
+      placeholder: |
+        What I did, what the product showed, and the wording of any error.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Number them. Say whether it happens every time.
+      placeholder: |
+        1. Open …
+        2. Choose …
+        3. See …
+
+        Happens: every time / sometimes / once
+    validations:
+      required: true
+  - type: dropdown
+    id: started
+    attributes:
+      label: When did it start
+      options:
+        - As long as I have used it
+        - After an update
+        - After installing a plugin, skill or MCP server
+        - Only in one particular project or workspace
+        - I do not know
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log lines for the failing window (optional)
+      description: >
+        From the Idexal data directory — the log covering the minute the problem
+        happened, not the whole directory. Redact anything private first.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you post
+      options:
+        - label: I removed keys, tokens, session text and private content.
+          required: true
+        - label: I searched existing issues and did not find this.
+          required: true
+        - label: This is not a security report (those go by email — see SECURITY.md).
+          required: true

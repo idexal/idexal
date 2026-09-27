@@ -1,0 +1,17 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security problem
+    url: mailto:contact@idexal.com?subject=Idexal%20security
+    about: >
+      Please do not open a public issue. Write to contact@idexal.com with a subject
+      starting "Idexal security" — acknowledgement within 3 business days, and a fix
+      or mitigation plan within 30 days for confirmed issues.
+  - name: Licence, deployment or partnership
+    url: mailto:contact@idexal.com
+    about: Commercial questions, self-hosted deployment and partnerships.
+  - name: Download Idexal
+    url: https://github.com/idexal/idexal/releases
+    about: Installers, release notes and SHA-256 checksums for every published version.
+  - name: Support, diagnostics and what we do not cover
+    url: https://github.com/idexal/idexal/blob/main/SUPPORT.md
+    about: Where logs live, what to attach, and how to redact before posting.

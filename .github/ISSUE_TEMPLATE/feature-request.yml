@@ -1,0 +1,48 @@
+name: Feature request
+description: Propose something Idexal should be able to do.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Describe the problem you are trying to solve, not just the button you want.
+        A request that explains the work-around you live with today is easier to
+        judge than a list of features.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem, in your own words
+      placeholder: |
+        When I … I cannot …, so I have to …
+    validations:
+      required: true
+  - type: textarea
+    id: want
+    attributes:
+      label: What you would like to happen
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where would it live?
+      options:
+        - Desktop app
+        - Browser client
+        - Terminal (idexal CLI)
+        - Phone controlling a desktop session
+        - Installer or update
+        - Interface and language (Arabic / French / English, right-to-left)
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: Existing settings, plugins, skills or other tools.
+  - type: dropdown
+    id: impact
+    attributes:
+      label: How much does this block you?
+      options:
+        - I cannot use Idexal for this work at all
+        - I can, but only with a slow work-around
+        - It would be nicer, not blocking
