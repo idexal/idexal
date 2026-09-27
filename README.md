@@ -73,9 +73,15 @@ never changes the meaning of a version number.
 
 ### Upgrading
 
-Idexal checks the release channel on its own and tells you when a newer version
-is available. **Nothing is downloaded or installed until you accept** — automatic
-download and install is a setting you turn on, not a default.
+Idexal can check for a newer version and tell you when one exists. **Nothing is
+downloaded or installed until you accept** — automatic download and install is a
+setting you turn on, not a default.
+
+In 4.0.0 that check does not read this page. It asks a service we do not operate,
+and that service reports its own release line rather than ours. Until the update
+feed is Idexal-operated, the supported way to upgrade is to download the installer
+for the version you want from this page and run it; that keeps your sessions,
+workspaces, credentials and settings.
 
 | Behaviour | Default |
 | --- | --- |

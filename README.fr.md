@@ -75,10 +75,16 @@ change jamais la signification d'un numéro.
 
 ### Mise à jour
 
-Idexal interroge son canal tout seul et vous signale une version plus récente.
+Idexal peut rechercher une version plus récente et vous la signaler.
 **Rien n'est téléchargé ni installé sans votre accord** — le téléchargement et
 l'installation automatiques sont une option que vous activez, pas un comportement
 par défaut.
+
+Dans 4.0.0, cette recherche ne lit pas cette page : elle interroge un service que
+nous n'exploitons pas, lequel renvoie sa propre ligne de versions. Tant que le canal
+de mise à jour n'est pas géré par Idexal, la voie prise en charge pour évoluer est
+de télécharger ici l'installateur de la version voulue et de l'exécuter ; vos
+sessions, espaces de travail, identifiants et réglages sont conservés.
 
 | Comportement | Par défaut |
 | --- | --- |

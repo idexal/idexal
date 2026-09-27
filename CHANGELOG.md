@@ -92,7 +92,12 @@ step, not a feature.
 - **Model provider list may come up empty on first launch.** During our run the
   built-in provider configuration could not refresh, so add your own provider key
   in Settings if no models appear.
-- **The update feed is not verified end to end** from an installed build.
+- **The in-app update check does not use this page.** In 4.0.0 it asks a service we
+  do not operate, and that service answers with its own release line: in our run it
+  reported `3.14.3`, so nothing was offered only because 4.0.0 is newer. Until the
+  update feed is Idexal-operated, upgrade by downloading the installer for the
+  version you want from this page and running it — your sessions, workspaces and
+  settings are kept.
 - **Arabic and French wizard text has not been reviewed on screen** by a reader
   of those languages, although the strings ship in all three.
 
