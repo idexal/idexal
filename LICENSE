@@ -1,0 +1,54 @@
+# Idexal Commercial Licence
+
+Copyright (c) 2026 Idexal. All rights reserved.
+
+Idexal is proprietary, closed-source commercial software developed and distributed
+by Idexal. This repository publishes **binaries, installers, release notes and
+documentation only**. No source code for Idexal is offered, licensed or
+warranted through this repository, and no permission to copy, modify,
+redistribute, reverse engineer, decompile or disassemble the software is granted
+except where applicable law expressly permits it notwithstanding this
+restriction.
+
+## What you may do
+
+- Install and use Idexal on machines you own or control, in accordance with the
+  terms agreed when you obtained a licence.
+- Redistribute unmodified installers obtained from
+  [the official releases page](https://github.com/idexal/idexal/releases) for
+  deployment within your own organisation.
+- Quote short passages from the published documentation, with attribution.
+
+## What you may not do
+
+- Publish, sublicense or distribute the Idexal source code.
+- Reverse engineer, decompile or disassemble the software except to the extent
+  required to obtain interoperability information where applicable law permits it
+  despite contractual restriction.
+- Remove, obscure or alter any copyright, trademark or third-party notice.
+- Use the Idexal name, logo or marks to imply endorsement or affiliation.
+
+Commercial licences, site licences and support agreements:
+<contact@idexal.com>.
+
+## Third-party components
+
+Idexal is built on open source software, including components distributed under
+the Apache License 2.0, the MIT License, the BSD licences and other permissive
+licences, and it bundles the Node.js runtime. **Those components remain licensed
+under their own terms**, and nothing in this licence restricts your rights under
+them.
+
+The complete list of components, their licences, their copyright notices and the
+licence texts themselves are reproduced in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), and are also shipped inside the
+installed application. Attribution for upstream work is stated in the notices
+bundled with the product.
+
+If you believe a third-party attribution is missing or incorrect, please report
+it to <contact@idexal.com> and we will correct it.
+
+## Trademarks
+
+Idexal and the Idexal logo are trademarks of Idexal. Other product and company
+names mentioned are trademarks of their respective owners.
