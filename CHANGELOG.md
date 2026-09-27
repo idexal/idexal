@@ -52,7 +52,8 @@ step, not a feature.
 - **Arabic interface with right-to-left layout**, alongside English and French.
   Direction follows the language, and directional icons mirror with it.
 - **Update checks that notify without downloading.** Whether to update, and when,
-  stays with you.
+  stays with you. In this release the check does not read the Releases page — see
+  *Open in this Alpha*.
 
 ### What we verified on this build
 
@@ -65,8 +66,12 @@ step, not a feature.
 - Installer and program both carry file and product version `4.0.0`, under the
   production identity rather than a preview one, so a release install will not
   overwrite or shadow a test build.
-- The terminal binary starts: `--version` and `--help` both run, and it writes its data
-  directory where told rather than into an existing installation.
+- The terminal binary was driven, from the published download itself and against an
+  empty data directory: it reports its runtime (`node v24.14.0`, packaged as a single
+  executable), lists 11 skills, installs the official plugin marketplace into that
+  directory and lists the two plugins it fetched, and lists custom commands. Each
+  exited cleanly. A prompt without a provider key fails rather than hanging, though
+  the message it prints is not yet the helpful one we want.
 - Each download attached to this release is the same file we built, checked by SHA-256
   after publication, and served to visitors who are not signed in.
 
@@ -86,9 +91,11 @@ step, not a feature.
   already in use. A clean Windows machine, an upgrade from a previous version, and a
   complete uninstall that leaves nothing of the program behind are still to be
   verified; until those pass, this stays Alpha.
-- **The terminal binary has only been started, not driven.** `--version` and `--help`
-  run and it creates its own data directory; a full agent session from a cold machine
-  with a provider key is not covered by this release's checks.
+- **No model turn from the published binary.** Runtime introspection, skill discovery
+  and a marketplace plugin install were driven from a cold data directory, but a full
+  agent session needs a provider key, and our test environment has none. An
+  unauthenticated prompt currently answers `Model creation failed` plus a trace id;
+  that message is on our list to fix.
 - **Model provider list may come up empty on first launch.** During our run the
   built-in provider configuration could not refresh, so add your own provider key
   in Settings if no models appear.
