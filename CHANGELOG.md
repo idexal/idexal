@@ -30,6 +30,83 @@ empty list than a promise.
 
 ---
 
+## 4.0.3 · Alpha — 2026-09-30
+
+A release that makes two things usable which already existed but could not be reached, and makes one kind of
+log line tell the truth about why something failed. Nothing in it changes your sessions, workspaces,
+credentials or settings, and no existing model request changes behaviour.
+
+### What changed
+
+- **`/goal budget` in the terminal.** Idexal has carried a per-session token ceiling for a long time, and the
+  code that enforces it was already in place — but nothing could set it, so the guard could never fire. You
+  can now set one with `/goal budget <tokens>`, lift it with `/goal budget none`, and `/goal` on its own
+  reports the tokens used and what remains. Changing a budget never edits your objective and never resets a
+  counter.
+- **The subscription button is now the platform's decision, not the application's.** The sign-in screen used
+  to show a disabled button because the app knew no purchase address. It now reads the checkout offer from
+  the platform's configuration: if an offer arrives with a valid https address, the button opens exactly that
+  address; if there is no offer, or the offer cannot be read, the button stays as it was. No address is
+  compiled into the application, so a release cannot ship a button that leads nowhere. **This does not mean
+  you can subscribe from this build yet** — see *Open in this Alpha* below.
+- **Computer Use start-up diagnostics name the real cause.** When the optional Computer Use helper was not
+  installed, the app reported a malformed manifest; a location it considered unsafe was reported as
+  corruption as well. These are now separate reasons — the runtime is absent, it is not a directory, or its
+  location is suspect — because what you should do differs in each case, and until now the log pointed at the
+  wrong fix.
+- **Two platform endpoints answer to an Idexal name.** The balance endpoint and the model gateway are now also
+  reachable under a `coding-plan/` path, with the same handler, the same guards and the same refusal of a
+  credential that does not belong to them. The older vendor-named paths stay live because builds already in
+  use point at them; no shipped client has moved to the new names yet.
+
+### What we verified on this build
+
+- The installer and the program inside it both carry file version `4.0.3` under the production identity
+  (`ProductName = Idexal`), not a preview one.
+- The ownership manifest is present with 87 entries and no unowned file, both in the unpacked payload and
+  inside the installer archive (89 files, 39 folders), so an upgrade can tell which files it owns from the
+  ones it does not.
+- The packaged locale set is exactly Arabic, English and French.
+- The terminal binary runs as a single file, reports `4.0.3` — the same number as the desktop and the
+  release title, which is new: the terminal used to carry its own `0.16.9` — and it runs on the Node
+  version this repository pins (`v24.14.0`). The staged binary is 198,982,144 bytes and the installer
+  150,616,312 bytes.
+- The release was built from committed source in a separate checkout at a commit with no local changes, and
+  `pnpm typecheck` passed there with exit code 0.
+- A repository gate checked the range this release covers: 24 shipped-path files changed, every one of them
+  recorded, and the version move opened its own section in both this file and the internal changelog.
+- **Not verified, and not claimed:** no installation was run, and no model turn was made from either
+  published binary.
+
+### Checksums
+
+| Asset | SHA-256 |
+| --- | --- |
+| `Idexal-4.0.3-win-x64.exe` | `a7ea243a77520eab28941f4b57f013fd0bc9e60b8c094b445a6c354157bff7d2` |
+| `Idexal-CLI-4.0.3-win-x64.exe` | `497f7972557631c9a8b2fe3370b8d4a208bcaf0390588060fdf178fdd72917ec` |
+
+### Open in this Alpha
+
+- **Still nothing to buy inside the app.** Both ends of the mechanism now exist — the platform can make the
+  offer and the desktop acts on it — but the platform is not yet served from idexal.com, so on this build a
+  customer sees the button disabled and payment remains outside the application. What is missing is hosting,
+  not code.
+- **This installer has not been run.** 4.0.3 is verified from its build output, not from an installation.
+  Upgrade over a previous version, installation on a clean machine and complete uninstallation remain untested.
+- **`/goal budget` was exercised against the real storage layer and the command handler**, not through a live
+  model turn, because our test environment has no provider credential to spend.
+- **Arabic and French cover about 14% of interface text**; the rest is shown in English.
+- **Computer Use is not part of the Windows package.** Its helper is not shipped, so the app still reports an
+  absent runtime for it on launch — this release makes that report accurate, it does not make the feature
+  available.
+- **Automatic update checks cannot find anything yet.** This build was pointed at a placeholder address on
+  your own machine (`http://localhost:8081`) instead of the third-party service earlier builds asked, so it
+  contacts no one else's server and never finds a newer version. Until a real update feed is published,
+  upgrades mean downloading the new installer from this page.
+- **No model turn was run from the published binary**, because our test environment has no provider
+  credential to spend.
+- **Not signed or notarised**, so Windows will show a SmartScreen warning.
+
 ## 4.0.2 · Alpha — 2026-09-30
 
 Changes you can see in the terminal and in your subscription state, plus fixes that were invisible
