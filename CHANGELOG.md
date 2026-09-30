@@ -82,6 +82,13 @@ credentials or settings, and no existing model request changes behaviour.
 - **Only the plan family was rebranded.** The `ultra`, `ultra-zai` and `off-peak` gateway paths still carry
   inherited names, because those name a credential family the terminal shows you directly — renaming them
   changes what you type, so it is a product decision rather than a cleanup.
+- **What would have to line up for the subscribe button to light up — measured, not assumed.** The platform
+  was run locally and its real configuration response was fed through the same two functions the desktop
+  uses: with an offer present the button resolved to enabled and pointed at
+  `https://idexal.com/pricing`; removing that single key from the same response made it disabled again.
+  Three conditions must hold together, and only the first is hosting — the platform served over https on an
+  Idexal address, a payment provider secret configured, and at least one plan marked purchasable. The plan
+  rows do not exist yet, and what a plan costs is a decision for the product owner, not a missing feature.
 - **Everything still open in 4.0.4 remains open**: nothing can be bought inside the app while the platform
   is not served from idexal.com; Computer Use is not part of the Windows package; the update check asks a
   service we do not operate; Arabic and French cover about 14% of interface text; this release's installer
