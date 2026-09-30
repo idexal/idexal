@@ -8,27 +8,79 @@ do not describe a release as working based on automated checks alone.
 
 Version numbers follow `MAJOR.MINOR.PATCH`:
 
-| Bump | When |
-| --- | --- |
+| Bump    | When                                                                        |
+| ------- | --------------------------------------------------------------------------- |
 | `MAJOR` | Breaking change to sessions, settings, workspaces, or the extension surface |
-| `MINOR` | New user-facing capability, backward compatible |
-| `PATCH` | Fixes only |
+| `MINOR` | New user-facing capability, backward compatible                             |
+| `PATCH` | Fixes only                                                                  |
 
 The **channel** is stated next to the version and describes maturity, not the
 number:
 
-| Channel | Promotion criteria — all must hold |
-| --- | --- |
-| **Alpha** | Feature works on the developer machine; installer builds; known gaps documented |
-| **Beta** | Installer verified by a real install-and-launch run on each supported platform; upgrade from the previous version tested |
+| Channel    | Promotion criteria — all must hold                                                                                                            |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Alpha**  | Feature works on the developer machine; installer builds; known gaps documented                                                               |
+| **Beta**   | Installer verified by a real install-and-launch run on each supported platform; upgrade from the previous version tested                      |
 | **Stable** | Signed and notarised where the platform requires it; end-to-end update check confirmed on a published feed; no open regression in a core flow |
-| **LTS** | A Stable line designated for extended support with a published end-of-support date |
+| **LTS**    | A Stable line designated for extended support with a published end-of-support date                                                            |
 
 A release is published here **only when its installers are attached**. If a
 version has no downloads, it is not available yet — we would rather show an
 empty list than a promise.
 
 ---
+
+## 4.0.4 · Alpha — 2026-09-30
+
+A fixes-only release on top of 4.0.3. Nothing in it changes your sessions, workspaces, credentials or
+settings, and no existing model request changes behaviour.
+
+### What changed
+
+- **A permission prompt can no longer get stuck for good.** When the part of the app that shows you a
+  permission request failed on its way out, the request was cancelled for you but its identifier stayed
+  registered as still waiting. Every later request under that same identifier was then refused with
+  "already pending", so one failed handoff could freeze one permission permanently until you restarted the
+  app. The cancelled request now releases its identifier, and a retried request is answered normally.
+- **Unchanged for you, but now provable.** The permission layer that decides whether a tool may run — the
+  order in which a mode, a project rule, an explicit disallow and a session approval are consulted — had
+  never been covered by a test. It now has 38 cases, and they record two asymmetries the code already had
+  rather than silently reordering them (see _Open in this Alpha_).
+
+### What we verified on this build
+
+- The installer and the program inside it both carry file version `4.0.4` under the production identity
+  (`ProductName = Idexal`), not a preview one.
+- The ownership manifest is present with 87 entries and no unowned file, both in the unpacked payload and
+  inside the installer archive (89 files, 39 folders).
+- The packaged locale set is exactly Arabic, English and French.
+- The terminal binary was run against a fresh, empty data directory and reported `version: 4.0.4`,
+  `node: v24.14.0`, `sea: yes`. That Node version is the one this repository pins: the binary was built on
+  it rather than on the host's newer runtime, so no off-pin licence record was created.
+- The release was built from committed source in a separate checkout with no local changes, at the commit
+  that carried the fix.
+- **Not verified, and not claimed:** no installation was run, and no model turn was made from either
+  published binary. The permission fix itself is proven by a test that re-asks the same request id after a
+  failed handoff, not by driving a live prompt.
+
+### Checksums
+
+| Asset | SHA-256 |
+| ----- | ------- |
+| `Idexal-4.0.4-win-x64.exe` | `64b16c9b97137b7d1494f4d121cdc179df4fe7c836a9d6104146715529a13fff` |
+| `Idexal-CLI-4.0.4-win-x64.exe` | `026f176d969082bac27a992d9d28d6ca920de7f981672ee2c8dd4ed7c6149543` |
+
+### Open in this Alpha
+
+- **Two permission orderings are recorded, not fixed, and each needs a product decision.** A session in
+  _yolo_ mode is allowed before an explicit disallow list is consulted, so the list does not stop the shell
+  in that mode. And a tool's risk can never be raised by its own name, because the write list is checked
+  before the destructive list and the shell sits in both. Both are pre-existing; changing either changes
+  what a running session accepts, so they are decisions rather than edits.
+- **Everything still open in 4.0.3 remains open**: nothing can be bought inside the app while the platform
+  is not served from idexal.com; Computer Use is not part of the Windows package; the update check asks a
+  service we do not operate; Arabic and French cover about 14% of interface text; this release's installer
+  has not been run; and it is not signed or notarised.
 
 ## 4.0.3 · Alpha — 2026-09-30
 
@@ -48,7 +100,7 @@ credentials or settings, and no existing model request changes behaviour.
   the platform's configuration: if an offer arrives with a valid https address, the button opens exactly that
   address; if there is no offer, or the offer cannot be read, the button stays as it was. No address is
   compiled into the application, so a release cannot ship a button that leads nowhere. **This does not mean
-  you can subscribe from this build yet** — see *Open in this Alpha* below.
+  you can subscribe from this build yet** — see _Open in this Alpha_ below.
 - **Computer Use start-up diagnostics name the real cause.** When the optional Computer Use helper was not
   installed, the app reported a malformed manifest; a location it considered unsafe was reported as
   corruption as well. These are now separate reasons — the runtime is absent, it is not a directory, or its
@@ -80,9 +132,9 @@ credentials or settings, and no existing model request changes behaviour.
 
 ### Checksums
 
-| Asset | SHA-256 |
-| --- | --- |
-| `Idexal-4.0.3-win-x64.exe` | `a7ea243a77520eab28941f4b57f013fd0bc9e60b8c094b445a6c354157bff7d2` |
+| Asset                          | SHA-256                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `Idexal-4.0.3-win-x64.exe`     | `a7ea243a77520eab28941f4b57f013fd0bc9e60b8c094b445a6c354157bff7d2` |
 | `Idexal-CLI-4.0.3-win-x64.exe` | `497f7972557631c9a8b2fe3370b8d4a208bcaf0390588060fdf178fdd72917ec` |
 
 ### Open in this Alpha
@@ -162,9 +214,9 @@ settings, and no behaviour of an existing model request changes.
 
 ### Checksums
 
-| Asset | SHA-256 |
-| --- | --- |
-| `Idexal-4.0.2-win-x64.exe` | `32bcef80392df6c561799153606ee53857ff3415843820b2fcf6a7747bbf973e` |
+| Asset                          | SHA-256                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `Idexal-4.0.2-win-x64.exe`     | `32bcef80392df6c561799153606ee53857ff3415843820b2fcf6a7747bbf973e` |
 | `Idexal-CLI-4.0.2-win-x64.exe` | `b26caee3e08ab3bf392d3d2e35b3d96bb384fd2efe63257cc70b1650844e0c46` |
 
 ### Open in this Alpha
@@ -227,9 +279,9 @@ credentials or settings.
 
 ### Checksums
 
-| File | SHA-256 |
-| --- | --- |
-| `Idexal-4.0.1-win-x64.exe` | `b9c2061e5d1d1013960dfef0164ba73a77a3433ab5324ccb881e4cb140999c0a` |
+| File                           | SHA-256                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `Idexal-4.0.1-win-x64.exe`     | `b9c2061e5d1d1013960dfef0164ba73a77a3433ab5324ccb881e4cb140999c0a` |
 | `Idexal-CLI-4.0.1-win-x64.exe` | `5e27eddd433409c8a5a524ecf93cf585f7d2850bfd8d270663e61eb383d8afd1` |
 
 ### Open in this Alpha
@@ -276,7 +328,7 @@ step, not a feature.
   Direction follows the language, and directional icons mirror with it.
 - **Update checks that notify without downloading.** Whether to update, and when,
   stays with you. In this release the check does not read the Releases page — see
-  *Open in this Alpha*.
+  _Open in this Alpha_.
 
 ### What we verified on this build
 
@@ -300,9 +352,9 @@ step, not a feature.
 
 ### Checksums
 
-| File | SHA-256 |
-| --- | --- |
-| `Idexal-4.0.0-win-x64.exe` | `e4cf64d7df5593ffd53da1d0402c1d1a6c733a0e34375dc8fe4b795fd5592644` |
+| File                           | SHA-256                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `Idexal-4.0.0-win-x64.exe`     | `e4cf64d7df5593ffd53da1d0402c1d1a6c733a0e34375dc8fe4b795fd5592644` |
 | `Idexal-CLI-4.0.0-win-x64.exe` | `ab1907f03071acb4a993ad74a86d0f5cb33a769bc3784c77caed72feb7ba6f42` |
 
 ### Open in this Alpha
