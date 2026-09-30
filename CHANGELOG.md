@@ -99,10 +99,13 @@ credentials or settings, and no existing model request changes behaviour.
 - **Computer Use is not part of the Windows package.** Its helper is not shipped, so the app still reports an
   absent runtime for it on launch — this release makes that report accurate, it does not make the feature
   available.
-- **Automatic update checks cannot find anything yet.** This build was pointed at a placeholder address on
-  your own machine (`http://localhost:8081`) instead of the third-party service earlier builds asked, so it
-  contacts no one else's server and never finds a newer version. Until a real update feed is published,
-  upgrades mean downloading the new installer from this page.
+- **The in-app update check still asks a service we do not operate.** By default this build resolves its
+  update manifest against `https://zcode.z.ai` — the origin the upstream project ships — because no Idexal
+  update feed has been published yet. That service answers with its own version list, so nothing is offered
+  to us there only because our numbering sorts higher. The address written into the installer's own update
+  configuration is a placeholder the packaging tool requires, and the application replaces it when it starts;
+  it is not what the app asks. Publishing an Idexal-operated feed is an open item, and until then upgrades
+  mean downloading the new installer from this page.
 - **No model turn was run from the published binary**, because our test environment has no provider
   credential to spend.
 - **Not signed or notarised**, so Windows will show a SmartScreen warning.
