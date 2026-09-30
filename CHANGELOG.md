@@ -30,6 +30,79 @@ empty list than a promise.
 
 ---
 
+## 4.0.2 · Alpha — 2026-09-30
+
+Changes you can see in the terminal and in your subscription state, plus fixes that were invisible
+until they were checked. Nothing in this release changes your sessions, workspaces, credentials or
+settings, and no behaviour of an existing model request changes.
+
+### What changed
+
+- **The terminal can now tell you what you are on.** `idexal plan` prints your active plan and the
+  remaining quota, as text or with `--json`. Before this, subscription state was readable only in the
+  desktop app.
+- **A signed-out terminal run now says to sign in.** Running a prompt without a provider used to report
+  a generic model-creation failure. It now names the cause and the remedy: configure a provider or sign
+  in with `/login`.
+- **Subscription state is tied to the account that earned it.** The cached plan and quota are now keyed on
+  your account rather than on a screen refresh, and signing out clears the cache. Previously, a second
+  account on the same machine could be shown the first account's plan for as long as ten minutes after
+  sign-in.
+- **Browser session recordings capture page console output.** The recorder asked for it in a form the
+  runtime never calls, so every recorded console line was stored with no level and no message.
+- **Prepared but not yet used:** the rule that decides whether a failing model may move to the next one
+  in a chain now exists and is tested, but nothing calls it yet — Idexal still does not switch models on
+  its own.
+- **Internal correctness, not behaviour.** A type gate now covers the desktop process, the preload
+  bridge, the renderer and the scheduler, which no build step had ever checked; it surfaced six
+  defects, of which the recorder above is the only one users could observe. The rest were real but
+  silent: a DNS guard whose return type did not match what it asked for, a print-to-PDF export slicing
+  a shared buffer instead of allocating one, two code branches for a remote-connection type the
+  protocol has never contained, a helper version check that looked adjustable when it was fixed to the
+  build, and eight parameters that were unchecked. Their behaviour is unchanged.
+
+### What we verified on this build
+
+- The installer and the program inside it both carry file and product version `4.0.2` under the
+  production identity (`ProductName = Idexal`), not a preview one.
+- The ownership manifest is present with 87 entries and no unowned file, both in the unpacked payload
+  and inside the installer archive (89 files, 39 folders), so an upgrade can tell which files it owns
+  from the ones it does not.
+- The packaged locale set is exactly Arabic, English and French.
+- The terminal binary runs as a single file on Node `v24.14.0` and reports `0.16.9`, which is the
+  version this release's terminal line declares. The terminal's own version did not move with the
+  release: the two binaries for 4.0.1 and 4.0.2 both report `0.16.9`.
+- On a fresh, empty data directory the terminal reports `0.16.9`, `node: v24.14.0`,
+  `platform: win32/x64`, `sea: yes`, and a signed-out non-interactive run prints the sign-in
+  message above. No model request was made.
+- The release was built from committed source in a separate checkout, so it contains exactly what is in
+  version control. Building it from a clean tree was itself a fix: two shared-contract imports the
+  terminal uses were unreachable to the desktop bundler, which is now caught by a test rather than by a
+  failed release.
+
+### Checksums
+
+| Asset | SHA-256 |
+| --- | --- |
+| `Idexal-4.0.2-win-x64.exe` | `32bcef80392df6c561799153606ee53857ff3415843820b2fcf6a7747bbf973e` |
+| `Idexal-CLI-4.0.2-win-x64.exe` | `b26caee3e08ab3bf392d3d2e35b3d96bb384fd2efe63257cc70b1650844e0c46` |
+
+### Open in this Alpha
+
+- **This installer has not been run.** 4.0.2 is verified from its build output, not from an
+  installation. Upgrade over a previous version, installation on a clean machine and complete
+  uninstallation remain untested.
+- **Arabic and French cover about 14% of interface text**; the rest is shown in English.
+- **Computer Use is not part of the Windows package.** Its helper is not shipped, so the app reports a
+  missing runtime for it on launch.
+- **The in-app update check still asks a service we do not operate**, which answers with its own
+  version list; nothing is offered to us only because our numbering sorts higher.
+- **Nothing can be bought inside the app today.** Subscriptions are shown as coming soon, and payment
+  happens outside the app.
+- **No model turn was run from the published binary**, because our test environment has no provider
+  credential to spend.
+- **Not signed or notarised**, so Windows will show a SmartScreen warning.
+
 ## 4.0.1 · Alpha — 2026-09-27
 
 A fixes-only release on top of 4.0.0. Nothing in it changes your sessions, workspaces,
