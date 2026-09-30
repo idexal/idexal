@@ -30,6 +30,63 @@ empty list than a promise.
 
 ---
 
+## 4.0.5 · Alpha — 2026-09-30
+
+A small release about what a request line says. Nothing in it changes your sessions, workspaces,
+credentials or settings, and no existing model request changes behaviour.
+
+### What changed
+
+- **Requests to our own platform no longer carry another company's product name in their path.** Until now
+  every plan, quota and gateway call was addressed as `<host>/api/v1/zcode-plan/…` — including when the host
+  was ours. Pointing Idexal at `idexal.com` still put
+  `https://idexal.com/api/v1/zcode-plan/anthropic` on the wire, where it is visible in a proxy log and in
+  your own browser history, because the inherited name lived in the **path** and not only in the domain. The
+  path family is now chosen from the host: `idexal.com`, its subdomains and a local development server are
+  addressed under `coding-plan`; every other host is left exactly as it was.
+- **What deliberately did not change.** Against the default host the addresses are byte-for-byte the ones
+  4.0.4 produced — asserted directly, not reasoned about — and the older paths stay registered on the
+  platform, because builds already installed address them. Nothing was removed to make the rename look
+  complete.
+- **A workflow guard moved earlier.** A multi-agent workflow identifies each participant by name, and a
+  repeated name fails the whole run when it is discovered mid-execution. The cases that are statically
+  visible are now reported while the workflow is being authored, with the fix stated in the message; what
+  cannot be known without running is still left to the engine rather than guessed at.
+
+### What we verified on this build
+
+- The installer and the program inside it carry file version `4.0.5` under the production identity
+  (`ProductName = Idexal`), and the ownership manifest is present with 87 entries and no unowned file, both
+  unpacked and inside the archive (89 files, 39 folders). Packaged locales are exactly Arabic, English and
+  French.
+- The terminal binary reports `4.0.5` and runs on the pinned Node `v24.14.0`, verified by executing the
+  staged file.
+- The path change was checked **against the shipped binary, not the source**: a byte scan of the published
+  CLI finds both segment names present, with the three occurrences that used to be hard-coded full paths now
+  built at runtime, and the new host predicate present five times — a control string that appears nowhere
+  returns zero, and the previous release's binary lacks the predicate entirely.
+- **What was not observed:** no live request line. The published terminal refuses to query the platform
+  while signed out — it prints the sign-in message and sends nothing — so the two branches are covered by
+  tests rather than by a captured request, and no provider credential was spent to force one.
+- Not verified, as with every release on this channel: no installation was run, and no model turn was made.
+
+### Checksums
+
+| Asset                          | SHA-256                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `Idexal-4.0.5-win-x64.exe`     | `edba814e39f8bd8888d7a2ae8774651264fad2b4153c41aa9969b91a6bb92c9e` |
+| `Idexal-CLI-4.0.5-win-x64.exe` | `f171486827a42362947e1391063bb727d90913548b70d5b851425823f909a70b` |
+
+### Open in this Alpha
+
+- **Only the plan family was rebranded.** The `ultra`, `ultra-zai` and `off-peak` gateway paths still carry
+  inherited names, because those name a credential family the terminal shows you directly — renaming them
+  changes what you type, so it is a product decision rather than a cleanup.
+- **Everything still open in 4.0.4 remains open**: nothing can be bought inside the app while the platform
+  is not served from idexal.com; Computer Use is not part of the Windows package; the update check asks a
+  service we do not operate; Arabic and French cover about 14% of interface text; this release's installer
+  has not been run; and it is not signed or notarised.
+
 ## 4.0.4 · Alpha — 2026-09-30
 
 A fixes-only release on top of 4.0.3. Nothing in it changes your sessions, workspaces, credentials or
@@ -65,9 +122,9 @@ settings, and no existing model request changes behaviour.
 
 ### Checksums
 
-| Asset | SHA-256 |
-| ----- | ------- |
-| `Idexal-4.0.4-win-x64.exe` | `64b16c9b97137b7d1494f4d121cdc179df4fe7c836a9d6104146715529a13fff` |
+| Asset                          | SHA-256                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `Idexal-4.0.4-win-x64.exe`     | `64b16c9b97137b7d1494f4d121cdc179df4fe7c836a9d6104146715529a13fff` |
 | `Idexal-CLI-4.0.4-win-x64.exe` | `026f176d969082bac27a992d9d28d6ca920de7f981672ee2c8dd4ed7c6149543` |
 
 ### Open in this Alpha
