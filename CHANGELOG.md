@@ -30,6 +30,76 @@ empty list than a promise.
 
 ---
 
+## 4.0.6 · Alpha — 2026-10-01
+
+A release about the shape of the provider list, and about what a sign-in screen is allowed to claim.
+
+### What changed
+
+- **One official access point instead of a catalogue of gateways.** The "Add provider" list no longer offers
+  six OpenCode Go / OpenCode Zen variants, two Alibaba Cloud editions, or the two inherited coding-plan
+  templates — ten provider templates and the 101 model entries attached to them were removed, not hidden.
+  What remains is: Create custom provider, Kimi, MiniMax, DeepSeek, Xiaomi MiMo, OpenAI, Anthropic, xAI,
+  OpenRouter, BigModel API and Z.ai API.
+- **A new default provider: Idexal API.** Base address `https://api.idexal.com/v1`, a key field, and no
+  hard-coded model list — the models available to your key are the ones the service reports, so a model
+  added on our side becomes selectable without a new installer. The catalogue revision moved from 30 to 31.
+- **The provider grouping was removed rather than renamed.** The group that held the plan templates
+  addressed its members by a fixed list of four identifiers, two of which are providers that stay in the
+  list; keeping any grouping built from that list would have filed our own subscription access under
+  another company's name.
+- **The waiting screen names our domain.** Where it previously displayed the third party's name, it now
+  reads _Waiting for idexal.com authentication…_ in all three languages, because that is the destination the
+  product is being moved to. The provider identifier, the callback scheme and the OAuth client id were left
+  exactly as they are: those key stored credentials and the wire, not prose.
+- **The web client stopped defaulting to a host the desktop no longer uses.** Its authorization fallback
+  named a third-party origin when no environment value was supplied, so the browser and desktop could send
+  a person to different consent screens. Both now read one shared definition.
+
+### What we are telling you plainly, rather than letting you discover
+
+This build completes sign-in against **the platform that serves it today**, not against `idexal.com`. Our
+own platform registers the same paths in source and we measured both: `https://idexal.com/api/oauth/authorize`
+answers `404` from a static host, while the current provider's host answers `422` for an invented client id
+and `401` for an unauthenticated profile read — live endpoints that reject the wrong input, which is what
+"working" looks like from outside. Shipping an installer pointed at the first would break sign-in for every
+new install, so the waiting label and the consent host disagree in this release, and we are saying so here
+instead of letting the interface imply the account system is already ours.
+
+### What we verified on this build
+
+- The installer and the program inside it carry file version `4.0.6` under the production identity (`ProductName = Idexal`), and the ownership manifest is present with 87 entries and no unowned file, both unpacked and inside the archive (89 files, 39 folders). Packaged locales are exactly Arabic, English and French.
+- The terminal binary starts and reports `4.0.6`, matching the version the CLI package declares. It was built on the pinned Node `v24.14.0`: the only host runtime in the build cache is that version, and the licence staged with the binary is the one recorded for it, with source and digest.
+- The catalogue change was checked against the shipped configuration rather than the source: the template list resolves to eleven entries with `idexal-api` first, and none of the ten removed identifiers survives anywhere in the bundled file.
+- **What was not observed on a live wire:** no account sign-in was completed against any host for this release, and no provider credential was spent to force one. The statement about which host answers on the OAuth paths rests on direct HTTP probes — `422` for a fabricated client id, `401` for an unauthenticated profile read, `404` on our own domain.
+- **Known gap, not a regression:** the packaged build still points its update check at a local development address, so in-app update checks will not resolve until that is repointed to a service we operate.
+
+### Checksums
+
+| Asset                          | SHA-256                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `Idexal-4.0.6-win-x64.exe`     | `698aa46220c99ea9d90c9c3a67c10daedfb2be1a985db6239e23760fa82e0249` |
+| `Idexal-CLI-4.0.6-win-x64.exe` | `2a46ef601c3a57963d2b23bc15055bd2f7da9ba123151d0ea61e208cf20cf607` |
+
+### Open in this Alpha
+
+- **Sign-in and subscription on our own domain is a deployment, not a feature request.** The routes exist in
+  the platform's code; the host does not serve them. Until that changes, plans cannot be bought inside the
+  app, the subscribe control stays a placeholder, and the update check points at a service we do not operate.
+- **A single `idexal Plan` card has not replaced the two `Start Plan` entries.** The account type is
+  constrained to the two inherited families across the protocol and its resolvers, so an Idexal account
+  family is a protocol change with a membership sweep, not a catalogue row. Two providers are therefore
+  still displayed as "Start Plan" against different families.
+- **Interface data still carries Chinese-language suggestion text**, and the shipped product languages are
+  Arabic, English and French. Removing it is a content change we have not made in this release.
+- **The plugin marketplace identifier is inherited and external.** It appears in cache paths and plugin
+  identifiers, so renaming it here alone would break installed plugins; it moves by alias first, then by
+  cut-over, when we publish our own marketplace.
+- **Nothing has changed about platform coverage:** Windows only. Linux and macOS have no installer and no
+  committed date.
+
+---
+
 ## 4.0.5 · Alpha — 2026-09-30
 
 A small release about what a request line says. Nothing in it changes your sessions, workspaces,
