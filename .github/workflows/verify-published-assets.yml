@@ -1,0 +1,80 @@
+name: Verify published release assets
+
+# Supply-chain transparency, not CI. This workflow takes the installers that anonymous
+# visitors actually download from the latest release, computes their SHA-256 here, and
+# compares each one with the checksum printed in that release's notes. It therefore fails
+# when an upload was truncated, when a note was edited after upload, or when an asset was
+# swapped. Nothing is installed or executed: the binaries are hashed, not run.
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to verify (blank = latest)
+        required: false
+        default: ""
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve the release to check
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED: ${{ github.event.inputs.tag }}
+        run: |
+          if [ -n "$REQUESTED" ]; then
+            tag="$REQUESTED"
+          elif [ -n "${{ github.event.release.tag_name }}" ]; then
+            tag="${{ github.event.release.tag_name }}"
+          else
+            tag="$(gh api "repos/${{ github.repository }}/releases/latest" --jq .tag_name)"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          gh api "repos/${{ github.repository }}/releases/tags/$tag" \
+            --jq '.body' > release-notes.md
+          echo "Verifying release: $tag"
+
+      - name: Download every attached asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.rel.outputs.tag }}
+        run: |
+          mkdir -p assets
+          gh api "repos/${{ github.repository }}/releases/tags/$TAG" \
+            --jq '.assets[] | [.name, .browser_download_url] | @tsv' \
+            > asset-list.tsv
+          if [ ! -s asset-list.tsv ]; then
+            echo "::error::The release has no attached assets. A release without installers is not a delivery."
+            exit 1
+          fi
+          while IFS=$'\t' read -r name url; do
+            echo "fetching $name"
+            curl -sSL --fail --retry 3 -o "assets/$name" "$url"
+          done < asset-list.tsv
+
+      - name: Compare each digest with the checksum published in the notes
+        run: |
+          fail=0
+          while IFS=$'\t' read -r name url; do
+            digest="$(sha256sum "assets/$name" | cut -d' ' -f1)"
+            if grep -qiF "$digest" release-notes.md; then
+              echo "OK   $name  $digest"
+            else
+              echo "::error::$name does not match any checksum printed in the release notes (computed $digest)"
+              fail=1
+            fi
+          done < asset-list.tsv
+          if [ "$fail" -ne 0 ]; then
+            echo "One or more assets do not match the published checksum. Do not distribute this release."
+            exit 1
+          fi
+          echo "Every attached asset matches the checksum published for it."
