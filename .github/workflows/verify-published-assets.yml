@@ -30,17 +30,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REQUESTED: ${{ github.event.inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [ -n "$REQUESTED" ]; then
+          set -euo pipefail
+          if [ -n "${REQUESTED:-}" ]; then
             tag="$REQUESTED"
-          elif [ -n "${{ github.event.release.tag_name }}" ]; then
-            tag="${{ github.event.release.tag_name }}"
+          elif [ -n "${RELEASE_TAG:-}" ]; then
+            tag="$RELEASE_TAG"
           else
-            tag="$(gh api "repos/${{ github.repository }}/releases/latest" --jq .tag_name)"
+            # /releases/latest omits prereleases, and an Alpha channel is published as a prerelease,
+            # so the list endpoint is the only one that returns the newest release we actually ship.
+            tag="$(gh api "repos/${{ github.repository }}/releases?per_page=1" --jq '.[0].tag_name')"
+          fi
+          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+            echo "::error::No published release found to verify."
+            exit 1
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          gh api "repos/${{ github.repository }}/releases/tags/$tag" \
-            --jq '.body' > release-notes.md
+          gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq '.body' > release-notes.md
           echo "Verifying release: $tag"
 
       - name: Download every attached asset
