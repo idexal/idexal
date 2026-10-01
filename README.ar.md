@@ -50,8 +50,8 @@ Idexal مساحة عمل تجارية للبرمجة بالذكاء الاصطن
 | --- | --- | --- | --- |
 | سطح مكتب Windows | `Idexal-<version>-win-x64.exe` (معالج إعداد موجَّه) | x64 | منشور |
 | طرفية Windows | `Idexal-CLI-<version>-win-x64.exe` | x64 | منشور |
-| macOS | `Idexal-<version>.dmg` | Apple Silicon و Intel | مخطط — لم يُنشر بعد |
-| Linux | `Idexal-<version>.AppImage` و`.deb` | x64 و arm64 | مخطط — لم يُنشر بعد |
+| macOS | `Idexal-<version>-mac-arm64.dmg` و`-mac-x64.dmg` (مع `الملف .zip` المطابق) | Apple Silicon و Intel | مخطط — لم يُنشر بعد |
+| Linux | `Idexal-<version>-linux-x64.AppImage` و`.deb` و`.rpm` و`.pkg.tar.zst` (وarm64 أيضًا) | x64 و arm64 | مخطط — لم يُنشر بعد |
 
 كل إصدار يحمل قيمة SHA-256 إلى جوار ملفاته. تحقّق منها قبل التثبيت.
 

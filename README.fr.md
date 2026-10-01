@@ -54,8 +54,8 @@ de contrôle et les changements apportés.
 | --- | --- | --- | --- |
 | Windows bureau | `Idexal-<version>-win-x64.exe` (assistant d'installation guidé) | x64 | publié |
 | Windows terminal | `Idexal-CLI-<version>-win-x64.exe` | x64 | publié |
-| macOS | `Idexal-<version>.dmg` | Apple Silicon, Intel | prévu — rien de publié |
-| Linux | `Idexal-<version>.AppImage`, `.deb` | x64, arm64 | prévu — rien de publié |
+| macOS | `Idexal-<version>-mac-arm64.dmg` et `-mac-x64.dmg` (plus le `.zip` correspondant) | Apple Silicon, Intel | prévu — rien de publié |
+| Linux | `Idexal-<version>-linux-x64.AppImage`, `.deb`, `.rpm`, `.pkg.tar.zst` (arm64 aussi) | x64, arm64 | prévu — rien de publié |
 
 Chaque version publie une somme SHA-256 à côté de ses fichiers. Vérifiez-la
 avant d'installer.

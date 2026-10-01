@@ -52,8 +52,8 @@ lists its downloads, supported platforms, checksums and the changes it contains.
 | --- | --- | --- | --- |
 | Windows desktop | `Idexal-<version>-win-x64.exe` (guided setup wizard) | x64 | published |
 | Windows terminal | `Idexal-CLI-<version>-win-x64.exe` | x64 | published |
-| macOS | `Idexal-<version>.dmg` | Apple Silicon, Intel | planned — nothing published yet |
-| Linux | `Idexal-<version>.AppImage`, `.deb` | x64, arm64 | planned — nothing published yet |
+| macOS | `Idexal-<version>-mac-arm64.dmg` and `-mac-x64.dmg` (plus the matching `.zip`) | Apple Silicon, Intel | planned — nothing published yet |
+| Linux | `Idexal-<version>-linux-x64.AppImage`, `.deb`, `.rpm`, `.pkg.tar.zst` (arm64 too) | x64, arm64 | planned — nothing published yet |
 
 Every release carries a SHA-256 checksum next to its downloads. Verify it before
 installing.
